@@ -1,0 +1,12 @@
+[
+  {"id":"seferihisar-belediye","name":"Seferihisar Belediyesi","url":"https://seferihisar.bel.tr/","kind":"html","enabled":true,"trusted":true,"access":"robots","max_pages":12},
+  {"id":"seferihisar-kaymakamlik","name":"Seferihisar Kaymakamlığı","url":"https://www.seferihisar.gov.tr/","kind":"html","enabled":true,"trusted":true,"access":"robots","max_pages":8},
+  {"id":"izmir-belediye","name":"İzmir Büyükşehir Belediyesi","url":"https://www.izmir.bel.tr/","kind":"html","enabled":true,"trusted":true,"access":"robots","max_pages":8},
+  {"id":"eshot","name":"ESHOT","url":"https://www.eshot.gov.tr/","kind":"html","enabled":false,"trusted":true,"access":"review_required"},
+  {"id":"izsu","name":"İZSU","url":"https://www.izsu.gov.tr/","kind":"html","enabled":false,"trusted":true,"access":"review_required"},
+  {"id":"gdz","name":"GDZ Elektrik","url":"https://www.gdzelektrik.com.tr/","kind":"html","enabled":false,"trusted":true,"access":"review_required"},
+  {"id":"afad","name":"AFAD","url":"https://www.afad.gov.tr/","kind":"html","enabled":false,"trusted":true,"access":"review_required"},
+  {"id":"mgm","name":"Meteoroloji Genel Müdürlüğü","url":"https://www.mgm.gov.tr/","kind":"html","enabled":false,"trusted":true,"access":"review_required"},
+  {"id":"biletix","name":"Biletix","url":"https://www.biletix.com/","kind":"html","enabled":false,"trusted":false,"access":"review_required"},
+  {"id":"biletinial","name":"Biletinial","url":"https://biletinial.com/","kind":"html","enabled":false,"trusted":false,"access":"review_required"}
+]

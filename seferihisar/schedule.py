@@ -1,0 +1,119 @@
+from __future__ import annotations
+
+from datetime import datetime, time, timedelta
+
+from .domain import TZ, digest, parse_date
+from .editor import caption, headline
+from .store import Store
+
+SLOTS = (time(8, 30), time(12, 30), time(15), time(18, 30), time(21))
+
+
+def next_slot(at: datetime, event: bool = False) -> datetime:
+    slots = (time(15),) if event else SLOTS
+    for slot in slots:
+        candidate = datetime.combine(at.date(), slot, TZ)
+        if candidate >= at:
+            return candidate
+    return datetime.combine(at.date() + timedelta(days=1), slots[0], TZ)
+
+
+def prepare(store: Store, at: datetime):
+    for item in store.items():
+        if item["kind"] == "news":
+            if at - parse_date(item["published_at"]) > timedelta(days=7):
+                continue
+            urgent = item["category"] in ("outage", "weather", "transport")
+            queue_item(store, item, "news", at if urgent else next_slot(at), at)
+            continue
+        start = parse_date(item["start"])
+        if item["status"] in ("cancelled", "postponed"):
+            queue_item(store, item, "cancellation" if item["status"] == "cancelled" else "update", at, at)
+            continue
+        if start.date() < at.date():
+            continue
+        if item["revision"] > 1:
+            queue_item(store, item, "update", at, at)
+        elif start <= at + timedelta(days=30):
+            queue_item(store, item, "announcement", min(next_slot(at, event=True), start) if item.get("time_known") else at, at)
+        days = (start.date() - at.date()).days
+        # A delayed run catches the 3-day reminder on days 2/1; never posts it after the event.
+        if 0 < days <= 3:
+            queue_item(store, item, "reminder_3d", at, at)
+        if days == 0 and (not item.get("time_known") or start >= at):
+            queue_item(store, item, "reminder_day", at, at)
+    # Expire stale prepared posts, including reminders whose event has passed.
+    current = {i["id"]: i for i in store.items()}
+    with store.db:
+        for post in store.posts():
+            item = current.get(post.get("item_id"))
+            if post["status"] != "prepared":
+                continue
+            if not item:
+                if post["kind"] in ("weekly", "monthly") and parse_date(post["due_at"]) < at - timedelta(days=2):
+                    store.db.execute("UPDATE posts SET status='expired' WHERE id=?", (post["id"],))
+                continue
+            expired = item["kind"] == "news" and at - parse_date(item["published_at"]) > timedelta(days=2)
+            expired |= item["kind"] == "event" and item["status"] not in ("cancelled", "postponed") and (parse_date(item["end"]).date() < at.date() or (item.get("time_known") and parse_date(item["end"]) < at))
+            if expired:
+                store.db.execute("UPDATE posts SET status='expired' WHERE id=?", (post["id"],))
+    prepare_digest(store, at, "weekly", 7)
+    prepare_digest(store, at, "monthly", 30)
+
+
+def queue_item(store: Store, item: dict, kind: str, due: datetime, at: datetime):
+    days = (parse_date(item["start"]).date() - at.date()).days if item["kind"] == "event" else None
+    title = headline(item, kind)
+    if kind == "reminder_3d" and days != 3:
+        title = f"{days} gün kaldı: {item['title']}"
+    key = digest(f"{item['id']}:{item['revision']}:{kind}")
+    store.queue({"id": key, "item_id": item["id"], "revision": item["revision"], "kind": kind,
+                 "due_at": due.isoformat(), "title": title, "caption": caption(item, title),
+                 "category": item["category"], "source_urls": item["sources"],
+                 "slides": [{"title": title, "body": slide_body(item)}],
+                 "created_at": at.isoformat(), "formats": ["carousel", "story"] if item["kind"] == "event" else ["feed", "story"]})
+
+
+def slide_body(item: dict) -> str:
+    if item["kind"] == "news":
+        return item["description"][:650] + "\n\nKaynak: " + item["source_name"]
+    date = parse_date(item["start"])
+    details = [date.strftime("%d.%m.%Y") + (date.strftime(" · %H:%M") if item.get("time_known") else " · Saat açıklanmadı"),
+               item.get("location") or "Konum açıklanmadı", item.get("organizer") or "Organizatör açıklanmadı",
+               "Ücretsiz" if item.get("free") is True else ("Ücretli" if item.get("free") is False else "Ücret bilgisi açıklanmadı"),
+               "Kaynak: " + item["source_name"]]
+    return "\n\n".join(details)
+
+
+def prepare_digest(store: Store, at: datetime, kind: str, days: int):
+    if kind == "weekly":
+        period = (at.date() - timedelta(days=at.weekday())).isoformat()
+        title = "Seferihisar'da Bu Hafta Neler Var?"
+    else:
+        period = at.strftime("%Y-%m")
+        title = "Seferihisar Etkinlik Takvimi"
+    events = sorted((e for e in store.items("event") if e["status"] in ("scheduled", "rescheduled") and at.date() <= parse_date(e["start"]).date() <= at.date() + timedelta(days=days)), key=lambda e: e["start"])
+    if not events:
+        with store.db:
+            store.db.execute("UPDATE posts SET status='superseded' WHERE id=? AND status='prepared'", (digest(kind + ":" + period),))
+        return
+    # Refresh an unpublished digest when events change; never repeat a published edition.
+    key = digest(kind + ":" + period)
+    existing = next((p for p in store.posts() if p["id"] == key), None)
+    if existing and existing["status"] != "prepared":
+        return
+    selected = events[:9]  # Meta carousel cover + 9 slides; do not imply a complete calendar.
+    description = f"{at.strftime('%d.%m.%Y')} itibarıyla önümüzdeki {days} gün için doğrulanmış etkinliklerden seçki."
+    slides = [{"title": title, "body": description}] + [{"title": e["title"], "body": slide_body(e)} for e in selected]
+    content = "\n\n".join([title, description] + [e["title"] + " · " + parse_date(e["start"]).strftime("%d.%m.%Y") + "\nKaynak: " + e["url"] for e in selected])
+    post = {"id": key, "kind": kind, "revision": 1, "due_at": next_slot(at, event=True).isoformat(),
+            "title": title, "caption": content[:2200], "category": "event", "slides": slides,
+            "source_urls": [e["url"] for e in selected], "created_at": at.isoformat(), "formats": ["carousel", "story"]}
+    if existing:
+        # Keep original due date so frequent runs cannot postpone it indefinitely.
+        post["due_at"] = existing["due_at"]
+        import json
+        with store.db:
+            store.db.execute("UPDATE posts SET payload=? WHERE id=?", (json.dumps(post, ensure_ascii=False), key))
+    else:
+        store.queue(post)
