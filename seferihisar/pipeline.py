@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import shutil
+import tempfile
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -11,6 +12,7 @@ from .editor import ai_priority, verify
 from .render import render_post
 from .schedule import prepare
 from .store import Store
+from .security import ITEM_FIELDS, PUBLIC_ITEM_FIELDS, assert_no_secrets, contains_secret, public_url, validate_public
 
 
 def run(db_path: Path, public_dir: Path, sources_path: Path, at: datetime | None = None, fixture: Path | None = None) -> dict:
@@ -45,9 +47,12 @@ def run(db_path: Path, public_dir: Path, sources_path: Path, at: datetime | None
             # Candidate labels/URLs are untrusted and might contain private query data.
             from urllib.parse import urlsplit
             split = urlsplit(candidate["url"])
-            candidate["url"] = f"https://{split.hostname}{split.path}"
-            candidate["name"] = split.hostname
-            candidate.pop("discovered_from", None)
+            candidate_url = f"https://{split.hostname}{split.path if candidate.get('kind') == 'rss' else '/'}"
+            if not public_url(candidate_url):
+                continue
+            from .domain import digest
+            candidate = {"id": digest(candidate_url), "url": candidate_url, "name": split.hostname,
+                         "kind": candidate["kind"], "enabled": False, "trusted": False, "access": "review_required"}
             with store.db:
                 store.db.execute("INSERT OR IGNORE INTO candidates VALUES (?,?)", (candidate["id"], json.dumps(candidate)))
         for item in incoming:
@@ -56,10 +61,7 @@ def run(db_path: Path, public_dir: Path, sources_path: Path, at: datetime | None
             if reason:
                 store.withhold(item.get("url", "") + ":" + item.get("title", ""), reason, at.isoformat())
                 continue
-            # URL fields may contain access tokens. Retain only canonical public links.
-            if unsafe_item_links(item):
-                store.withhold(item["url"], "non_public_url", at.isoformat())
-                continue
+            item = {k: v for k, v in item.items() if k in ITEM_FIELDS}
             key, changed = store.upsert(item, at.isoformat())
             if changed:
                 collected += 1
@@ -69,50 +71,61 @@ def run(db_path: Path, public_dir: Path, sources_path: Path, at: datetime | None
                     with store.db:
                         store.db.execute("INSERT OR REPLACE INTO annotations VALUES (?,?,?)", (key, priority, at.isoformat()))
         # If a formerly safe article becomes sensitive, remove its public payload immediately.
-        revoked = {item.get("url") for item in incoming if verify(item, source_map.get(item.get("source_id"), {}), at) in ("human_review_required", "unverified_source", "unverified_origin")}
+        revoked = {item.get("url") for item in incoming if verify(item, source_map.get(item.get("source_id"), {}), at) in ("human_review_required", "unverified_source", "unverified_origin", "credential_like_content", "non_public_url", "invalid_item", "invalid_event")}
         with store.db:
             for old in store.items():
                 if old["url"] in revoked:
                     store.db.execute("DELETE FROM posts WHERE item_id=?", (old["id"],))
                     store.db.execute("DELETE FROM items WHERE id=?", (old["id"],))
-        prepare(store, at)
         with store.db:
             store.db.execute("UPDATE runs SET finished_at=?,collected=?,errors=? WHERE id=?", ((now() if not fixture else at).isoformat(), collected, json.dumps(errors), run_id))
             store.db.execute("DELETE FROM runs WHERE id NOT IN (SELECT id FROM runs ORDER BY id DESC LIMIT 100)")
+        prepare(store, at)
         result = export(store, public_dir, sources, at, demo=bool(fixture))
         return {"collected": collected, "prepared": len([p for p in store.posts() if p["status"] == "prepared"]), "errors": len(errors), "assets": result}
     finally:
         store.close()
 
 
-def unsafe_item_links(item: dict) -> bool:
-    from urllib.parse import parse_qsl, urlsplit
-    for url in [item["url"], item.get("ticket_url"), item.get("identity")] + item.get("sources", []):
-        if not url:
-            continue
-        split = urlsplit(url)
-        if split.scheme != "https" or split.username or split.password:
-            return True
-        if any(k.casefold() == "key" or any(sensitive in k.casefold() for sensitive in ("token", "api_key", "auth", "signature", "password", "secret", "credential")) for k, _ in parse_qsl(split.query)):
-            return True
-    return False
-
-
 def export(store: Store, public_dir: Path, sources: list[dict], at: datetime, demo=False) -> dict:
-    public_dir.mkdir(parents=True, exist_ok=True)
+    # Build a clean, validated staging directory. Never carry arbitrary old files
+    # (.env, a database, logs or stale private media) into the Pages artifact.
     root = Path(__file__).resolve().parents[1]
-    for path in (root / "site").iterdir():
-        if path.is_file():
-            shutil.copy2(path, public_dir / path.name)
-    posts = store.posts()
+    resolved = public_dir.resolve()
+    protected = [root, root / "site", root / "seferihisar", root / "config", root / "tests", root / ".git", root / ".github", root / "docs", store.path]
+    if public_dir.is_symlink() or any(resolved == p or resolved in p.parents for p in protected) or any(p != root and p in resolved.parents for p in protected):
+        raise ValueError("Public output must be an isolated directory")
+    public_dir.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(prefix="pages-staging-", dir=public_dir.parent) as directory:
+        staging = Path(directory) / "public"
+        result = _export(store, staging, sources, at, demo)
+        validate_public(staging)
+        if public_dir.exists():
+            shutil.rmtree(public_dir)
+        shutil.move(str(staging), public_dir)
+    return result
+
+
+def _export(store: Store, public_dir: Path, sources: list[dict], at: datetime, demo=False) -> dict:
+    public_dir.mkdir(parents=True)
+    root = Path(__file__).resolve().parents[1]
+    for filename in ("index.html", "style.css", "app.js"):
+        shutil.copy2(root / "site" / filename, public_dir / filename)
+    source_map = {s["id"]: s for s in sources}
+    safe_items = [i for i in store.items() if verify({k: v for k, v in i.items() if k in ITEM_FIELDS}, source_map.get(i["source_id"], {}), at) is None]
+    safe_urls = {url for i in safe_items for url in i.get("sources", []) + [i["url"]]}
+    posts = [p for p in store.posts() if not contains_secret(p) and set(p["source_urls"]) <= safe_urls]
     assets = {}
     # Public output always rebuilt; removed/sensitive/superseded images cannot linger.
     shutil.rmtree(public_dir / "media", ignore_errors=True)
     for post in [p for p in posts if not p.get("publish_format")][:100]:
         if post["status"] in ("prepared", "published", "publishing", "uncertain"):
             assets[post["id"]] = render_post(post, public_dir)
-    events = sorted((e for e in store.items("event") if parse_date(e["start"]).date() >= at.date() - timedelta(days=1)), key=lambda e: e["start"])
-    news = sorted((i for i in store.items("news") if parse_date(i["published_at"]) >= at - timedelta(days=7)), key=lambda i: i["published_at"], reverse=True)
+    from .schedule import blocked_sources, source_current
+    failed = blocked_sources(store)
+    public_items = [{**{k: v for k, v in i.items() if k in PUBLIC_ITEM_FIELDS or k in ("id", "revision", "first_seen", "last_seen")}, "source_current": source_current(i, at, failed)} for i in safe_items]
+    events = sorted((e for e in public_items if e["kind"] == "event" and parse_date(e["start"]).date() >= at.date() - timedelta(days=1)), key=lambda e: e["start"])
+    news = sorted((i for i in public_items if i["kind"] == "news"), key=lambda i: i["published_at"], reverse=True)
     public_posts = [{"id": p["id"], "kind": p["kind"], "title": p["title"], "due_at": p["due_at"], "status": p["status"],
                      "caption": p["caption"], "assets": assets.get(p["id"], {}), "category": p["category"]} for p in posts[:100] if p["status"] not in ("superseded", "expired") and not p.get("publish_format")]
     snapshot = {"schema_version": 1, "generated_at": at.isoformat(), "demo": demo,
@@ -121,6 +134,7 @@ def export(store: Store, public_dir: Path, sources: list[dict], at: datetime, de
                 "sources": [public_source(s) for s in sources],
                 "candidate_count": store.db.execute("SELECT COUNT(*) FROM candidates").fetchone()[0],
                 "runs": [{**r, "errors": json.loads(r["errors"])} for r in store.rows("SELECT * FROM runs ORDER BY id DESC LIMIT 20")]}
+    assert_no_secrets(snapshot)
     (public_dir / "data.json").write_text(json.dumps(snapshot, ensure_ascii=False, indent=2), encoding="utf-8")
     (public_dir / ".nojekyll").touch()
     export_calendar(events, public_dir)
@@ -159,6 +173,7 @@ def export_calendar(events: list[dict], public_dir: Path):
         else:
             lines.append("DTSTART;VALUE=DATE:" + start.strftime("%Y%m%d"))
         lines += ["SUMMARY:" + escape(event["title"]), "LOCATION:" + escape(event.get("location")), "URL:" + event["url"],
-                  "STATUS:" + ("CANCELLED" if event["status"] == "cancelled" else "TENTATIVE" if event["status"] == "postponed" else "CONFIRMED"), "END:VEVENT"]
+                  "DESCRIPTION:" + escape("Son kaynak kontrolü: " + event["last_seen"] + (" · Kaynak yeniden doğrulanmalı" if not event.get("source_current", True) else "")),
+                  "STATUS:" + ("CANCELLED" if event["status"] == "cancelled" else "TENTATIVE" if event["status"] == "postponed" or not event.get("source_current", True) else "CONFIRMED"), "END:VEVENT"]
     lines.append("END:VCALENDAR")
     (public_dir / "events.ics").write_bytes(("\r\n".join(chunk for line in lines for chunk in fold(line)) + "\r\n").encode())

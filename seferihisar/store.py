@@ -15,6 +15,7 @@ class Store:
     """
 
     def __init__(self, path: str | Path):
+        self.path = Path(path).resolve()
         Path(path).parent.mkdir(parents=True, exist_ok=True)
         self.db = sqlite3.connect(path)
         self.db.row_factory = sqlite3.Row
@@ -79,7 +80,7 @@ class Store:
         with self.db:
             self.db.execute("INSERT INTO items VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload,revision=excluded.revision,last_seen=excluded.last_seen", (key, item["kind"], fingerprint, payload, revision, at, at))
             if changed and old:
-                self.db.execute("UPDATE posts SET status='superseded' WHERE item_id=? AND status='prepared'", (key,))
+                self.db.execute("UPDATE posts SET status='superseded' WHERE item_id=? AND status IN ('prepared','blocked_source')", (key,))
         return key, changed
 
     def queue(self, post: dict) -> bool:

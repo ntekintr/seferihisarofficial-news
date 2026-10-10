@@ -41,7 +41,7 @@ def parse_date(value: str | None) -> datetime | None:
     try:
         dt = datetime.fromisoformat(value.replace("Z", "+00:00"))
         return dt.replace(tzinfo=TZ) if dt.tzinfo is None else dt.astimezone(TZ)
-    except (ValueError, TypeError):
+    except (ValueError, TypeError, AttributeError):
         return None
 
 

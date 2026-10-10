@@ -6,16 +6,28 @@ Missing branch is a valid first run; other remote failures stop the pipeline.
 from __future__ import annotations
 
 import argparse
+import base64
+import os
 import sqlite3
 import subprocess
 import tempfile
 from pathlib import Path
 
+from .security import validate_state
+
 BRANCH = "automation-state"
 
 
 def git(*args: str, input: bytes | None = None) -> bytes:
-    return subprocess.run(["git", *args], input=input, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE).stdout
+    env = os.environ.copy()
+    if token := env.get("STATE_WRITE_TOKEN"):
+        # Scoped to this Git child process; never written to .git/config or argv.
+        index = int(env.get("GIT_CONFIG_COUNT", "0"))
+        env["GIT_CONFIG_COUNT"] = str(index + 1)
+        env[f"GIT_CONFIG_KEY_{index}"] = "http.https://github.com/.extraheader"
+        credential = base64.b64encode(("x-access-token:" + token).encode()).decode()
+        env[f"GIT_CONFIG_VALUE_{index}"] = "AUTHORIZATION: basic " + credential
+    return subprocess.run(["git", *args], input=input, env=env, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE).stdout
 
 
 def remote_head() -> str | None:
@@ -42,6 +54,7 @@ def restore(path: Path):
 def persist(path: Path):
     if not path.exists():
         raise RuntimeError("State database missing; refusing to overwrite remote state")
+    validate_state(path)
     head = remote_head()
     # sqlite.backup produces a consistent image without WAL/journal loss.
     with tempfile.TemporaryDirectory() as tmp:
@@ -74,7 +87,7 @@ def main():
     args = parser.parse_args()
     try:
         (restore if args.action == "restore" else persist)(args.db)
-    except (subprocess.CalledProcessError, sqlite3.Error, RuntimeError):
+    except (subprocess.CalledProcessError, sqlite3.Error, RuntimeError, ValueError):
         # Git diagnostics may carry auth URLs. Do not print them in public logs.
         raise SystemExit("Durable state operation failed; state was not reset. Check repository write permissions and automation-state branch.") from None
 

@@ -7,6 +7,18 @@ from .editor import caption, headline
 from .store import Store
 
 SLOTS = (time(8, 30), time(12, 30), time(15), time(18, 30), time(21))
+SOURCE_MAX_AGE = timedelta(hours=1)
+
+
+def blocked_sources(store: Store) -> set[str]:
+    import json
+    latest = store.rows("SELECT errors FROM runs WHERE finished_at IS NOT NULL ORDER BY id DESC LIMIT 1")
+    return {e["source_id"] for e in json.loads(latest[0]["errors"])} if latest else set()
+
+
+def source_current(item: dict, at: datetime, failed: set[str]) -> bool:
+    seen = parse_date(item.get("last_seen"))
+    return item["source_id"] not in failed and seen is not None and at - SOURCE_MAX_AGE <= seen <= at + timedelta(minutes=5)
 
 
 def next_slot(at: datetime, event: bool = False) -> datetime:
@@ -19,7 +31,19 @@ def next_slot(at: datetime, event: bool = False) -> datetime:
 
 
 def prepare(store: Store, at: datetime):
+    failed = blocked_sources(store)
+    current = {i["id"]: i for i in store.items()}
+    by_url = {url: i for i in current.values() for url in i.get("sources", []) + [i["url"]]}
+    with store.db:
+        for post in store.posts():
+            if post["status"] not in ("prepared", "blocked_source"):
+                continue
+            references = [current.get(post["item_id"])] if post.get("item_id") else [by_url.get(url) for url in post["source_urls"]]
+            valid = bool(references) and all(item and source_current(item, at, failed) for item in references)
+            store.db.execute("UPDATE posts SET status=? WHERE id=?", ("prepared" if valid else "blocked_source", post["id"]))
     for item in store.items():
+        if not source_current(item, at, failed):
+            continue
         if item["kind"] == "news":
             if at - parse_date(item["published_at"]) > timedelta(days=7):
                 continue
@@ -47,7 +71,7 @@ def prepare(store: Store, at: datetime):
     with store.db:
         for post in store.posts():
             item = current.get(post.get("item_id"))
-            if post["status"] != "prepared":
+            if post["status"] not in ("prepared", "blocked_source"):
                 continue
             if not item:
                 if post["kind"] in ("weekly", "monthly") and parse_date(post["due_at"]) < at - timedelta(days=2):
@@ -55,6 +79,7 @@ def prepare(store: Store, at: datetime):
                 continue
             expired = item["kind"] == "news" and at - parse_date(item["published_at"]) > timedelta(days=2)
             expired |= item["kind"] == "event" and item["status"] not in ("cancelled", "postponed") and (parse_date(item["end"]).date() < at.date() or (item.get("time_known") and parse_date(item["end"]) < at))
+            expired |= post["kind"] in ("reminder_3d", "reminder_day") and parse_date(post["created_at"]).date() != at.date()
             if expired:
                 store.db.execute("UPDATE posts SET status='expired' WHERE id=?", (post["id"],))
     prepare_digest(store, at, "weekly", 7)
@@ -92,15 +117,17 @@ def prepare_digest(store: Store, at: datetime, kind: str, days: int):
     else:
         period = at.strftime("%Y-%m")
         title = "Seferihisar Etkinlik Takvimi"
-    events = sorted((e for e in store.items("event") if e["status"] in ("scheduled", "rescheduled") and at.date() <= parse_date(e["start"]).date() <= at.date() + timedelta(days=days)), key=lambda e: e["start"])
+    failed = blocked_sources(store)
+    upcoming = [e for e in store.items("event") if e["status"] in ("scheduled", "rescheduled") and at.date() <= parse_date(e["start"]).date() <= at.date() + timedelta(days=days)]
+    events = sorted((e for e in upcoming if source_current(e, at, failed)), key=lambda e: e["start"])
     if not events:
         with store.db:
-            store.db.execute("UPDATE posts SET status='superseded' WHERE id=? AND status='prepared'", (digest(kind + ":" + period),))
+            store.db.execute("UPDATE posts SET status=? WHERE id=? AND status IN ('prepared','blocked_source')", ("blocked_source" if upcoming else "superseded", digest(kind + ":" + period)))
         return
     # Refresh an unpublished digest when events change; never repeat a published edition.
     key = digest(kind + ":" + period)
     existing = next((p for p in store.posts() if p["id"] == key), None)
-    if existing and existing["status"] != "prepared":
+    if existing and existing["status"] not in ("prepared", "blocked_source"):
         return
     selected = events[:9]  # Meta carousel cover + 9 slides; do not imply a complete calendar.
     description = f"{at.strftime('%d.%m.%Y')} itibarıyla önümüzdeki {days} gün için doğrulanmış etkinliklerden seçki."
@@ -114,6 +141,6 @@ def prepare_digest(store: Store, at: datetime, kind: str, days: int):
         post["due_at"] = existing["due_at"]
         import json
         with store.db:
-            store.db.execute("UPDATE posts SET payload=? WHERE id=?", (json.dumps(post, ensure_ascii=False), key))
+            store.db.execute("UPDATE posts SET payload=?,status='prepared' WHERE id=?", (json.dumps(post, ensure_ascii=False), key))
     else:
         store.queue(post)

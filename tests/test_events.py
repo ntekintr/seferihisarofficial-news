@@ -23,6 +23,7 @@ def test_reminders_3_days_and_day_are_not_duplicated(store, event, at):
     prepare(store, at + timedelta(minutes=15))
     assert sum(p["kind"] == "reminder_3d" for p in store.posts()) == 1
     on_day = at + timedelta(days=3)
+    store.upsert(event, on_day.isoformat())  # The source was rechecked on event day.
     prepare(store, on_day)
     prepare(store, on_day + timedelta(minutes=15))
     assert sum(p["kind"] == "reminder_day" for p in store.posts()) == 1
@@ -30,6 +31,7 @@ def test_reminders_3_days_and_day_are_not_duplicated(store, event, at):
 
 def test_delayed_schedule_catches_up_without_false_3_day_claim(store, event, at):
     store.upsert(event, at.isoformat())
+    store.upsert(event, (at + timedelta(days=1)).isoformat())
     prepare(store, at + timedelta(days=1))
     reminder = next(p for p in store.posts() if p["kind"] == "reminder_3d")
     assert reminder["title"].startswith("2 gün kaldı")
@@ -47,6 +49,7 @@ def test_reschedule_supersedes_old_cards_and_rearms_reminders(store, event, at):
     assert store.items()[0]["revision"] == 2
     assert any(p["status"] == "superseded" for p in store.posts() if p.get("item_id") == key)
     assert any(p["kind"] == "update" and p["revision"] == 2 for p in store.posts())
+    store.upsert(event, (at + timedelta(days=12)).isoformat())
     prepare(store, at + timedelta(days=12))
     assert any(p["kind"] == "reminder_3d" and p["revision"] == 2 for p in store.posts())
 

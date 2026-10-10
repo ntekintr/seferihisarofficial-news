@@ -71,11 +71,15 @@ def publish_one(store: Store, at: datetime, site_url: str, assets: dict[str, dic
     api = adapter or Instagram()
     if not api.enabled():
         return {"status": "disabled"}
+    # An explicit manual publish must enforce the same source freshness rule.
+    from .schedule import prepare
+    prepare(store, at)
     parsed = urlsplit(site_url)
     if parsed.scheme != "https" or parsed.username or parsed.password or parsed.query or parsed.fragment:
         raise ValueError("A public HTTPS media base URL is required")
     if story:
         prepare_story_jobs(store, assets)
+        prepare(store, at)  # Newly created frames also need fresh source evidence.
     prepared = sorted((p for p in store.posts() if p["status"] == "prepared" and parse_date(p["due_at"]) <= at and (p.get("publish_format") == "story") == story), key=lambda p: p["due_at"])
     recent = store.rows("SELECT payload FROM posts WHERE status IN ('publishing','published','uncertain')")
     import json
@@ -131,7 +135,7 @@ def prepare_story_jobs(store: Store, assets: dict[str, dict]):
     valid_parents = {p["id"] for p in parents}
     with store.db:
         for child in store.posts():
-            if child.get("publish_format") == "story" and child["status"] == "prepared" and child.get("parent_post_id") not in valid_parents:
+            if child.get("publish_format") == "story" and child["status"] in ("prepared", "blocked_source") and child.get("parent_post_id") not in valid_parents:
                 store.db.execute("UPDATE posts SET status='superseded' WHERE id=?", (child["id"],))
     for parent in parents:
         for index, path in enumerate(assets.get(parent["id"], {}).get("story", [])):

@@ -7,12 +7,21 @@ from urllib.parse import urlsplit
 import requests
 
 from .domain import CATEGORIES, SENSITIVE, local, parse_date
+from .security import contains_secret, public_url
 
 
 def verify(item: dict, source: dict, at: datetime) -> str | None:
     """A configured primary source is evidence, not an AI truth judgement."""
-    if not source.get("trusted") or source.get("access") not in ("robots", "api", "licensed"):
+    if not source.get("enabled") or not source.get("trusted") or source.get("access") not in ("robots", "api", "licensed"):
         return "unverified_source"
+    if contains_secret(item):
+        return "credential_like_content"
+    if item.get("kind") not in ("news", "event") or not isinstance(item.get("title"), str) or not isinstance(item.get("description", ""), str) or item.get("category") not in CATEGORIES:
+        return "invalid_item"
+    if any(item.get(k) is not None and not isinstance(item[k], str) for k in ("location", "organizer", "source_name", "price", "currency")) or not isinstance(item.get("sources", []), list):
+        return "invalid_item"
+    if not public_url(item.get("url")) or not all(public_url(u) for u in item.get("sources", [])) or any(not public_url(item[k]) for k in ("identity", "ticket_url") if item.get(k)):
+        return "non_public_url"
     if urlsplit(item["url"]).hostname != urlsplit(source["url"]).hostname:
         return "unverified_origin"
     if not local(item["title"] + " " + item.get("description", "") + " " + (item.get("location") or "")):
@@ -25,8 +34,12 @@ def verify(item: dict, source: dict, at: datetime) -> str | None:
             return "outdated_or_missing_date"
         if not item.get("description"):
             return "insufficient_information"
-    elif not parse_date(item.get("start")):
-        return "missing_event_date"
+    else:
+        start, end = parse_date(item.get("start")), parse_date(item.get("end"))
+        if not start or not end or end < start:
+            return "missing_event_date"
+        if item.get("status") not in ("scheduled", "cancelled", "postponed", "rescheduled") or type(item.get("time_known")) is not bool:
+            return "invalid_event"
     return None
 
 

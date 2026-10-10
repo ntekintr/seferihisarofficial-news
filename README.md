@@ -46,6 +46,10 @@ Zamanlama dakika 07/22/37/52'dedir; GitHub görevleri geciktirebilir veya atlaya
 
 `automation-state` bir cache/artifact değildir; süresi dolmaz. Veritabanı her çalışmada geri yüklenir, değişiklikler ayrı Git commit'iyle kaydedilir. Kod dalına veritabanı veya anahtar yazılmaz. Dalın ve iş akışı yazma izninin silinmesi sistemi durdurur; boş veritabanıyla sessiz devam etmez.
 
+Araştırma işi yalnız `contents: read` izni kullanır. Doğrulanmış SQLite çıktısı kısa ömürlü bir artifact ile ayrı kalıcılık işine aktarılır; yalnız bu iş `contents: write` kullanır. Pages dağıtım işinde `contents: read`, `pages: write` ve Pages için gerekli `id-token: write` bulunur. Dağıtım kalıcılık başarılı olduktan sonra başlar. Güvenlik denetimi veya araştırma başarısızsa yeni durum ve Pages çıktısı yüklenmez; önceki kalıcı durum korunur. Artifact kalıcı veri kaynağı değildir.
+
+CI ve tüm checkout adımlarında `persist-credentials: false` kullanılır. Depo yazma token'ı yalnız kalıcılık komutunun Git alt sürecine verilir; `.git/config` veya komut satırına yazılmaz. AI ve Meta anahtarları yalnız ilgili çalışma adımlarının ortamında bulunur. Dış GitHub Actions sürümleri tam commit SHA'sına sabitlenmiştir.
+
 ## Kaynak erişimi ve doğrulama sınırı
 
 `config/sources.json` içinde üç resmî kurum başlangıçta etkindir. Robots kontrolü her çalışma sırasında yapılır. ESHOT, İZSU, GDZ, AFAD, Meteoroloji ve bilet platformları erişim/format incelemesi tamamlanana kadar kapalıdır. Yerel medya, organizatör, dernek ve sosyal kaynaklar yalnız izin verilen RSS/API/HTML yöntemleriyle eklenmelidir. Giriş, CAPTCHA, ücret duvarı veya erişim kuralı aşılmaz.
@@ -56,6 +60,8 @@ Yeni RSS ve organizatör/medya bağlantıları aday olarak bulunur. Adayların g
 
 Güvenilir olarak yapılandırılan birincil kaynağın duyurusu kanıt olarak kullanılır; bu, bağımsız birden fazla kaynakla bütün iddiaların doğrulandığı anlamına gelmez. Yeterli bilgi yoksa içerik yayın kuyruğuna alınmaz. AI editörü bu sürümde serbest haber yeniden yazımı yapmaz; haber metni kaynağa atıflı alıntı ve deterministik şablonlardan hazırlanır. İsteğe bağlı AI yalnız önem puanı üretir.
 
+Kaynağa erişim/robots/ayrıştırma kontrolü başarısızsa o kaynağın hazır içerikleri `blocked_source` durumuna alınır; yeni haber, duyuru, hatırlatma veya seçki üretilmez. Haber veya etkinliğin son başarılı görülmesi bir saatten eskiyse de hazırlık ve kontrollü yayın durur. Eski kayıtlar panelde son kontrol zamanı ve yeniden doğrulama uyarısıyla gösterilir; takvimdeki eski etkinlikler geçici (`TENTATIVE`) işaretlenir. Sayfa 404 yanıtı verdi diye iptal uydurulmaz. Kaynak geri geldiğinde yalnız güncel bilgilerle hazırlık devam eder; geçmiş günün “3 gün kaldı” kartı yeniden yayınlanamaz.
+
 ## İnsan incelemesi ve kamuya açık veri
 
 Suç, ölüm, siyasi iddia ve kişisel itibara ilişkin işaretlenen içerik **insan incelemesi gerekir** durumuna düşer; otomatik yayınlanmaz. Açık panel yalnız dışarıda tutulan içerik sayısını gösterir. Ham metin, kişi adı, özel URL, token veya anahtar yayımlanmaz; kalıcı durumda yalnız hash, neden ve zaman saklanır.
@@ -63,6 +69,8 @@ Suç, ölüm, siyasi iddia ve kişisel itibara ilişkin işaretlenen içerik **i
 Bu ilk sürümde hassas içeriği yayımlamayı onaylayan bir arayüz yoktur: bu içerikler kapalı kalır. Kimlik doğrulamalı özel inceleme paneli, içerik saklama politikası ve olay bazlı güvenlik onayı olmadan hassas içerik otomasyonunu açmayın. Anahtar sözcük filtresi eksiksiz bir içerik sınıflandırıcısı değildir; canlı yayına geçişte kaynak bazlı içerik incelemesi gerekir.
 
 Pages izleme ve indirme içindir; tarayıcıdan veri değiştirme veya token girişi yapılmaz. Gelecekte özel API/panel, `Store`, editör ve outbox katmanlarını yeniden kullanabilir.
+
+Pages çıktısı temiz bir geçici dizinde yeniden kurulur. Yalnız `index.html`, `style.css`, `app.js`, `data.json`, `events.ics`, `.nojekyll` ve üretilmiş JPEG'ler kabul edilir. Önceki çıktıdaki `.env`, veritabanı, log veya diğer dosyalar taşınmaz; JSON alanları açık bir izin listesiyle seçilir. Kaynak metninde/URL'sinde yapılandırılmış anahtar veya tanınan credential biçimi bulunursa içerik dışarıda tutulur. Çıktı ve SQLite için ikinci denetim başarısızsa upload/commit engellenir. Bu filtreler tüm olası gizli verileri kendiliğinden tanıyan bir sınıflandırıcı değildir; resmî kaynak yapılandırması ve kamuya açık veri politikası temel sınırdır.
 
 ## Kontrollü Instagram aktivasyonu
 
