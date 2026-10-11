@@ -1,0 +1,74 @@
+name: Controlled Instagram publication
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Meta tests passed and account authorized: type PUBLISH'
+        type: string
+        required: true
+      format:
+        description: 'Publish one feed/carousel or one frame of a story series'
+        type: choice
+        options: [feed, story]
+        default: feed
+permissions:
+  contents: read
+concurrency:
+  group: seferihisar-production
+  cancel-in-progress: false
+jobs:
+  publish:
+    if: github.ref == 'refs/heads/main' && inputs.confirm == 'PUBLISH' && vars.INSTAGRAM_PUBLISH_ENABLED == 'true' && vars.META_TESTS_COMPLETED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: instagram-production
+    permissions:
+      contents: write # Required for durable claims before each explicit Meta request.
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - run: python -m pip install -e .
+      - id: restore
+        run: python -m seferihisar.state_git restore
+      - name: Export existing verified state without a new crawl
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          from seferihisar.domain import now
+          from seferihisar.store import Store
+          from seferihisar.schedule import prepare
+          from seferihisar.pipeline import export
+          store = Store('state/platform.sqlite')
+          prepare(store, now())
+          export(store, Path('dist'), json.loads(Path('config/sources.json').read_text()), now())
+          store.close()
+          PY
+      - name: Publish one due item only after media deployment
+        env:
+          INSTAGRAM_PUBLISH_ENABLED: ${{ vars.INSTAGRAM_PUBLISH_ENABLED }}
+          META_TESTS_COMPLETED: ${{ vars.META_TESTS_COMPLETED }}
+          INSTAGRAM_AUTH_MODE: facebook_login
+          INSTAGRAM_ACCESS_TOKEN: ${{ secrets.INSTAGRAM_ACCESS_TOKEN }}
+          INSTAGRAM_USER_ID: ${{ secrets.INSTAGRAM_USER_ID }}
+          META_GRAPH_VERSION: ${{ vars.META_GRAPH_VERSION || 'v25.0' }}
+          SITE_URL: ${{ vars.SITE_URL }}
+          STATE_GIT_CHECKPOINT: 'true'
+          STATE_WRITE_TOKEN: ${{ github.token }}
+          PUBLISH_FORMAT: ${{ inputs.format }}
+        run: |
+          if [ "$PUBLISH_FORMAT" = "story" ]; then
+            python -m seferihisar.cli publish --site-url "$SITE_URL" --story
+          else
+            python -m seferihisar.cli publish --site-url "$SITE_URL"
+          fi
+      - name: Persist publication outcome; never automatically retry uncertainty
+        if: always() && steps.restore.outcome == 'success'
+        env:
+          STATE_WRITE_TOKEN: ${{ github.token }}
+        run: python -m seferihisar.state_git persist
