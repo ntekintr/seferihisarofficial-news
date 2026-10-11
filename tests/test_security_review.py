@@ -24,7 +24,7 @@ def test_all_sources_offline_produces_no_content_or_ai(tmp_path, at, monkeypatch
     result = run(tmp_path/'state.sqlite', tmp_path/'public', SOURCES, at)
     data = json.loads((tmp_path/'public/data.json').read_text())
     assert result['collected'] == result['prepared'] == 0
-    assert result['errors'] == 3
+    assert result['errors'] == sum(s.get('enabled', False) for s in json.loads(SOURCES.read_text()))
     assert data['news'] == data['events'] == data['posts'] == []
     ai.assert_not_called()
     assert 'PRIVATE_EXCEPTION_VALUE' not in (tmp_path/'public/data.json').read_text()

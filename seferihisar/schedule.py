@@ -113,10 +113,10 @@ def slide_body(item: dict) -> str:
 def prepare_digest(store: Store, at: datetime, kind: str, days: int):
     if kind == "weekly":
         period = (at.date() - timedelta(days=at.weekday())).isoformat()
-        title = "Seferihisar'da Bu Hafta Neler Var?"
+        title = "Seferihisar ve Çevresinde Bu Hafta"
     else:
         period = at.strftime("%Y-%m")
-        title = "Seferihisar Etkinlik Takvimi"
+        title = "Seferihisar ve Çevresi Etkinlik Takvimi"
     failed = blocked_sources(store)
     upcoming = [e for e in store.items("event") if e["status"] in ("scheduled", "rescheduled") and at.date() <= parse_date(e["start"]).date() <= at.date() + timedelta(days=days)]
     events = sorted((e for e in upcoming if source_current(e, at, failed)), key=lambda e: e["start"])

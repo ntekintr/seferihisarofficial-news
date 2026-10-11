@@ -8,6 +8,8 @@ from zoneinfo import ZoneInfo
 
 TZ = ZoneInfo("Europe/Istanbul")
 PLACES = ("seferihisar", "sığacık", "sigacik", "ürkmez", "urkmez", "doğanbey", "doganbey", "akarca", "ulamış", "ulamis", "orhanlı", "orhanli")
+NEARBY_PLACES = ("güzelbahçe", "guzelbahce", "urla", "yelki", "özdere", "ozdere")
+NEARBY_TOPICS = ("konser", "festival", "şenlik", "senlik", "tiyatro", "sinema", "sergi", "etkinlik", "ulaşım", "ulasim", "eshot", "yol çalış", "yol calis", "yol kap", "kesinti", "fırtına", "firtina", "sağanak", "saganak", "sel uyar", "deprem", "yangın", "yangin", "tahliye", "kamu duyuru", "sağlık uyar", "saglik uyar", "hastane aç", "hastane kap")
 CATEGORIES = {
     "news": "Yerel Haberler", "municipality": "Belediye", "concert": "Konserler",
     "festival": "Festivaller", "theatre": "Tiyatro", "cinema": "Sinema",
@@ -28,7 +30,7 @@ TERMS = {
     "tourism": ("turizm", "gezi"), "municipality": ("belediye",),
     "public": ("kaymakam", "afad"), "event": ("etkinlik", "şenlik"),
 }
-SENSITIVE = re.compile(r"cinayet|ölüm|öldü|vefat|intihar|yaral[ıa]|suç|tutuk|gözaltı|tecavüz|istismar|yolsuz|rüşvet|dolandır|iddia|siyasi|seçim|partisi|mahkeme|şüpheli|itham|skandal|istifa|kaçak|hırsız|ifşa|saldırı", re.I)
+SENSITIVE = re.compile(r"cinayet|ölüm|öldü|vefat|intihar|yaral[ıa]|suç|tutuk|gözaltı|tecavüz|istismar|yolsuz|rüşvet|dolandır|iddia|siyasi|seçim|partisi|mahkeme|şüpheli|itham|skandal|istifa|kaçak|hırsız|ifşa|saldırı|göçmen|yakalan|uyuşturucu", re.I)
 
 
 def now() -> datetime:
@@ -56,11 +58,14 @@ def digest(value: str) -> str:
 
 
 def normalized(value: str) -> str:
-    return re.sub(r"\W+", " ", value.casefold().replace("ı", "i")).strip()
+    return re.sub(r"\W+", " ", value.casefold().replace("\u0307", "").replace("ı", "i")).strip()
 
 
 def local(text: str) -> bool:
-    return any(normalized(place) in normalized(text) for place in PLACES)
+    value = normalized(text)
+    def mentions(places):
+        return any(re.search(r"\b" + re.escape(normalized(place)) + r"\b", value) for place in places)
+    return mentions(PLACES) or (mentions(NEARBY_PLACES) and any(normalized(word) in value for word in NEARBY_TOPICS))
 
 
 def category(text: str) -> str:

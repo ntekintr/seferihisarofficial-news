@@ -1,12 +1,186 @@
 [
-  {"id":"seferihisar-belediye","name":"Seferihisar Belediyesi","url":"https://seferihisar.bel.tr/","kind":"html","enabled":true,"trusted":true,"access":"robots","max_pages":12},
-  {"id":"seferihisar-kaymakamlik","name":"Seferihisar Kaymakamlığı","url":"https://www.seferihisar.gov.tr/","kind":"html","enabled":true,"trusted":true,"access":"robots","max_pages":8},
-  {"id":"izmir-belediye","name":"İzmir Büyükşehir Belediyesi","url":"https://www.izmir.bel.tr/","kind":"html","enabled":true,"trusted":true,"access":"robots","max_pages":8},
-  {"id":"eshot","name":"ESHOT","url":"https://www.eshot.gov.tr/","kind":"html","enabled":false,"trusted":true,"access":"review_required"},
-  {"id":"izsu","name":"İZSU","url":"https://www.izsu.gov.tr/","kind":"html","enabled":false,"trusted":true,"access":"review_required"},
-  {"id":"gdz","name":"GDZ Elektrik","url":"https://www.gdzelektrik.com.tr/","kind":"html","enabled":false,"trusted":true,"access":"review_required"},
-  {"id":"afad","name":"AFAD","url":"https://www.afad.gov.tr/","kind":"html","enabled":false,"trusted":true,"access":"review_required"},
-  {"id":"mgm","name":"Meteoroloji Genel Müdürlüğü","url":"https://www.mgm.gov.tr/","kind":"html","enabled":false,"trusted":true,"access":"review_required"},
-  {"id":"biletix","name":"Biletix","url":"https://www.biletix.com/","kind":"html","enabled":false,"trusted":false,"access":"review_required"},
-  {"id":"biletinial","name":"Biletinial","url":"https://biletinial.com/","kind":"html","enabled":false,"trusted":false,"access":"review_required"}
+  {
+    "id": "seferihisar-belediye",
+    "name": "Seferihisar Belediyesi",
+    "url": "https://seferihisar.bel.tr/haberler",
+    "kind": "html",
+    "enabled": true,
+    "trusted": true,
+    "access": "robots",
+    "max_pages": 12,
+    "allow_missing_robots": true,
+    "link_selector": ".news a[href]",
+    "article_selector": ".col-md-9 > .inner",
+    "repair_json_trailing_commas": true
+  },
+  {
+    "id": "seferihisar-kaymakamlik",
+    "name": "Seferihisar Kaymakamlığı",
+    "url": "https://www.seferihisar.gov.tr/",
+    "kind": "html",
+    "enabled": true,
+    "trusted": true,
+    "access": "robots",
+    "max_pages": 8
+  },
+  {
+    "id": "izmir-belediye",
+    "name": "İzmir Büyükşehir Belediyesi",
+    "url": "https://www.izmir.bel.tr/tr/Rss/Haberler",
+    "kind": "rss",
+    "enabled": true,
+    "trusted": true,
+    "access": "robots",
+    "max_pages": 8,
+    "allow_missing_robots": true
+  },
+  {
+    "id": "eshot",
+    "name": "ESHOT",
+    "url": "https://www.eshot.gov.tr/",
+    "kind": "html",
+    "enabled": false,
+    "trusted": true,
+    "access": "review_required"
+  },
+  {
+    "id": "izsu",
+    "name": "İZSU",
+    "url": "https://www.izsu.gov.tr/",
+    "kind": "html",
+    "enabled": false,
+    "trusted": true,
+    "access": "review_required"
+  },
+  {
+    "id": "gdz",
+    "name": "GDZ Elektrik",
+    "url": "https://www.gdzelektrik.com.tr/",
+    "kind": "html",
+    "enabled": false,
+    "trusted": true,
+    "access": "review_required"
+  },
+  {
+    "id": "afad",
+    "name": "AFAD",
+    "url": "https://www.afad.gov.tr/",
+    "kind": "html",
+    "enabled": false,
+    "trusted": true,
+    "access": "review_required"
+  },
+  {
+    "id": "mgm",
+    "name": "Meteoroloji Genel Müdürlüğü",
+    "url": "https://www.mgm.gov.tr/",
+    "kind": "html",
+    "enabled": false,
+    "trusted": true,
+    "access": "review_required"
+  },
+  {
+    "id": "biletix",
+    "name": "Biletix",
+    "url": "https://www.biletix.com/",
+    "kind": "html",
+    "enabled": false,
+    "trusted": false,
+    "access": "review_required"
+  },
+  {
+    "id": "biletinial",
+    "name": "Biletinial",
+    "url": "https://biletinial.com/",
+    "kind": "html",
+    "enabled": false,
+    "trusted": false,
+    "access": "review_required"
+  },
+  {
+    "id": "seferihisar-yeni-haber",
+    "name": "Seferihisar Yeni Haber",
+    "url": "https://www.seferihisar.com/",
+    "kind": "html",
+    "enabled": true,
+    "trusted": true,
+    "access": "robots",
+    "max_pages": 12,
+    "allow_missing_robots": true,
+    "link_selector": ".card-title a[href]",
+    "article_selector": "article"
+  },
+  {
+    "id": "seferihisar-gundem",
+    "name": "Seferihisar Gündem",
+    "url": "https://www.seferihisargundem.com/",
+    "kind": "html",
+    "enabled": true,
+    "trusted": true,
+    "access": "robots",
+    "max_pages": 12,
+    "link_selector": "a[href]",
+    "detail_url_pattern": "/[^/]+/\\d+/?$",
+    "local_links_only": true,
+    "article_selector": ".post-body .detay"
+  },
+  {
+    "id": "ege-telgraf",
+    "name": "Ege Telgraf",
+    "url": "https://www.egetelgraf.com/rss",
+    "kind": "rss",
+    "enabled": true,
+    "trusted": true,
+    "access": "robots",
+    "max_pages": 12
+  },
+  {
+    "id": "haberler",
+    "name": "Haberler.com",
+    "url": "https://www.haberler.com/seferihisar/",
+    "kind": "html",
+    "enabled": true,
+    "trusted": true,
+    "access": "robots",
+    "max_pages": 12,
+    "listing_urls": [
+      "https://www.haberler.com/seferihisar/",
+      "https://www.haberler.com/urla/",
+      "https://www.haberler.com/guzelbahce/",
+      "https://www.haberler.com/ozdere/",
+      "https://www.haberler.com/yelki/"
+    ],
+    "link_selector": "a[href*=\"-haberi/\"]"
+  },
+  {
+    "id": "haberturk",
+    "name": "Habertürk",
+    "url": "https://www.haberturk.com/haberleri/seferihisar",
+    "kind": "html",
+    "enabled": true,
+    "trusted": true,
+    "access": "robots",
+    "max_pages": 12,
+    "listing_urls": [
+      "https://www.haberturk.com/haberleri/seferihisar",
+      "https://www.haberturk.com/haberleri/urla",
+      "https://www.haberturk.com/haberleri/guzelbahce",
+      "https://www.haberturk.com/haberleri/ozdere"
+    ],
+    "link_selector": "a[data-newsid][href]"
+  },
+  {
+    "id": "dha",
+    "name": "DHA",
+    "url": "https://www.dha.com.tr/haberleri/seferihisar",
+    "kind": "html",
+    "enabled": true,
+    "trusted": true,
+    "access": "robots",
+    "max_pages": 12,
+    "allow_missing_robots": true,
+    "link_selector": "a[href]",
+    "detail_url_pattern": "-\\d+/?$",
+    "local_links_only": true
+  }
 ]

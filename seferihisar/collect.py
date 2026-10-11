@@ -13,6 +13,7 @@ import time
 import xml.etree.ElementTree as ET
 from datetime import datetime
 from email.utils import parsedate_to_datetime
+from itertools import zip_longest
 from urllib.parse import urljoin, urlsplit
 from urllib.robotparser import RobotFileParser
 
@@ -24,6 +25,11 @@ from .domain import TZ, canonical, category, digest, local, parse_date
 AGENT = "SeferihisarOfficial/0.1 (+https://github.com/ntekintr/seferihisarofficial-news)"
 MAX_BYTES = 2_000_000
 MONTHS = {name: index for index, name in enumerate(("ocak", "şubat", "mart", "nisan", "mayıs", "haziran", "temmuz", "ağustos", "eylül", "ekim", "kasım", "aralık"), 1)}
+
+
+def page_url(url: str) -> str:
+    """Strip tracking/fragment data while preserving the publisher's fetch path."""
+    return urlsplit(canonical(url))._replace(path=urlsplit(url).path or "/").geturl()
 
 
 def labelled_event(title: str, description: str, article, url: str, source: dict) -> dict | None:
@@ -52,8 +58,8 @@ def labelled_event(title: str, description: str, article, url: str, source: dict
     fee = field("ücret|bilet ücreti")
     free = True if fee and fee.casefold() == "ücretsiz" else (False if fee and re.fullmatch(r"\d+(?:[.,]\d+)?\s*(?:TL|₺)", fee, re.I) else None)
     return {"kind": "event", "identity": canonical(url), "title": title[:240], "description": description,
-            "url": canonical(url), "source_id": source["id"], "source_name": source["name"],
-            "category": category(title + " " + description), "sources": [canonical(url)],
+            "url": page_url(url), "source_id": source["id"], "source_name": source["name"],
+            "category": category(title + " " + description), "sources": [page_url(url)],
             "start": start.isoformat(), "end": start.isoformat(), "time_known": bool(hour),
             "location": field("yer|konum|mek[âa]n"), "organizer": field("organizatör|düzenleyen"),
             "free": free, "price": None, "currency": None, "ticket_url": None,
@@ -70,12 +76,16 @@ def safe_url(url: str, allowed_hosts: set[str]) -> str:
     addresses = socket.getaddrinfo(host, 443, type=socket.SOCK_STREAM)
     if not addresses or any(not ipaddress.ip_address(address[4][0]).is_global for address in addresses):
         raise ValueError("Private or reserved network destination rejected")
-    return canonical(url)
+    # Fetch the publisher's actual path. Removing a trailing slash here makes
+    # sites which redirect to that slash loop forever; canonicalize identities only.
+    return parts._replace(fragment="").geturl()
 
 
 class Fetcher:
     def __init__(self, sources: list[dict], session=None):
         self.hosts = {urlsplit(s["url"]).hostname for s in sources if s.get("enabled")}
+        self.missing_robots_hosts = {urlsplit(s["url"]).hostname for s in sources
+                                    if s.get("enabled") and s.get("allow_missing_robots") is True}
         self.session = session or requests.Session()
         self.robots: dict[str, RobotFileParser] = {}
         self.last_request: dict[str, float] = {}
@@ -109,8 +119,14 @@ class Fetcher:
         host = urlsplit(url).hostname
         if host not in self.robots:
             robot = RobotFileParser()
-            # Fail closed on inaccessible robots.txt. 404 can be reviewed by source owner.
-            body, _ = self.request(f"https://{host}/robots.txt")
+            # Only explicitly reviewed hosts may treat an absent file as no rules.
+            # Authentication errors, rate limits, server errors and timeouts still stop collection.
+            try:
+                body, _ = self.request(f"https://{host}/robots.txt")
+            except requests.HTTPError as exc:
+                if host not in self.missing_robots_hosts or exc.response is None or exc.response.status_code not in (404, 410):
+                    raise
+                body = "User-agent: *\nDisallow:"
             robot.parse(body.splitlines())
             self.robots[host] = robot
         robot = self.robots[host]
@@ -147,10 +163,18 @@ def objects(value):
 
 def structured(html: str, url: str, source: dict) -> list[dict]:
     soup = BeautifulSoup(html, "html.parser")
+    article = soup.select_one(source.get("article_selector", 'article .entry-content, article .article-content, article, .news-detail, .haber-detay'))
+    if article is None and source.get("article_selector"):
+        article = soup.select_one('article, .news-detail, .haber-detay')
+    article_text = " ".join(text(p) for p in article.select("p") if len(text(p)) > 30)[:3000] if article else ""
     results = []
     for script in soup.select('script[type="application/ld+json"]'):
         try:
-            data = json.loads(script.string or script.get_text())
+            raw = script.string or script.get_text()
+            if source.get("repair_json_trailing_commas"):
+                # Repair commas outside JSON strings only (municipal template defect).
+                raw = re.sub(r'("(?:\\.|[^"\\])*"\s*)|,(\s*[}\]])', lambda m: m[1] if m[1] else m[2], raw)
+            data = json.loads(raw)
         except (json.JSONDecodeError, TypeError):
             continue
         for obj in objects(data):
@@ -161,7 +185,7 @@ def structured(html: str, url: str, source: dict) -> list[dict]:
             if not is_event and not is_news:
                 continue
             title = text(obj.get("name") if is_event else obj.get("headline"))
-            description = text(obj.get("description") or obj.get("articleBody"))[:3000]
+            description = text(obj.get("description") or obj.get("articleBody"))[:3000] or article_text
             location = obj.get("location", {})
             if isinstance(location, list):
                 location = location[0] if location else {}
@@ -173,7 +197,9 @@ def structured(html: str, url: str, source: dict) -> list[dict]:
                 location_text += " " + text(address)
             if not title or not local(title + " " + description + " " + location_text):
                 continue
-            item_url = canonical(urljoin(url, obj.get("url") if isinstance(obj.get("url"), str) else url))
+            # Some publishers put their homepage in Article.url. The fetched detail
+            # page identifies the article; event-specific URLs can remain distinct.
+            item_url = page_url(urljoin(url, obj.get("url") if is_event and isinstance(obj.get("url"), str) else url))
             item = {"kind": "event" if is_event else "news", "title": title[:240], "description": description,
                     "url": item_url, "source_id": source["id"], "source_name": source["name"],
                     "category": category(title + " " + description), "sources": [item_url]}
@@ -193,7 +219,7 @@ def structured(html: str, url: str, source: dict) -> list[dict]:
                 offers = offers if isinstance(offers, dict) else {}
                 free = obj.get("isAccessibleForFree")
                 free = free if isinstance(free, bool) else (True if str(offers.get("price")) in ("0", "0.0", "0.00") else None)
-                identity = obj.get("@id") or item_url
+                identity = obj.get("@id") or canonical(item_url)
                 item.update(identity=urljoin(url, str(identity)), start=start.isoformat(),
                             time_known="T" in str(obj.get("startDate", "")),
                             end=(parse_date(obj.get("endDate")) or start).isoformat(),
@@ -207,12 +233,16 @@ def structured(html: str, url: str, source: dict) -> list[dict]:
                 if not published:
                     continue
                 item["published_at"] = published.isoformat()
+                item["identity"] = canonical(item_url)
+                if article:
+                    event = labelled_event(title, description, article, url, source)
+                    if event:
+                        item = event
             results.append(item)
     if not results:
         # Common WordPress and municipal article metadata, without guessing dates.
         headline = soup.select_one('meta[property="og:title"]')
-        published = soup.select_one('meta[property="article:published_time"], meta[name="date"], time[datetime]')
-        article = soup.select_one('article .entry-content, article .article-content, article, .news-detail, .haber-detay')
+        published = soup.select_one('meta[property="article:published_time"], meta[name="datePublished"], meta[name="date"], time[datetime]')
         date = parse_date((published.get("content") or published.get("datetime")) if published else None)
         title = text(headline.get("content")) if headline else text(soup.find("h1"))
         if article and date and title:
@@ -223,8 +253,8 @@ def structured(html: str, url: str, source: dict) -> list[dict]:
             if description and local(title + " " + description):
                 event = labelled_event(title, description, article, url, source)
                 results.append(event or {"kind": "news", "title": title[:240], "description": description,
-                                "url": canonical(url), "source_id": source["id"], "source_name": source["name"],
-                                "category": category(title + " " + description), "published_at": date.isoformat(), "sources": [canonical(url)]})
+                                "url": page_url(url), "identity": canonical(url), "source_id": source["id"], "source_name": source["name"],
+                                "category": category(title + " " + description), "published_at": date.isoformat(), "sources": [page_url(url)]})
         elif article and title:
             description = text(article)[:3000]
             if local(title + " " + description):
@@ -253,7 +283,7 @@ def feed_items(xml: str, base: str, source: dict) -> list[dict]:
         link = values.get("link")
         if not link or not title or not local(title + " " + description):
             continue
-        raw_date = values.get("pubDate") or values.get("published") or values.get("updated")
+        raw_date = values.get("pubDate") or values.get("published") or values.get("updated") or values.get("date")
         date = parse_date(raw_date)
         if not date and raw_date:
             try:
@@ -262,9 +292,10 @@ def feed_items(xml: str, base: str, source: dict) -> list[dict]:
                 pass
         if not date:
             continue
-        results.append({"kind": "news", "title": title[:240], "description": description, "url": canonical(urljoin(base, link)),
+        item_url = page_url(urljoin(base, link))
+        results.append({"kind": "news", "title": title[:240], "description": description, "url": item_url, "identity": canonical(item_url),
                         "source_id": source["id"], "source_name": source["name"], "category": category(title + " " + description),
-                        "published_at": date.isoformat(), "sources": [canonical(urljoin(base, link))]})
+                        "published_at": date.isoformat(), "sources": [item_url]})
     return results
 
 
@@ -289,24 +320,46 @@ def discover(html: str, base: str) -> list[dict]:
 
 
 def collect_source(source: dict, fetcher: Fetcher, known_events: list[dict]) -> tuple[list[dict], list[dict], list[dict]]:
-    body, base = fetcher.get(source["url"])
-    if source["kind"] == "rss":
-        items = feed_items(body, base, source)
-        candidates = []
-        links = [item["url"] for item in items[:8]]
-    else:
-        items = structured(body, base, source)
-        candidates = discover(body, base)
-        soup = BeautifulSoup(body, "html.parser")
+    items, candidates, links = [], [], []
+    # A bounded set of district listings shares one source identity and page budget.
+    listings = source.get("listing_urls") or [source["url"]]
+    listing_links = []
+    for listing in listings[:6]:
         links = []
-        for anchor in soup.select(source.get("link_selector", "article a[href], a[href*='haber'], a[href*='etkinlik']")):
-            if anchor.get("href"):
-                link = canonical(urljoin(base, anchor["href"]))
-                if urlsplit(link).hostname == urlsplit(base).hostname and link != base and link not in links:
+        seen = set()
+        if urlsplit(listing).hostname != urlsplit(source["url"]).hostname:
+            raise ValueError("Listing must belong to the configured source")
+        body, base = fetcher.get(listing)
+        if source["kind"] == "rss":
+            found = feed_items(body, base, source)
+            items.extend(found)
+            links.extend(item["url"] for item in found[:8])
+        else:
+            items.extend(structured(body, base, source))
+            candidates.extend(discover(body, base))
+            soup = BeautifulSoup(body, "html.parser")
+            for anchor in soup.select(source.get("link_selector", "article a[href], a[href*='haber'], a[href*='etkinlik']")):
+                if not anchor.get("href"):
+                    continue
+                link = page_url(urljoin(base, anchor["href"]))
+                pattern = source.get("detail_url_pattern")
+                if pattern and not re.search(pattern, urlsplit(link).path):
+                    continue
+                if source.get("local_links_only") and not local(text(anchor) + " " + link.replace("-", " ")):
+                    continue
+                identity = canonical(link)
+                if urlsplit(link).hostname == urlsplit(base).hostname and identity != canonical(base) and identity not in seen:
                     links.append(link)
+                    seen.add(identity)
+        listing_links.append(links)
+    # Round robin prevents a busy first district from starving nearby districts.
+    links = [link for group in zip_longest(*listing_links) for link in group if link]
     # Revisit already announced future events, even when they leave the listing page.
     tracked = [e["url"] for e in known_events if e["source_id"] == source["id"]]
-    links = list(dict.fromkeys(tracked + links))[:source.get("max_pages", 12)]
+    unique_links = {}
+    for link in tracked + links:
+        unique_links.setdefault(canonical(link), link)
+    links = list(unique_links.values())[:source.get("max_pages", 12)]
     errors = []
     for link in links:
         try:
