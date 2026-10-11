@@ -108,20 +108,23 @@
     "max_pages": 12,
     "allow_missing_robots": true,
     "link_selector": ".card-title a[href]",
-    "article_selector": "article"
+    "article_selector": "article",
+    "listing_urls": [
+      "https://www.seferihisar.com/kategori/yasam",
+      "https://www.seferihisar.com/kategori/bolgesel",
+      "https://www.seferihisar.com/kategori/gundem"
+    ]
   },
   {
     "id": "seferihisar-gundem",
     "name": "Seferihisar Gündem",
-    "url": "https://www.seferihisargundem.com/",
-    "kind": "html",
+    "url": "https://www.seferihisargundem.com/rss_gundem-haberleri_8.xml",
+    "kind": "rss",
     "enabled": true,
     "trusted": true,
     "access": "robots",
     "max_pages": 12,
-    "link_selector": "a[href]",
-    "detail_url_pattern": "/[^/]+/\\d+/?$",
-    "local_links_only": true,
+    "follow_feed_details": false,
     "article_selector": ".post-body .detay"
   },
   {

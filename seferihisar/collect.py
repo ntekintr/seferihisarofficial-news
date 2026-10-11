@@ -293,9 +293,12 @@ def feed_items(xml: str, base: str, source: dict) -> list[dict]:
         if not date:
             continue
         item_url = page_url(urljoin(base, link))
-        results.append({"kind": "news", "title": title[:240], "description": description, "url": item_url, "identity": canonical(item_url),
+        item = {"kind": "news", "title": title[:240], "description": description, "url": item_url, "identity": canonical(item_url),
                         "source_id": source["id"], "source_name": source["name"], "category": category(title + " " + description),
-                        "published_at": date.isoformat(), "sources": [item_url]})
+                        "published_at": date.isoformat(), "sources": [item_url]}
+        article = BeautifulSoup(values.get("description") or values.get("summary") or values.get("content") or "", "html.parser")
+        event = labelled_event(title, description, article, item_url, source)
+        results.append(event or item)
     return results
 
 
@@ -333,7 +336,8 @@ def collect_source(source: dict, fetcher: Fetcher, known_events: list[dict]) -> 
         if source["kind"] == "rss":
             found = feed_items(body, base, source)
             items.extend(found)
-            links.extend(item["url"] for item in found[:8])
+            if source.get("follow_feed_details", True):
+                links.extend(item["url"] for item in found[:8])
         else:
             items.extend(structured(body, base, source))
             candidates.extend(discover(body, base))

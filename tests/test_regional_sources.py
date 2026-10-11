@@ -4,7 +4,7 @@ from unittest.mock import Mock
 import pytest
 import requests
 
-from seferihisar.collect import Fetcher, collect_source, structured
+from seferihisar.collect import Fetcher, collect_source, feed_items, structured
 from seferihisar.domain import local
 from seferihisar.editor import verify, headline, caption
 
@@ -135,3 +135,35 @@ def test_listing_fetches_original_slash_and_deduplicates_tracking_links(source):
     collect_source(source,fetcher,[])
     assert fetcher.get.call_count == 2
     assert fetcher.get.call_args.args[0] == 'https://seferihisar.bel.tr/haber/'
+
+
+@pytest.mark.parametrize('event_date,kind',[('30 Ekim 2026','event'),('30 Ekim','news')])
+def test_feed_event_uses_explicit_year_and_never_publication_date(source,event_date,kind):
+    xml = '''<rss><channel><item><title>Urla konseri</title><link>/konser/</link>
+    <pubDate>Sat, 10 Oct 2026 07:00:00 GMT</pubDate><description><![CDATA[
+    <p>Urla konser programı ve buluşması açıklandı.</p>
+    <p>Tarih: '''+event_date+'''</p><p>Saat: 20.30</p><p>Yer: Urla</p>
+    ]]></description></item></channel></rss>'''
+    item=feed_items(xml,source['url'],source)[0]
+    assert item['kind']==kind
+    if kind=='event':
+        assert item['start']=='2026-10-30T20:30:00+03:00'
+    else:
+        assert 'start' not in item
+
+
+def test_feed_only_source_still_rechecks_known_future_events(source,event):
+    source={**source,'kind':'rss','follow_feed_details':False}
+    feed='''<rss><channel><item><title>Seferihisar sanat</title><link>/sanat/</link>
+    <pubDate>Sat, 10 Oct 2026 07:00:00 GMT</pubDate>
+    <description>Seferihisar sanat buluşması için program açıklandı.</description>
+    </item></channel></rss>'''
+    fetcher=Mock()
+    fetcher.get.side_effect=lambda url: (feed if url==source['url'] else '',url)
+    items,_,errors=collect_source(source,fetcher,[])
+    assert len(items)==1 and not errors
+    assert fetcher.get.call_count==1
+    fetcher.get.reset_mock()
+    collect_source(source,fetcher,[event])
+    assert fetcher.get.call_count==2
+    assert fetcher.get.call_args.args[0]==event['url']
