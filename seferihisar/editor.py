@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 import os
+import re
 from datetime import datetime, timedelta
 from urllib.parse import urlsplit
 
 import requests
 
-from .domain import CATEGORIES, SENSITIVE, local, parse_date
+from .domain import CATEGORIES, SENSITIVE, local, normalized, parse_date
 from .security import contains_secret, public_url
 
 
@@ -64,8 +65,14 @@ def caption(item: dict, label: str) -> str:
             lines.append("Etkinliğin tarihi güncellendi.")
     if item.get("description"):
         lines.append("Kaynak duyurusundan: “" + item["description"][:1000] + "”")
+    geography = normalized(item["title"] + " " + item.get("description", "") + " " + (item.get("location") or ""))
+    places = (("seferihisar", "Seferihisar"), ("sığacık", "Sığacık"), ("sigacik", "Sığacık"),
+              ("güzelbahçe", "Güzelbahçe"), ("guzelbahce", "Güzelbahçe"), ("urla", "Urla"),
+              ("yelki", "Yelki"), ("özdere", "Özdere"), ("ozdere", "Özdere"))
+    tags = list(dict.fromkeys("#" + label for place, label in places
+                             if re.search(r"\b" + re.escape(normalized(place)) + r"\b", geography)))
     lines += ["Kaynak: " + item["source_name"] + "\n" + item["url"],
-              "#Seferihisar #SeferihisarOfficial #Sığacık" + (" #Etkinlik" if item["kind"] == "event" else " #YerelHaber")]
+              " ".join(tags + ["#SeferihisarOfficial", "#Etkinlik" if item["kind"] == "event" else "#YerelHaber"])]
     return "\n\n".join(lines)[:2200]
 
 
@@ -93,6 +100,6 @@ def ai_priority(item: dict, session=None) -> int | None:
 
 
 def headline(item: dict, kind: str) -> str:
-    prefix = {"announcement": "Seferihisar takviminde", "reminder_3d": "3 gün kaldı", "reminder_day": "Bugün Seferihisar'da",
+    prefix = {"announcement": "Bölge takviminde", "reminder_3d": "3 gün kaldı", "reminder_day": "Bugün yakınınızda",
               "update": "Etkinlik bilgisi güncellendi", "cancellation": "İptal duyurusu", "news": CATEGORIES[item["category"]]}
     return f"{prefix.get(kind, 'Seferihisar Official')}: {item['title']}"

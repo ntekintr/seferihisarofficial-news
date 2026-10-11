@@ -2,6 +2,8 @@
 
 Seferihisar, Sığacık, Ürkmez, Doğanbey, Akarca, Ulamış ve Orhanlı için kaynaklı yerel haber ve **gelecek etkinlik** otomasyonu. Bu ilk sürüm; araştırma motoru, kalıcı etkinlik takvimi, kaynak odaklı Türkçe içerik hazırlığı, Instagram görselleri, mobil izleme paneli ve kapalı Meta yayın altyapısını birlikte sunar.
 
+Güzelbahçe, Urla, Yelki ve Özdere'deki konser, festival, tiyatro, sinema ve diğer etkinlikler de kapsamdadır. Çevre yerleşimlerde ulaşım, kesinti, hava uyarısı ve benzeri önemli kamu gelişmeleri alınır; her gündelik haber akışa eklenmez.
+
 **Gerçek Instagram yayını varsayılan olarak kapalıdır.** Belediye veya kamu kurumu adına yayın yapmaz. Önizlemedeki örnekler gerçek haber ve etkinlik değildir.
 
 ## İlk sürümde çalışan özellikler
@@ -52,11 +54,13 @@ CI ve tüm checkout adımlarında `persist-credentials: false` kullanılır. Dep
 
 ## Kaynak erişimi ve doğrulama sınırı
 
-`config/sources.json` içinde üç resmî kurum başlangıçta etkindir. Robots kontrolü her çalışma sırasında yapılır. ESHOT, İZSU, GDZ, AFAD, Meteoroloji ve bilet platformları erişim/format incelemesi tamamlanana kadar kapalıdır. Yerel medya, organizatör, dernek ve sosyal kaynaklar yalnız izin verilen RSS/API/HTML yöntemleriyle eklenmelidir. Giriş, CAPTCHA, ücret duvarı veya erişim kuralı aşılmaz.
+`config/sources.json` içinde dokuz kaynak etkindir: Seferihisar Belediyesi, Seferihisar Kaymakamlığı, İzmir Büyükşehir Belediyesi, Seferihisar Yeni Haber, Seferihisar Gündem, Ege Telgraf, Haberler.com, Habertürk ve DHA. İzmir ve Ege Telgraf'ın RSS akışları; diğer kaynakların kamuya açık haber listeleri kullanılır. Haberler.com ve Habertürk'te çevre ilçelerin listeleri de aynı kaynak başına sayfa bütçesini paylaşır; Haberler.com'un ayrı Yelki listesi vardır. Bir listede bölge adı geçmesi tek başına bütün haberlerinin alınacağı anlamına gelmez: haberin içeriği de yerellik ve konu kontrolünden geçer.
+
+Robots kontrolü her çalışma sırasında yapılır. Kamuya açık sayfaları incelenmiş Seferihisar Belediyesi, İzmir Büyükşehir Belediyesi, Seferihisar Yeni Haber ve DHA için yalnız `robots.txt` dosyasının 404/410 yanıtı vermesine kaynak bazında istisna tanımlıdır. Açık bir engelleme kuralı, 403/429/5xx yanıtı veya ağ hatası bu istisnayla aşılmaz. ESHOT, İZSU, GDZ, AFAD, Meteoroloji ve bilet platformları erişim/format incelemesi tamamlanana kadar kapalıdır. Sosyal kaynaklar izinli API ve hesap yetkilendirmesi gerektirir. Giriş, CAPTCHA, ücret duvarı veya erişim kuralı aşılmaz.
 
 Yeni RSS ve organizatör/medya bağlantıları aday olarak bulunur. Adayların güvenilirliği ve kullanım koşulları kendiliğinden onaylanmaz; uygunluk incelemesinden sonra yapılandırmaya eklenir. Sosyal platformların API erişimleri için hesap yetkilendirmesi gerekir.
 
-**Bu teslim ortamının ağ politikası belediye, bilet ve Meta sunucularına erişime izin vermediğinden canlı kaynak formatları ve canlı Meta yayını doğrulanmamıştır.** Kaynakların yapılandırmada bulunması onların sayfalarında desteklenen yapılandırılmış veri olduğu anlamına gelmez. Tarayıcı ve parser testleri kayıtlı örneklerle yapılmıştır. Yapılandırılmış tarihi olmayan etkinlik, yalnız afiş görselinde bulunan tarih ve dinamik/bilet sitesi özel API'leri ilk sürümde çıkarılmaz. Sayfa kaybolması iptal sayılmaz; iptal veya erteleme için açık kaynak bilgisi gerekir.
+**11 Ekim 2026'da kamuya açık canlı haber listeleri, RSS akışları ve örnek haber sayfaları kontrol edilmiştir.** Kaynakların tümünden her çalışmada güncel ve uygun içerik çıkması garanti değildir; RSS akışları sınırlı bir son haber penceresi sunar ve Seferihisar Gündem'in yanıtlarında zaman aşımı görülmüştür. İncelenen formatlar ve sınırlar [kaynak doğrulama notlarında](docs/source-validation.md) kayıtlıdır. Canlı Meta yayını ve kapalı bilet kaynakları doğrulanmamıştır. Yapılandırılmış tarihi olmayan etkinlik, yalnız afiş görselinde bulunan tarih ve dinamik/bilet sitesi özel API'leri ilk sürümde çıkarılmaz. Sayfa kaybolması iptal sayılmaz; iptal veya erteleme için açık kaynak bilgisi gerekir.
 
 Güvenilir olarak yapılandırılan birincil kaynağın duyurusu kanıt olarak kullanılır; bu, bağımsız birden fazla kaynakla bütün iddiaların doğrulandığı anlamına gelmez. Yeterli bilgi yoksa içerik yayın kuyruğuna alınmaz. AI editörü bu sürümde serbest haber yeniden yazımı yapmaz; haber metni kaynağa atıflı alıntı ve deterministik şablonlardan hazırlanır. İsteğe bağlı AI yalnız önem puanı üretir.
 
@@ -99,4 +103,4 @@ site/                       Mobil uyumlu statik izleme paneli
 tests/                      Yaşam döngüsü, güvenlik, API ve kalıcılık testleri
 ```
 
-Sonraki canlı doğrulama işi: kaynaklara ağ izni verip gerçek kaynak formatlarını kontrol etmek, gerekli özel adaptörleri eklemek ve Meta test hesabını yetkilendirmek. Bu işlemler yapılmadan gerçek güncel haber toplandığı veya Instagram'a yayın yapıldığı iddia edilmez.
+Instagram için sonraki aşama Meta test hesabını yetkilendirmek ve gerçek gönderi/story testlerini tamamlamaktır. Bu aşama tamamlanmadan Instagram'a yayın yapıldığı iddia edilmez.
