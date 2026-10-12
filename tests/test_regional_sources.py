@@ -49,7 +49,7 @@ def test_publisher_trailing_slash_redirect_finishes(source, monkeypatch):
                         lambda *a, **k: [(None, None, None, None, ('93.184.216.34', 443))])
     monkeypatch.setattr('seferihisar.collect.time.sleep', lambda _: None)
     redirect = Mock(is_redirect=True, headers={'Location': '/duyuru/'})
-    page = Mock(is_redirect=False, encoding='utf-8')
+    page = Mock(is_redirect=False, encoding='utf-8', headers={'Content-Type':'text/html; charset=utf-8'})
     page.iter_content.return_value = [b'public article']
     session = Mock()
     session.get.side_effect = [redirect, page]

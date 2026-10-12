@@ -6,6 +6,7 @@ Unknown sources are candidates, never automatically trusted publishers.
 from __future__ import annotations
 
 import ipaddress
+import codecs
 import json
 import re
 import socket
@@ -25,6 +26,19 @@ from .domain import TZ, canonical, category, digest, local, parse_date
 AGENT = "SeferihisarOfficial/0.1 (+https://github.com/ntekintr/seferihisarofficial-news)"
 MAX_BYTES = 2_000_000
 MONTHS = {name: index for index, name in enumerate(("ocak", "şubat", "mart", "nisan", "mayıs", "haziran", "temmuz", "ağustos", "eylül", "ekim", "kasım", "aralık"), 1)}
+
+
+def decode_document(body: bytes, content_type: str = '') -> str:
+    """Honor explicit HTTP/document charsets; HTTP's implicit Latin-1 is not evidence."""
+    header = re.search(r'charset\s*=\s*[\"\']?([\w.-]+)', content_type, re.I)
+    prefix = body[:4096].decode('ascii', errors='ignore')
+    declared = re.search(r'(?:<meta\b[^>]*charset\s*=\s*[\"\']?|<\?xml\b[^>]*encoding\s*=\s*[\"\'])([\w.-]+)', prefix, re.I)
+    encoding = header[1] if header else (declared[1] if declared else 'utf-8')
+    try:
+        codecs.lookup(encoding)
+        return body.decode(encoding, errors='replace').lstrip('\ufeff')
+    except (LookupError, ValueError):
+        raise ValueError('Unsupported document charset') from None
 
 
 def page_url(url: str) -> str:
@@ -73,7 +87,10 @@ def safe_url(url: str, allowed_hosts: set[str]) -> str:
     host = parts.hostname or ""
     if host not in allowed_hosts:
         raise ValueError("Host requires explicit source approval")
-    addresses = socket.getaddrinfo(host, 443, type=socket.SOCK_STREAM)
+    try:
+        addresses = socket.getaddrinfo(host, 443, type=socket.SOCK_STREAM)
+    except socket.gaierror:
+        raise requests.ConnectionError('Public source DNS lookup failed') from None
     if not addresses or any(not ipaddress.ip_address(address[4][0]).is_global for address in addresses):
         raise ValueError("Private or reserved network destination rejected")
     # Fetch the publisher's actual path. Removing a trailing slash here makes
@@ -113,7 +130,7 @@ class Fetcher:
                     body.extend(chunk)
                     if len(body) > MAX_BYTES:
                         raise ValueError("Response too large")
-                return body.decode(response.encoding or "utf-8", errors="replace"), url
+                return decode_document(bytes(body), response.headers.get('Content-Type', '')), url
             finally:
                 response.close()
         raise ValueError("Too many redirects")
@@ -198,10 +215,17 @@ def publication_date(soup, source: dict):
             node = node.parent
         value = (' '.join(str(n) for n in node.contents if isinstance(n, NavigableString) and not isinstance(n, Comment))
                  if source.get('published_date_direct_text') else text(node))
-        match = re.fullmatch(r'\s*(\d{1,2})\.(\d{1,2})\.(20\d{2})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?\s*', value)
-        if not match:
-            return None
-        d, m, y, h, minute, second = match.groups()
+        if source.get('published_date_format') == 'turkish':
+            match = re.fullmatch(r'\s*(\d{1,2})\s+(' + '|'.join(MONTHS) + r')\s+(20\d{2})\s*', value, re.I)
+            if not match:
+                return None
+            d, month_name, y = match.groups()
+            m, h, minute, second = MONTHS[month_name.casefold()], None, None, None
+        else:
+            match = re.fullmatch(r'\s*(\d{1,2})\.(\d{1,2})\.(20\d{2})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?\s*', value)
+            if not match:
+                return None
+            d, m, y, h, minute, second = match.groups()
         try:
             values.append(datetime(int(y), int(m), int(d), int(h or 0), int(minute or 0), int(second or 0), tzinfo=TZ))
         except ValueError:
@@ -345,6 +369,48 @@ def wordpress_items(body: str, base: str, source: dict) -> list[dict]:
     return results
 
 
+def izmir_art_items(body: str, base: str, source: dict) -> list[dict]:
+    """Public event-list JSON, with actual venue addresses and per-session dates."""
+    data = json.loads(body)
+    if not isinstance(data, list):
+        raise ValueError('Expected public event collection')
+    results = []
+    for row in data[:80]:
+        if not isinstance(row, dict):
+            continue
+        address = text(row.get('locationAddress'))
+        event_type = text(row.get('eventType'))
+        title = text(row.get('title'))
+        # District IDs on the site can be stale after a touring show's venue changes.
+        # Do not use them, the event title or another session to geolocate this one.
+        if not address or not local(address + ' ' + event_type):
+            continue
+        start, end = parse_date(row.get('startDate')), parse_date(row.get('endDate'))
+        session, href = row.get('seans'), row.get('eventlink')
+        if not title or not start or not end or end < start or not isinstance(session, str) or not re.fullmatch(r'[a-f0-9]{24}', session) or not isinstance(href, str):
+            continue
+        url = page_url(urljoin(base, href))
+        if urlsplit(url).hostname != urlsplit(base).hostname:
+            continue
+        known_time = bool(re.fullmatch(r'\d{2}:\d{2}', str(row.get('eventTime', ''))))
+        if known_time and start.strftime('%H:%M') != row['eventTime']:
+            continue  # Conflicting timestamps are not silently reconciled.
+        price = text(row.get('eventPrice'))
+        fee = re.fullmatch(r'(\d+(?:[.,]\d+)?)\s*(?:TL|₺)', price, re.I)
+        if type(row.get('cancel')) is not int or row['cancel'] not in (0, 1):
+            continue
+        location = (text(row.get('location')) + ' · ' + address).strip(' ·')
+        description = event_type + ' · ' + location
+        results.append({'kind':'event', 'title':title[:240], 'description':description[:3000],
+                        'url':url, 'identity':canonical(url), 'source_id':source['id'], 'source_name':source['name'],
+                        'sources':[url], 'category':category(title+' '+event_type),
+                        'start':start.isoformat(), 'end':end.isoformat(), 'time_known':known_time,
+                        'location':location, 'organizer':None, 'free':True if price.casefold()=='ücretsiz' else (False if fee else None),
+                        'price':fee[1] if fee else None, 'currency':'TRY' if fee else None, 'ticket_url':None,
+                        'status':'cancelled' if row['cancel'] else 'scheduled', 'previous_start':None})
+    return results
+
+
 def feed_items(xml: str, base: str, source: dict) -> list[dict]:
     root = ET.fromstring(xml)
     results = []
@@ -414,8 +480,9 @@ def collect_source(source: dict, fetcher: Fetcher, known_events: list[dict]) -> 
         if urlsplit(listing).hostname != urlsplit(source["url"]).hostname:
             raise ValueError("Listing must belong to the configured source")
         body, base = fetcher.get(listing)
-        if source["kind"] in ("rss", "wp_rest"):
-            found = (feed_items if source['kind'] == 'rss' else wordpress_items)(body, base, source)
+        if source["kind"] in ("rss", "wp_rest", "izmir_art"):
+            reader = {'rss':feed_items, 'wp_rest':wordpress_items, 'izmir_art':izmir_art_items}[source['kind']]
+            found = reader(body, base, source)
             items.extend(found)
             if source.get("follow_feed_details", True):
                 links.extend(item["url"] for item in found[:8])

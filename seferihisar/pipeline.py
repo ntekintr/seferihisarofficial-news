@@ -23,6 +23,7 @@ def run(db_path: Path, public_dir: Path, sources_path: Path, at: datetime | None
     store = Store(db_path)
     errors = []
     collected = 0
+    health = {}
     try:
         with store.db:
             run_id = store.db.execute("INSERT INTO runs(started_at) VALUES (?)", (at.isoformat(),)).lastrowid
@@ -41,9 +42,15 @@ def run(db_path: Path, public_dir: Path, sources_path: Path, at: datetime | None
                     incoming.extend(found)
                     candidates.extend(discovered)
                     errors.extend(detail_errors)
+                    dates = [parse_date(i.get('published_at')) for i in found if i.get('published_at')]
+                    dates = [d for d in dates if d]
+                    health[source['id']] = {'checked_at':now().isoformat(), 'status':'partial' if detail_errors else ('ok' if found else 'empty'),
+                                             'parsed':len(found), 'accepted':0, 'error_count':len(detail_errors),
+                                             'latest_published_at':max(dates).isoformat() if dates else None}
                 except Exception:
                     # Only controlled codes are retained; URLs/exceptions can contain tokens.
                     errors.append({"source_id": source["id"], "code": "collection_failed"})
+                    health[source['id']] = {'checked_at':now().isoformat(), 'status':'failed', 'parsed':0, 'accepted':0, 'error_count':1, 'latest_published_at':None}
         for candidate in candidates:
             # Candidate labels/URLs are untrusted and might contain private query data.
             from urllib.parse import urlsplit
@@ -63,6 +70,8 @@ def run(db_path: Path, public_dir: Path, sources_path: Path, at: datetime | None
                 store.withhold(item.get("url", "") + ":" + item.get("title", ""), reason, at.isoformat())
                 continue
             item = {k: v for k, v in item.items() if k in ITEM_FIELDS}
+            if item['source_id'] in health:
+                health[item['source_id']]['accepted'] += 1
             key, changed = store.upsert(item, at.isoformat())
             if changed:
                 collected += 1
@@ -79,6 +88,9 @@ def run(db_path: Path, public_dir: Path, sources_path: Path, at: datetime | None
                     store.db.execute("DELETE FROM posts WHERE item_id=?", (old["id"],))
                     store.db.execute("DELETE FROM items WHERE id=?", (old["id"],))
         with store.db:
+            for sid, result in health.items():
+                store.db.execute('INSERT OR REPLACE INTO source_health VALUES (?,?,?,?,?,?,?)',
+                                 (sid, result['checked_at'], result['status'], result['parsed'], result['accepted'], result['error_count'], result['latest_published_at']))
             store.db.execute("UPDATE runs SET finished_at=?,collected=?,errors=? WHERE id=?", ((now() if not fixture else at).isoformat(), collected, json.dumps(errors), run_id))
             store.db.execute("DELETE FROM runs WHERE id NOT IN (SELECT id FROM runs ORDER BY id DESC LIMIT 100)")
         prepare(store, at)
@@ -139,7 +151,13 @@ def _export(store: Store, public_dir: Path, sources: list[dict], at: datetime, d
                 "withheld_count": store.db.execute("SELECT COUNT(*) FROM withheld").fetchone()[0],
                 "sources": [public_source(s) for s in sources],
                 "candidate_count": store.db.execute("SELECT COUNT(*) FROM candidates").fetchone()[0],
+                "source_health": store.rows('SELECT * FROM source_health ORDER BY source_id'),
                 "runs": [{**r, "errors": json.loads(r["errors"])} for r in store.rows("SELECT * FROM runs ORDER BY id DESC LIMIT 20")]}
+    catalogue_path = Path(__file__).resolve().parents[1] / 'config/source_catalog.json'
+    if catalogue_path.exists():
+        catalogue = json.loads(catalogue_path.read_text(encoding='utf-8'))
+        snapshot['source_catalog'] = [{k: entry.get(k) for k in ('id', 'name', 'url', 'group', 'status', 'note')} for entry in catalogue
+                                      if public_url(entry.get('url', '')) and not contains_secret(entry)]
     assert_no_secrets(snapshot)
     (public_dir / "data.json").write_text(json.dumps(snapshot, ensure_ascii=False, indent=2), encoding="utf-8")
     (public_dir / ".nojekyll").touch()

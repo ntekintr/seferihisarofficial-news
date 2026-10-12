@@ -16,7 +16,7 @@ Güzelbahçe, Urla, Yelki ve Özdere'deki konser, festival, tiyatro, sinema ve d
 - 1080 × 1350 gönderi / kaydırmalı gönderi ve 1080 × 1920 story serileri. Özgün grafik şablonları; gerçek olay fotoğrafı izlenimi veren yapay görsel kullanılmaz.
 - Türkçe açıklamalar, kaynak atfı, etiketler ve şablon başlıklar. Gemini anahtarı varsa isteğe bağlı önem sıralaması; AI hiçbir olguyu veya yayın onayını değiştiremez.
 - GitHub Pages için statik panel: haberler, etkinlikler, indirilebilir görseller/açıklamalar, hazırlık ve yayın geçmişi, kaynaklar, çalışma geçmişi ve hatalar.
-- 15 dakikada bir GitHub Actions, ayrı `automation-state` dalında SQLite, eşzamanlı çalışmaları sıraya alma, bütünlük kontrolü ve çakışmalarda veri kaybetmek yerine durma.
+- 15 dakikalık GitHub Actions zamanlaması (gecikme/düşme ihtimali vardır), ayrı `automation-state` dalında SQLite, eşzamanlı çalışmaları sıraya alma, bütünlük kontrolü ve çakışmalarda veri kaybetmek yerine durma.
 - Resmî Meta API: JPEG gönderi, carousel, tek story ve ayrı kalıcı işlerden oluşan story serisi. Yayın öncesi görsellerin erişilebilirliğini kontrol etme; belirsiz yayın sonucunda otomatik tekrar gönderimini engelleme.
 
 ## Çalıştırma
@@ -54,15 +54,17 @@ CI ve tüm checkout adımlarında `persist-credentials: false` kullanılır. Dep
 
 ## Kaynak erişimi ve doğrulama sınırı
 
-`config/sources.json` içinde on iki kaynak etkindir: Seferihisar Belediyesi, Seferihisar Kaymakamlığı, İzmir Büyükşehir Belediyesi, Seferihisar Yeni Haber, Seferihisar Gündem, Ege Telgraf, Haberler.com, Habertürk, DHA, Urla Belediyesi, Güzelbahçe Belediyesi ve Menderes Belediyesi. İzmir, Seferihisar Gündem, Ege Telgraf ve Güzelbahçe'nin RSS akışları; Urla'nın haber/kültür listeleri ve diğer kaynakların kamuya açık haber listeleri kullanılır. Menderes'in genel RSS'i haber yerine idari belgeler içerdiği için resmî, kamuya açık WordPress haber/duyuru veri koleksiyonları okunur; test amaçlı kopya haber koleksiyonu kullanılmaz. Bu kontrolde Menderes haber koleksiyonu boştu; kaynağın bağlanması yeni haber bulunacağı anlamına gelmez.
+`config/sources.json` içinde 29 bağlantı tanımlı, 24 okuyucu etkindir. Belediye haberleri/duyuruları, üç kaymakamlık, yerel ve ulusal basın, İzmir Art etkinlik takvimi, İlçe Millî Eğitim, Halk Eğitimi Merkezi, esnaf odası ve TeosFest kaynakları birlikte taranır. Ayrıntılı kapsam ve eksikler [kaynak kapsama raporunda](docs/source-coverage.md), incelenmiş diğer adresler `config/source_catalog.json` içindedir.
+
+İzmir Art'ın sitenin kullandığı kamuya açık etkinlik JSON'u, her seansın açık UTC tarihlerini ve gerçek mekân adresini kullanır. Bazı gezici etkinliklerde yanlış kalan ilçe kimliği esas alınmaz. Tarih/saat çelişkisi, eksik seans kimliği veya bölge dışı adres varsa kayıt alınmaz. Ücret ve iptal bilgisi yalnız açık kaynak alanlarından okunur. Menderes'in genel RSS'i idarî belgeler içerdiğinden gerçek WordPress haber/duyuru koleksiyonları kullanılır; test haber koleksiyonu kullanılmaz. Bu koleksiyonun boş olması okuyucu hatası değildir.
 
 Kaymakamlık'ta gerçek haber kartları ve detay sayfasının açık tarih/metin alanları; Urla'da haber gövdesi ve onun kendi yayın zamanı okunur. Haber tarihleri menü, başka haber kartı veya etkinlik tarihi alanından alınmaz. Yeni Haber'in Yaşam, Bölgesel ve Gündem listeleri; Haberler.com ve Habertürk'te çevre ilçelerin listeleri aynı kaynak başına sayfa bütçesini paylaşır. Haberler.com'un ayrı Yelki listesi vardır. Habertürk Özdere için arama terimini koruyan sitedeki arama bağlantısı ve haber kartı biçimi kullanılır. Bir listede bölge adı geçmesi tek başına bütün haberlerinin alınacağı anlamına gelmez: haberin içeriği de yerellik ve konu kontrolünden geçer.
 
-Yeni Haber, Gündem ve Habertürk için her alan adında bir çalışma boyunca en fazla bir ek geçici hata denemesi vardır. 403/404, robots yasağı ve uzun/belirsiz Retry-After yanıtı aşılmaz; kota/erişim engelini aşmak için kimlik veya tarayıcı değiştirilmez.
+Yeni Haber, Gündem, Habertürk, DHA, İzmir Büyükşehir ve İZSU için her alan adında bir çalışma boyunca en fazla bir ek geçici hata denemesi vardır. 403/404, robots yasağı ve uzun/belirsiz Retry-After yanıtı aşılmaz; kota/erişim engelini aşmak için kimlik veya tarayıcı değiştirilmez.
 
 Gündem'in kendi sitesinde sunduğu RSS yayını, ana sayfasını ve her eski haber detayını ayrıca yüklemeden okunur. RSS içeriğinde yılıyla birlikte açıkça etiketlenmiş etkinlik tarihi varsa takvime alınabilir. Daha önce kaydedilmiş gelecek etkinliklerin detayları iptal/tarih değişikliği kontrolü için yine ziyaret edilir.
 
-Robots kontrolü her çalışma sırasında yapılır. Kamuya açık sayfaları incelenmiş Seferihisar Belediyesi, İzmir Büyükşehir Belediyesi, Seferihisar Yeni Haber ve DHA için yalnız `robots.txt` dosyasının 404/410 yanıtı vermesine kaynak bazında istisna tanımlıdır. Açık bir engelleme kuralı, 403/429/5xx yanıtı veya ağ hatası bu istisnayla aşılmaz. ESHOT, İZSU, GDZ, AFAD, Meteoroloji ve bilet platformları erişim/format incelemesi tamamlanana kadar kapalıdır. Sosyal kaynaklar izinli API ve hesap yetkilendirmesi gerektirir. Giriş, CAPTCHA, ücret duvarı veya erişim kuralı aşılmaz.
+Robots kontrolü her çalışma sırasında yapılır. Kamuya açık sayfaları incelenmiş Seferihisar Belediyesi, İzmir Büyükşehir Belediyesi, Seferihisar Yeni Haber ve DHA için yalnız `robots.txt` dosyasının 404/410 yanıtı vermesine kaynak bazında istisna tanımlıdır. Açık bir engelleme kuralı, 403/429/5xx yanıtı veya ağ hatası bu istisnayla aşılmaz. ESHOT tarihli duyuru/haber okuyucusu ve İZSU yeni adresteki kurum haberleri etkindir; tarihsiz ESHOT duyuruları ve canlı su kesintileri henüz kapsam dışıdır. ESHOT için de incelenmiş robots 404/410 istisnası vardır. GDZ, AFAD, Meteoroloji ve bilet platformlarının özel okuyucuları doğrulanana kadar kapalıdır. Sosyal kaynaklar izinli API ve hesap yetkilendirmesi gerektirir. Giriş, CAPTCHA, ücret duvarı veya erişim kuralı aşılmaz.
 
 Yeni RSS ve organizatör/medya bağlantıları aday olarak bulunur. Adayların güvenilirliği ve kullanım koşulları kendiliğinden onaylanmaz; uygunluk incelemesinden sonra yapılandırmaya eklenir. Sosyal platformların API erişimleri için hesap yetkilendirmesi gerekir.
 
@@ -110,3 +112,6 @@ tests/                      Yaşam döngüsü, güvenlik, API ve kalıcılık te
 ```
 
 Instagram için sonraki aşama Meta test hesabını yetkilendirmek ve gerçek gönderi/story testlerini tamamlamaktır. Bu aşama tamamlanmadan Instagram'a yayın yapıldığı iddia edilmez.
+
+
+Kaynaklar ekranında gerçek son kontrol zamanı, çıkarılan/doğrulanan kayıt sayısı ve hata durumu vardır. Eski kayıt, boş akış ve bağlantı hatası ayrı gösterilir. Sistem ekranı gösterilen çalışma geçmişindeki en uzun aralığı bildirir. Zamanlanmış araştırma Instagram yayımlamaz; gerçek test yayınının başarılı olması düzenli yayının açıldığı anlamına gelmez.

@@ -1,0 +1,7 @@
+{
+  "name": "seferihisar-research-watch",
+  "main": "cron-worker.mjs",
+  "compatibility_date": "2026-10-12",
+  "triggers": {"crons": ["2,17,32,47 * * * *"]},
+  "vars": {"CRON_DISPATCH_ENABLED": "false"}
+}
