@@ -23,7 +23,7 @@ test('stale state dispatches only main research with secret header and no redire
   assert.equal((await checkResearch(env,fetcher,now)).status,'dispatched');
   assert.ok(calls[2].url.endsWith('/automation.yml/dispatches'));
   assert.deepEqual(JSON.parse(calls[2].options.body),{ref:'main'});
-  assert.equal(calls[2].options.redirect,'error');
+  assert.ok(calls.every(call=>call.options.redirect==='manual'));
   assert.ok(!calls[2].url.includes(env.GITHUB_ACTIONS_TOKEN));
 });
 test('demo or future state cannot dispatch',async()=>{
@@ -33,5 +33,13 @@ test('demo or future state cannot dispatch',async()=>{
 });
 test('provider failures never reveal credential or exception',async()=>{
   const result=await checkResearch(env,async()=>{throw new Error(env.GITHUB_ACTIONS_TOKEN);},now);
-  assert.deepEqual(result,{status:'check_failed'});
+  assert.deepEqual(result,{status:'check_failed',stage:'panel_fetch',error_type:'Error',cause:'request_failed'});
+});
+test('redirects stop without following or dispatching',async()=>{
+  let calls=0;
+  const result=await checkResearch(env,async(url,options)=>{
+    calls++;assert.equal(options.redirect,'manual');
+    return calls===1?response(state(60)):{ok:false,status:302,headers:{get:()=> 'https://untrusted.invalid/'}};
+  },now);
+  assert.equal(result.status,'github_unreachable');assert.equal(calls,2);
 });
