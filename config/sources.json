@@ -36,25 +36,45 @@
     "trusted": true,
     "access": "robots",
     "max_pages": 8,
-    "allow_missing_robots": true
+    "allow_missing_robots": true,
+    "transient_retries": 1
   },
   {
     "id": "eshot",
     "name": "ESHOT",
-    "url": "https://www.eshot.gov.tr/",
+    "url": "https://www.eshot.gov.tr/tr/TumDuyurular/93",
     "kind": "html",
-    "enabled": false,
+    "enabled": true,
     "trusted": true,
-    "access": "review_required"
+    "access": "robots",
+    "allow_missing_robots": true,
+    "max_pages": 10,
+    "listing_urls": [
+      "https://www.eshot.gov.tr/tr/TumDuyurular/93",
+      "https://www.eshot.gov.tr/tr/HaberArsivi/92"
+    ],
+    "link_selector": "a[href*=\"/tr/Duyurular/\"], a[href*=\"/tr/Haberler/\"]",
+    "article_selector": ".panel-body",
+    "title_selector": ".panel-heading h3",
+    "published_date_selector": ".panel-heading > span",
+    "body_text_fallback": true
   },
   {
     "id": "izsu",
     "name": "İZSU",
-    "url": "https://www.izsu.gov.tr/",
+    "url": "https://izsu.gov.tr/",
     "kind": "html",
-    "enabled": false,
+    "enabled": true,
     "trusted": true,
-    "access": "review_required"
+    "access": "robots",
+    "max_pages": 8,
+    "link_selector": "a[href*=\"/haberler/\"]",
+    "article_selector": "div[class^=\"page_content__\"]",
+    "title_selector": "h1[class^=\"page_title__\"]",
+    "published_date_selector": "span[class^=\"page_date__\"]",
+    "published_date_direct_text": true,
+    "published_date_format": "turkish",
+    "transient_retries": 1
   },
   {
     "id": "gdz",
@@ -192,7 +212,8 @@
     "allow_missing_robots": true,
     "link_selector": "a[href]",
     "detail_url_pattern": "-\\d+/?$",
-    "local_links_only": true
+    "local_links_only": true,
+    "transient_retries": 1
   },
   {
     "id": "urla-belediye",
@@ -241,5 +262,129 @@
       "https://menderes.bel.tr/wp-json/wp/v2/haberler?per_page=12&_fields=id,date_gmt,link,title,content,status",
       "https://menderes.bel.tr/wp-json/wp/v2/duyurular?per_page=12&_fields=id,date_gmt,link,title,content,status"
     ]
+  },
+  {
+    "id": "seferihisar-life",
+    "name": "SeferihisarLife",
+    "url": "https://seferihisarlife.com/feed/",
+    "kind": "rss",
+    "enabled": true,
+    "trusted": true,
+    "access": "robots",
+    "max_pages": 6,
+    "follow_feed_details": false
+  },
+  {
+    "id": "urla-ada-haber",
+    "name": "Urla Ada Haber",
+    "url": "https://www.urlaadahaber.com/rss.xml",
+    "kind": "rss",
+    "enabled": true,
+    "trusted": true,
+    "access": "robots",
+    "max_pages": 6,
+    "follow_feed_details": false
+  },
+  {
+    "id": "seferihisar-esnaf",
+    "name": "Seferihisar Esnaf ve Sanatkârlar Odası",
+    "url": "https://seso.org.tr/feed/",
+    "kind": "rss",
+    "enabled": true,
+    "trusted": true,
+    "access": "robots",
+    "max_pages": 6,
+    "follow_feed_details": false
+  },
+  {
+    "id": "seferihisar-mem",
+    "name": "Seferihisar İlçe Millî Eğitim Müdürlüğü",
+    "url": "https://seferihisar.meb.gov.tr/meb_iys_dosyalar/xml/rss_duyurular.xml",
+    "kind": "rss",
+    "enabled": true,
+    "trusted": true,
+    "access": "robots",
+    "max_pages": 6,
+    "follow_feed_details": false
+  },
+  {
+    "id": "teosfest",
+    "name": "TeosFest",
+    "url": "https://www.teosfest.com/tr/feed/",
+    "kind": "rss",
+    "enabled": true,
+    "trusted": true,
+    "access": "robots",
+    "max_pages": 6,
+    "follow_feed_details": false
+  },
+  {
+    "id": "izmir-art",
+    "name": "İzmir Art etkinlik takvimi",
+    "url": "https://www.izmir.art/eventsContent.json?eventLocation=602542e08db21f41d5e14200,602543358db21f41d5e14208,602543578db21f41d5e1420c,6025437a8db21f41d5e14210&eventDateRange=0&eventType=0&priceStatus=0",
+    "kind": "izmir_art",
+    "enabled": true,
+    "trusted": true,
+    "access": "robots",
+    "max_pages": 4,
+    "follow_feed_details": false
+  },
+  {
+    "id": "urla-kaymakamlik",
+    "name": "Urla Kaymakamlığı",
+    "url": "https://www.urla.gov.tr/haberler",
+    "kind": "html",
+    "enabled": true,
+    "trusted": true,
+    "access": "robots",
+    "max_pages": 6,
+    "link_selector": "a.news-card-horizontal[href]",
+    "article_selector": ".icerik",
+    "title_selector": "h2.page-title",
+    "published_date_selector": ".dateandtag .card-date"
+  },
+  {
+    "id": "menderes-kaymakamlik",
+    "name": "Menderes Kaymakamlığı",
+    "url": "https://www.menderes.gov.tr/haberler",
+    "kind": "html",
+    "enabled": true,
+    "trusted": true,
+    "access": "robots",
+    "max_pages": 6,
+    "link_selector": "a.news-card-horizontal[href]",
+    "article_selector": ".icerik",
+    "title_selector": "h2.page-title",
+    "published_date_selector": ".dateandtag .card-date"
+  },
+  {
+    "id": "seferihisar-duyurular",
+    "name": "Seferihisar Belediyesi duyuruları",
+    "url": "https://seferihisar.bel.tr/duyurular/",
+    "kind": "html",
+    "enabled": true,
+    "trusted": true,
+    "access": "robots",
+    "max_pages": 6,
+    "allow_missing_robots": true,
+    "link_selector": ".news a[href]",
+    "article_selector": ".col-md-9 > .inner",
+    "repair_json_trailing_commas": true
+  },
+  {
+    "id": "seferihisar-hem",
+    "name": "Seferihisar Atatürk Halk Eğitimi Merkezi",
+    "url": "https://seferihisarhem.meb.k12.tr/",
+    "kind": "html",
+    "enabled": true,
+    "trusted": true,
+    "access": "robots",
+    "max_pages": 6,
+    "link_selector": "a[href*=\"/icerikler/\"]",
+    "detail_url_pattern": "_\\d+\\.html$",
+    "article_selector": ".icerik > .icerik-yazi",
+    "title_selector": ".icerik > .icerik-yazi > h1.baslik",
+    "published_date_selector": ".icerik > .icerik-yazi > .ara-bar > span.icerik-tarihi",
+    "body_text_fallback": true
   }
 ]

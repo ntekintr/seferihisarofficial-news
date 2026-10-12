@@ -44,6 +44,11 @@ class Store:
               updated_at TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS illustration_days (
               day TEXT PRIMARY KEY, attempts INTEGER NOT NULL);
+            CREATE TABLE IF NOT EXISTS source_health (
+              source_id TEXT PRIMARY KEY, checked_at TEXT NOT NULL,
+              status TEXT NOT NULL, parsed INTEGER NOT NULL,
+              accepted INTEGER NOT NULL, error_count INTEGER NOT NULL,
+              latest_published_at TEXT);
         """)
         self.db.commit()
 

@@ -1,0 +1,234 @@
+[
+  {
+    "id": "seferihisar-duyuru",
+    "name": "Seferihisar Belediyesi duyuruları",
+    "url": "https://seferihisar.bel.tr/duyurular/",
+    "group": "kamu",
+    "status": "connected",
+    "note": "Doğrulanmış adres; kaydın güncelliği ve kapsamı her turda ayrıca kontrol edilir."
+  },
+  {
+    "id": "izmir-kultur",
+    "name": "İzmir Kültür Sanat",
+    "url": "https://kultursanat.izmir.bel.tr/",
+    "group": "etkinlik",
+    "status": "reader_pending",
+    "note": "Yeni uygulama JavaScript ile yükleniyor; eski takvim bağlantıları yeterli değil. İzmir Art takvimi bağlandı."
+  },
+  {
+    "id": "izmir-art",
+    "name": "İzmir Art",
+    "url": "https://www.izmir.art/",
+    "group": "etkinlik",
+    "status": "connected",
+    "note": "Doğrulanmış adres; kaydın güncelliği ve kapsamı her turda ayrıca kontrol edilir."
+  },
+  {
+    "id": "bademler",
+    "name": "Bademler Sanat Köyü",
+    "url": "https://bademlersanatkoyu.com/etkinlikler-ve-workshoplar/",
+    "group": "etkinlik",
+    "status": "reader_pending",
+    "note": "Sayfa okunuyor; güncel tarihli etkinlik veri akışı henüz yok. RSS blog yazılarını içeriyor."
+  },
+  {
+    "id": "teosfest",
+    "name": "TeosFest",
+    "url": "https://www.teosfest.com/tr/ana-sayfa/",
+    "group": "festival",
+    "status": "connected",
+    "note": "Doğrulanmış adres; kaydın güncelliği ve kapsamı her turda ayrıca kontrol edilir."
+  },
+  {
+    "id": "urla-ot",
+    "name": "Urla Ot Bayramı",
+    "url": "https://www.urlaotbayrami.com/",
+    "group": "festival",
+    "status": "reader_pending",
+    "note": "Mevsimlik festival programı okunuyor; tam yıl ve seans okuyucusu henüz bağlı değil."
+  },
+  {
+    "id": "barbaros-oyuk",
+    "name": "Barbaros Oyuk Festivali",
+    "url": "https://barbarosoyukfestivali.com.tr/program",
+    "group": "festival",
+    "status": "reader_pending",
+    "note": "2026 programı 21–23 Ağustos tarihli; geçti. Yeni sezon tarihi tahmin edilmez."
+  },
+  {
+    "id": "seferihisar-life",
+    "name": "SeferihisarLife",
+    "url": "https://seferihisarlife.com/",
+    "group": "yerel_basın",
+    "status": "connected",
+    "note": "Doğrulanmış adres; kaydın güncelliği ve kapsamı her turda ayrıca kontrol edilir."
+  },
+  {
+    "id": "urla-ada",
+    "name": "Urla Ada Haber",
+    "url": "https://www.urlaadahaber.com/",
+    "group": "yerel_basın",
+    "status": "connected",
+    "note": "Doğrulanmış adres; kaydın güncelliği ve kapsamı her turda ayrıca kontrol edilir."
+  },
+  {
+    "id": "urla-yasam",
+    "name": "Urla’da Yaşam",
+    "url": "https://www.urladayasam.com/haberler",
+    "group": "yerel_basın",
+    "status": "reader_pending",
+    "note": "Site okunuyor; tarihli gerçek haber/etkinlik akışı henüz doğrulanmadı."
+  },
+  {
+    "id": "seso",
+    "name": "Seferihisar Esnaf ve Sanatkârlar Odası",
+    "url": "https://seso.org.tr/",
+    "group": "oda_dernek",
+    "status": "connected",
+    "note": "Doğrulanmış adres; kaydın güncelliği ve kapsamı her turda ayrıca kontrol edilir."
+  },
+  {
+    "id": "seferihisar-mem",
+    "name": "Seferihisar İlçe Millî Eğitim",
+    "url": "https://seferihisar.meb.gov.tr/www/duyurular/kategori/2",
+    "group": "kamu",
+    "status": "connected",
+    "note": "Doğrulanmış adres; kaydın güncelliği ve kapsamı her turda ayrıca kontrol edilir."
+  },
+  {
+    "id": "seferihisar-hem",
+    "name": "Seferihisar Atatürk Halk Eğitimi",
+    "url": "https://seferihisarhem.meb.k12.tr/",
+    "group": "kamu",
+    "status": "connected",
+    "note": "Kendi haber metni ve yayın tarihi kullanılır; ilgili haberlerin tarihleri alınmaz."
+  },
+  {
+    "id": "urla-kaymakamlik",
+    "name": "Urla Kaymakamlığı",
+    "url": "https://www.urla.gov.tr/",
+    "group": "kamu",
+    "status": "connected",
+    "note": "Doğrulanmış adres; kaydın güncelliği ve kapsamı her turda ayrıca kontrol edilir."
+  },
+  {
+    "id": "guzelbahce-kaymakamlik",
+    "name": "Güzelbahçe Kaymakamlığı",
+    "url": "https://guzelbahce.gov.tr/",
+    "group": "kamu",
+    "status": "access_failed",
+    "note": "Canlı okuma ağ/sertifika hatası verdi; erişim düzelmeden bağlanmadı."
+  },
+  {
+    "id": "menderes-kaymakamlik",
+    "name": "Menderes Kaymakamlığı",
+    "url": "https://www.menderes.gov.tr/",
+    "group": "kamu",
+    "status": "connected",
+    "note": "Doğrulanmış adres; kaydın güncelliği ve kapsamı her turda ayrıca kontrol edilir."
+  },
+  {
+    "id": "seferihisar-hastane",
+    "name": "Seferihisar Necat Hepkon Devlet Hastanesi",
+    "url": "https://seferihisardh.saglik.gov.tr/",
+    "group": "kamu",
+    "status": "reader_pending",
+    "note": "Kamuya açık duyurular okunuyor; sağlık uyarıları için ayrı okuyucu ve insan incelemesi gerekiyor."
+  },
+  {
+    "id": "izsu-kanonik",
+    "name": "İZSU güncel adres",
+    "url": "https://izsu.gov.tr/",
+    "group": "hizmet",
+    "status": "connected",
+    "note": "Yeni adresteki tarihli kurum haberleri bağlandı. Anlık su kesintileri henüz bağlı değil."
+  },
+  {
+    "id": "eshot-duyuru",
+    "name": "ESHOT duyuru ve haberler",
+    "url": "https://www.eshot.gov.tr/tr/HaberArsivi/92/2",
+    "group": "hizmet",
+    "status": "connected",
+    "note": "Tarihi açıklanan haber/duyurular için okuyucu bağlı. Tarihsiz güzergâh değişiklikleri yayıma alınmaz."
+  },
+  {
+    "id": "gdz-kesinti",
+    "name": "GDZ Elektrik",
+    "url": "https://www.gdzelektrik.com.tr/",
+    "group": "hizmet",
+    "status": "reader_pending",
+    "note": "Planlı kesinti sayfasında doğrulama ve dinamik sorgu var; otomatik kesinti okuyucusu etkin değil."
+  },
+  {
+    "id": "biletino",
+    "name": "Biletino",
+    "url": "https://biletino.com/tr/turkiye/",
+    "group": "bilet",
+    "status": "reader_pending",
+    "note": "Site okunuyor; bölgesel seans okuyucusu doğrulanmadı."
+  },
+  {
+    "id": "bubilet",
+    "name": "Bubilet",
+    "url": "https://www.bubilet.com.tr/sehir-sec",
+    "group": "bilet",
+    "status": "reader_pending",
+    "note": "Site okunuyor; bölgesel seans okuyucusu doğrulanmadı."
+  },
+  {
+    "id": "rotary2440",
+    "name": "Rotary 2440. Bölge",
+    "url": "https://rotary2440.org/",
+    "group": "oda_dernek",
+    "status": "reader_pending",
+    "note": "Bölge ve kulüp duyuruları okunuyor; tarihli yerel etkinlik okuyucusu henüz yok."
+  },
+  {
+    "id": "afad",
+    "name": "AFAD",
+    "url": "https://www.afad.gov.tr/",
+    "group": "kamu",
+    "status": "reader_pending",
+    "note": "Site okunuyor; yerel uyarı okuyucusu henüz bağlı değil. Acil durumlar insan incelemesi gerektirir."
+  },
+  {
+    "id": "mgm",
+    "name": "Meteoroloji Genel Müdürlüğü",
+    "url": "https://www.mgm.gov.tr/",
+    "group": "hizmet",
+    "status": "reader_pending",
+    "note": "Site okunuyor; resmî yerel uyarı veri akışı henüz bağlı değil."
+  },
+  {
+    "id": "biletix",
+    "name": "Biletix",
+    "url": "https://www.biletix.com/",
+    "group": "bilet",
+    "status": "reader_pending",
+    "note": "İlk sayfa JavaScript/çerez uyarısı içeriyor; tarihli etkinlik okuyucusu doğrulanmadı."
+  },
+  {
+    "id": "biletinial",
+    "name": "Biletinial",
+    "url": "https://biletinial.com/",
+    "group": "bilet",
+    "status": "reader_pending",
+    "note": "Site okunuyor; bölgesel seans ve bilet doğrulaması henüz bağlı değil."
+  },
+  {
+    "id": "teos-kultur-sanat",
+    "name": "Teos Kültür Sanat Derneği",
+    "url": "https://www.teoskultursanat.com/",
+    "group": "oda_dernek",
+    "status": "reader_pending",
+    "note": "Resmî web adresi incelendi; tarihli yerel duyuru okuyucusu henüz bağlı değil."
+  },
+  {
+    "id": "sehayder",
+    "name": "Seferihisar Doğa ve Hayvan Dostları Derneği",
+    "url": "https://www.sehayder.com/",
+    "group": "oda_dernek",
+    "status": "reader_pending",
+    "note": "Resmî web adresi incelendi; tarihli yerel duyuru okuyucusu henüz bağlı değil."
+  }
+]

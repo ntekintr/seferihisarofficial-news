@@ -52,9 +52,25 @@ def validate_state(path: Path):
     db = sqlite3.connect(f"file:{path.resolve()}?mode=ro", uri=True)
     try:
         tables = {r[0] for r in db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
-        if not tables <= {"items", "posts", "withheld", "runs", "candidates", "annotations", "illustrations", "illustration_days"}:
+        if not tables <= {"items", "posts", "withheld", "runs", "candidates", "annotations", "illustrations", "illustration_days", "source_health"}:
             raise ValueError("Unexpected state tables")
         for table in sorted(tables):
+            if table == 'source_health':
+                from datetime import datetime
+                if [r[1] for r in db.execute('PRAGMA table_info(source_health)')] != ['source_id', 'checked_at', 'status', 'parsed', 'accepted', 'error_count', 'latest_published_at']:
+                    raise ValueError('Unexpected source health fields')
+                for row in db.execute('SELECT * FROM source_health'):
+                    sid, stamp, status, parsed, accepted, errors, latest = row
+                    assert_no_secrets(row)
+                    if not re.fullmatch(r'[a-z0-9-]{1,80}', sid) or status not in ('ok', 'empty', 'partial', 'failed'):
+                        raise ValueError('Invalid source health status')
+                    if any(type(v) is not int or not 0 <= v <= 10000 for v in (parsed, accepted, errors)) or accepted > parsed:
+                        raise ValueError('Invalid source health counters')
+                    if datetime.fromisoformat(stamp).tzinfo is None or (latest and datetime.fromisoformat(latest).tzinfo is None):
+                        raise ValueError('Invalid source health timestamp')
+                if db.execute('SELECT COUNT(*) FROM source_health').fetchone()[0] > 200:
+                    raise ValueError('Source health exceeds limit')
+                continue
             if table == 'illustrations':
                 from .image_safety import MAX_CACHE_BYTES, MAX_CACHED_IMAGES, validate_jpeg
                 columns = [r[1] for r in db.execute('PRAGMA table_info(illustrations)')]
