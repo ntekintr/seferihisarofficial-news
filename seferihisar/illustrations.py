@@ -158,6 +158,20 @@ class Illustrator:
 
     def for_post(self, post: dict, items: dict[str, dict]) -> dict[int, Path]:
         assignments = {}
+        if not self.enabled:
+            return assignments
+        if post['status'] != 'prepared':
+            # Frozen per-post binding prevents later source edits from changing
+            # an already-published card. Older cards without a binding stay text.
+            for index, key in post.get('illustration_keys', {}).items():
+                if not re.fullmatch(r'\d+', index) or int(index) >= len(post['slides']) or not re.fullmatch(r'[a-f0-9]{24}', key):
+                    continue
+                rows = self.store.rows("SELECT image FROM illustrations WHERE id=? AND status='ready'", (key,))
+                if rows:
+                    validate_jpeg(rows[0]['image'])
+                    assignments[int(index)] = self.materialize(key, rows[0]['image'])
+                    self.stats['reused'] += 1
+            return assignments
         if post.get('item_id'):
             references = [(0, items.get(post['item_id']))]
         elif post['kind'] in ('weekly', 'monthly') and len(post['slides']) == len(post['source_urls']) + 1:
@@ -167,9 +181,17 @@ class Illustrator:
             references = [(index + 1, by_url.get(url)) for index, url in enumerate(post['source_urls'])]
         else:
             references = []
+        bindings = {}
         for index, item in references:
-            if item and (path := self.image(item, generate=post['status'] == 'prepared')):
+            if item and (not post.get('item_id') or post.get('revision', item['revision']) == item['revision']) and (path := self.image(item, generate=True)):
                 assignments[index] = path
+                bindings[str(index)] = image_key(item)
+        rows = self.store.rows('SELECT payload FROM posts WHERE id=?', (post.get('id', ''),))
+        if rows:
+            payload = json.loads(rows[0]['payload'])
+            payload['illustration_keys'] = bindings
+            with self.store.db:
+                self.store.db.execute('UPDATE posts SET payload=? WHERE id=?', (json.dumps(payload, ensure_ascii=False), post['id']))
         return assignments
 
 

@@ -233,3 +233,33 @@ def test_explicit_preview_uploads_only_labelled_cards(tmp_path, configured, monk
     preview(tmp_path/'preview')
     assert {p.name for p in (tmp_path/'preview').iterdir()} == {'feed.jpg', 'story.jpg'}
     assert session.post.call_count == 1
+
+
+def test_published_card_keeps_original_illustration_after_source_revision(store, event, at, tmp_path, configured):
+    item = saved_item(store, event, at)
+    prepare(store, at)
+    post = next(p for p in store.posts() if p['kind']=='announcement')
+    session = client()
+    generator = Illustrator(store, at, tmp_path, session=session)
+    original = generator.for_post(post, {item['id']:item})
+    with store.db:
+        store.db.execute("UPDATE posts SET status='published' WHERE id=?", (post['id'],))
+    published = next(p for p in store.posts() if p['id']==post['id'])
+    assert published['illustration_keys'] == {'0':image_key(item)}
+    event['title'] += ' - açıklama güncellendi'
+    store.upsert(event, at.isoformat())
+    updated = store.items()[0]
+    # A new revision may be prepared without rewriting the old post's binding.
+    assert generator.image(updated, True)
+    assert generator.for_post(published, {updated['id']:updated}) == original
+    assert session.post.call_count == 2
+    validate_state(store.path)
+
+
+def test_preexisting_published_card_without_binding_does_not_inherit_new_art(store, event, at, tmp_path, configured):
+    item = saved_item(store, event, at)
+    generator = Illustrator(store, at, tmp_path, session=client())
+    assert generator.image(item, True)
+    old_post = {'item_id':item['id'], 'kind':'announcement', 'status':'published', 'slides':[{}]}
+    assert generator.for_post(old_post, {item['id']:item}) == {}
+    assert generator.session.post.call_count == 1
