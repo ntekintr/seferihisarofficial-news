@@ -1,0 +1,52 @@
+name: Test Instagram cloud connection (no publication)
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  connection:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    environment: instagram-production
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.12'
+      - name: Verify account and publishing quota using GET only
+        env:
+          INSTAGRAM_ACCESS_TOKEN: ${{ secrets.INSTAGRAM_ACCESS_TOKEN }}
+          INSTAGRAM_USER_ID: ${{ secrets.INSTAGRAM_USER_ID }}
+          META_GRAPH_VERSION: ${{ vars.META_GRAPH_VERSION || 'v26.0' }}
+        run: |
+          python - <<'PY'
+          import json, os, re, urllib.request, urllib.error
+          token = os.getenv('INSTAGRAM_ACCESS_TOKEN', '')
+          account = os.getenv('INSTAGRAM_USER_ID', '')
+          version = os.getenv('META_GRAPH_VERSION', '')
+          if not token or not re.fullmatch(r'\d+', account) or not re.fullmatch(r'v\d+\.0', version):
+              raise SystemExit('Instagram connection settings are missing or invalid.')
+          def get(path):
+              req = urllib.request.Request(
+                  'https://graph.facebook.com/' + version + '/' + path,
+                  headers={'Authorization': 'Bearer ' + token}, method='GET')
+              try:
+                  with urllib.request.urlopen(req, timeout=30) as response:
+                      return json.load(response)
+              except urllib.error.HTTPError as exc:
+                  raise SystemExit('Meta connection check failed (HTTP ' + str(exc.code) + ').') from None
+              except (urllib.error.URLError, TimeoutError, ValueError):
+                  raise SystemExit('Meta connection check could not complete.') from None
+          identity = get(account + '?fields=id,username')
+          if identity.get('id') != account or identity.get('username') != 'seferihisarofficial':
+              raise SystemExit('Connected Instagram account does not match SeferihisarOfficial.')
+          quota = get(account + '/content_publishing_limit?fields=quota_usage,config')
+          rows = quota.get('data', [])
+          if not rows or type(rows[0].get('quota_usage')) is not int:
+              raise SystemExit('Publishing quota could not be verified.')
+          print(json.dumps({'status': 'connected', 'username': 'seferihisarofficial',
+                            'quota_usage': rows[0]['quota_usage'], 'publication_attempted': False}))
+          PY
