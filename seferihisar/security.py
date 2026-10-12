@@ -17,7 +17,7 @@ SECRET_PATTERN = re.compile(
     r"AIza[\w-]{35}|(?:gh[pousr]_[A-Za-z0-9]{20,})|github_pat_[A-Za-z0-9_]{20,}|EAA[A-Za-z0-9]{50,}|"
     r"-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----|"
     r"(?:access[_-]?token|api[_-]?key|password|secret|authorization)\s*[=:]\s*[\"']?[^\s\"'&,;<>]{8,}", re.I)
-SECRET_VARIABLES = ("GEMINI_API_KEY", "CLOUDFLARE_API_TOKEN", "INSTAGRAM_ACCESS_TOKEN", "INSTAGRAM_USER_ID", "GITHUB_TOKEN", "GH_TOKEN", "STATE_WRITE_TOKEN")
+SECRET_VARIABLES = ("GEMINI_API_KEY", "CLOUDFLARE_API_TOKEN", "INSTAGRAM_ACCESS_TOKEN", "FACEBOOK_PAGE_ACCESS_TOKEN", "INSTAGRAM_USER_ID", "GITHUB_TOKEN", "GH_TOKEN", "STATE_WRITE_TOKEN")
 
 
 def contains_secret(value) -> bool:
@@ -52,9 +52,31 @@ def validate_state(path: Path):
     db = sqlite3.connect(f"file:{path.resolve()}?mode=ro", uri=True)
     try:
         tables = {r[0] for r in db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
-        if not tables <= {"items", "posts", "withheld", "runs", "candidates", "annotations", "illustrations", "illustration_days", "source_health"}:
+        if not tables <= {"items", "posts", "withheld", "runs", "candidates", "annotations", "illustrations", "illustration_days", "source_health", "facebook_deliveries"}:
             raise ValueError("Unexpected state tables")
         for table in sorted(tables):
+            if table == 'facebook_deliveries':
+                from datetime import datetime
+                columns = ['id', 'post_id', 'page_id', 'format', 'status', 'claimed_at', 'updated_at', 'photo_ids', 'media_id']
+                if [r[1] for r in db.execute('PRAGMA table_info(facebook_deliveries)')] != columns:
+                    raise ValueError('Unexpected Facebook delivery fields')
+                for row in db.execute('SELECT * FROM facebook_deliveries'):
+                    assert_no_secrets(row)
+                    key, post, page, kind, status, claimed, updated, photos, media = row
+                    if not all(re.fullmatch(r'[a-f0-9]{24}', v) for v in (key, post)) or not re.fullmatch(r'\d{1,32}', page):
+                        raise ValueError('Invalid Facebook delivery identity')
+                    if kind not in ('feed', 'story') or status not in ('publishing', 'published', 'uncertain'):
+                        raise ValueError('Invalid Facebook delivery status')
+                    ids = json.loads(photos)
+                    if not isinstance(ids, list) or len(ids) > 10 or not all(isinstance(v, str) and re.fullmatch(r'\d{1,32}', v) for v in ids):
+                        raise ValueError('Invalid Facebook photo identifiers')
+                    if media is not None and not re.fullmatch(r'\d{1,32}(?:_\d{1,32})?', media):
+                        raise ValueError('Invalid Facebook media identifier')
+                    if status == 'published' and not media:
+                        raise ValueError('Missing Facebook publication identifier')
+                    if any(datetime.fromisoformat(v).tzinfo is None for v in (claimed, updated)):
+                        raise ValueError('Invalid Facebook delivery timestamp')
+                continue
             if table == 'source_health':
                 from datetime import datetime
                 if [r[1] for r in db.execute('PRAGMA table_info(source_health)')] != ['source_id', 'checked_at', 'status', 'parsed', 'accepted', 'error_count', 'latest_published_at']:

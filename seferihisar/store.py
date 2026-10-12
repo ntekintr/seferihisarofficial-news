@@ -49,6 +49,10 @@ class Store:
               status TEXT NOT NULL, parsed INTEGER NOT NULL,
               accepted INTEGER NOT NULL, error_count INTEGER NOT NULL,
               latest_published_at TEXT);
+            CREATE TABLE IF NOT EXISTS facebook_deliveries (
+              id TEXT PRIMARY KEY, post_id TEXT NOT NULL, page_id TEXT NOT NULL,
+              format TEXT NOT NULL, status TEXT NOT NULL, claimed_at TEXT NOT NULL,
+              updated_at TEXT NOT NULL, photo_ids TEXT NOT NULL, media_id TEXT);
         """)
         self.db.commit()
 
