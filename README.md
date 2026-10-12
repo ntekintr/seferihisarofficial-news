@@ -91,7 +91,9 @@ Resmî Instagram API with **Facebook Login** yolu kullanılır. Uygun profesyone
 1. Yetkili hesabın testlerini tamamlayın; kamuya erişilebilir Pages JPEG'lerini ve test hesabında gönderi/carousel/story yayınını doğrulayın.
 2. GitHub Secrets: `INSTAGRAM_ACCESS_TOKEN`, `INSTAGRAM_USER_ID`. Token'a panelde yer verilmez. İsteğe bağlı `GEMINI_API_KEY` ayrı secrettır.
 3. GitHub Variables: `SITE_URL` = Pages adresi; testten sonra `META_TESTS_COMPLETED=true`, kontrollü aktivasyon onayından sonra `INSTAGRAM_PUBLISH_ENABLED=true`. `META_GRAPH_VERSION` istenirse değiştirilebilir (başlangıç `v25.0`).
-4. `instagram-production` environment için yetkili kullanıcı onayı ve main kısıtı yapılandırın. **Controlled Instagram publication** işini `PUBLISH` teyidi ve `feed` veya `story` formatıyla çalıştırın.
+4. `instagram-production` ortamında `main` kısıtını koruyun. Tam otonom yayın aktivasyonu kullanıcı tarafından onaylandıktan sonra her çalışmada manuel reviewer bekleme kuralı kaldırılır. **Controlled Instagram publication**, başarılı ana dal araştırması ve panel yayını sonrasında otomatik kontrol yapar; manuel `PUBLISH` teyidiyle `automatic`, `feed` veya `story` modu da kullanılabilir.
+
+[Saatli yayın düzeni](docs/automatic-publication.md): Türkiye saatiyle 08:30, 12:30, 15:00, 18:30 ve 21:00 kontrol pencereleri; günde en fazla iki gönderi ve her gönderi için ilk eşleşen story kartı. Kaynak güncelliği, kalıcı yayın iddiası, belirsiz sonuçta yeniden göndermeme ve farklı içerikler için 45 dakikalık aralık kontrolü korunur. Geçerli içerik yoksa veya bir saatlik pencere kaçırılırsa paylaşım yapılmaz.
 
 Her çağrı en fazla **bir gönderi veya bir story karesi** yayınlar; 45 dakika aralık kontrolü vardır. Story serisinin her karesi ayrı iş ve kimlikle saklanır. Otomatik araştırma işi hiçbir durumda Meta token'ı almaz ve yayın komutu çalıştırmaz. Belirsiz/yarıda kalmış yayın, Meta üzerinden kontrol edilmeden yeniden kuyruğa konmaz. Yayın talebi Meta'ya gitmeden önce Git'e kalıcı kaydedilir; runner kaybı aynı talebin tekrarlanmasına neden olmaz. Otomatik gerçek yayın zamanlayıcısı bu sürümde etkin değildir.
 

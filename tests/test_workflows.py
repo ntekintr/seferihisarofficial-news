@@ -13,11 +13,16 @@ def test_scheduled_run_never_has_instagram_credentials_or_publish_command():
     assert 'state_git restore' in text and 'state_git persist' in text
 
 
-def test_publication_is_dispatch_only_and_double_gated():
+def test_publication_requires_trusted_completed_research_or_explicit_dispatch():
     workflow=yaml.load(Path('.github/workflows/publish.yml').read_text(),Loader=yaml.BaseLoader)
-    assert list(workflow['on'])==['workflow_dispatch']
+    assert workflow['on']['workflow_run']=={'workflows':['Research and prepare Seferihisar content'],'types':['completed'],'branches':['main']}
     assert 'META_TESTS_COMPLETED' in workflow['jobs']['publish']['if']
     assert "inputs.confirm == 'PUBLISH'" in workflow['jobs']['publish']['if']
+    assert "github.event.workflow_run.conclusion == 'success'" in workflow['jobs']['publish']['if']
+    assert 'github.event.workflow_run.head_repository.full_name == github.repository' in workflow['jobs']['publish']['if']
+    assert workflow['jobs']['publish']['steps'][0]['with']['ref']=='main'
+    assert workflow['jobs']['publish']['environment']=='instagram-production'
+    assert workflow['concurrency']['group']=='seferihisar-production'
 
 
 def test_permissions_are_scoped_to_the_jobs_that_need_them():

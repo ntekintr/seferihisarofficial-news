@@ -15,6 +15,7 @@ jobs:
     timeout-minutes: 14
     env:
       INSTAGRAM_PUBLISH_ENABLED: 'false'
+      PUBLISHING_CONFIGURED: ${{ vars.INSTAGRAM_PUBLISH_ENABLED == 'true' && vars.META_TESTS_COMPLETED == 'true' }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
