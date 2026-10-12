@@ -38,6 +38,12 @@ class Store:
               id TEXT PRIMARY KEY, payload TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS annotations (
               item_id TEXT PRIMARY KEY, priority INTEGER NOT NULL, reviewed_at TEXT NOT NULL);
+            CREATE TABLE IF NOT EXISTS illustrations (
+              id TEXT PRIMARY KEY, item_id TEXT NOT NULL, status TEXT NOT NULL,
+              image BLOB, attempts INTEGER NOT NULL, retry_at TEXT NOT NULL,
+              updated_at TEXT NOT NULL);
+            CREATE TABLE IF NOT EXISTS illustration_days (
+              day TEXT PRIMARY KEY, attempts INTEGER NOT NULL);
         """)
         self.db.commit()
 

@@ -10,6 +10,7 @@ from .collect import Fetcher, collect_source
 from .domain import now, parse_date
 from .editor import ai_priority, verify
 from .render import render_post
+from .illustrations import Illustrator
 from .schedule import prepare
 from .store import Store
 from .security import ITEM_FIELDS, PUBLIC_ITEM_FIELDS, assert_no_secrets, contains_secret, public_url, validate_public
@@ -98,7 +99,7 @@ def export(store: Store, public_dir: Path, sources: list[dict], at: datetime, de
     public_dir.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="pages-staging-", dir=public_dir.parent) as directory:
         staging = Path(directory) / "public"
-        result = _export(store, staging, sources, at, demo)
+        result = _export(store, staging, sources, at, demo, Path(directory) / 'illustrations')
         validate_public(staging)
         if public_dir.exists():
             shutil.rmtree(public_dir)
@@ -106,7 +107,7 @@ def export(store: Store, public_dir: Path, sources: list[dict], at: datetime, de
     return result
 
 
-def _export(store: Store, public_dir: Path, sources: list[dict], at: datetime, demo=False) -> dict:
+def _export(store: Store, public_dir: Path, sources: list[dict], at: datetime, demo=False, illustration_dir: Path | None = None) -> dict:
     public_dir.mkdir(parents=True)
     root = Path(__file__).resolve().parents[1]
     for filename in ("index.html", "style.css", "app.js"):
@@ -116,11 +117,15 @@ def _export(store: Store, public_dir: Path, sources: list[dict], at: datetime, d
     safe_urls = {url for i in safe_items for url in i.get("sources", []) + [i["url"]]}
     posts = [p for p in store.posts() if not contains_secret(p) and set(p["source_urls"]) <= safe_urls]
     assets = {}
+    illustrator = Illustrator(store, at, illustration_dir or public_dir.parent / 'illustrations', demo=demo)
+    item_map = {i['id']: i for i in safe_items}
+    illustrator.prune(set(item_map))
     # Public output always rebuilt; removed/sensitive/superseded images cannot linger.
     shutil.rmtree(public_dir / "media", ignore_errors=True)
-    for post in [p for p in posts if not p.get("publish_format")][:100]:
+    for post in sorted([p for p in posts if not p.get("publish_format")][:100], key=lambda p: p['due_at']):
         if post["status"] in ("prepared", "published", "publishing", "uncertain"):
-            assets[post["id"]] = render_post(post, public_dir)
+            assets[post["id"]] = render_post(post, public_dir, illustrator.for_post(post, item_map))
+    illustrator.prune(set(item_map))
     from .schedule import blocked_sources, source_current
     failed = blocked_sources(store)
     public_items = [{**{k: v for k, v in i.items() if k in PUBLIC_ITEM_FIELDS or k in ("id", "revision", "first_seen", "last_seen")}, "source_current": source_current(i, at, failed)} for i in safe_items]
@@ -129,7 +134,8 @@ def _export(store: Store, public_dir: Path, sources: list[dict], at: datetime, d
     public_posts = [{"id": p["id"], "kind": p["kind"], "title": p["title"], "due_at": p["due_at"], "status": p["status"],
                      "caption": p["caption"], "assets": assets.get(p["id"], {}), "category": p["category"]} for p in posts[:100] if p["status"] not in ("superseded", "expired") and not p.get("publish_format")]
     snapshot = {"schema_version": 1, "generated_at": at.isoformat(), "demo": demo,
-                "publishing_enabled": False, "news": news, "events": events, "posts": public_posts,
+                "publishing_enabled": False, "illustrations": illustrator.stats,
+                "news": news, "events": events, "posts": public_posts,
                 "withheld_count": store.db.execute("SELECT COUNT(*) FROM withheld").fetchone()[0],
                 "sources": [public_source(s) for s in sources],
                 "candidate_count": store.db.execute("SELECT COUNT(*) FROM candidates").fetchone()[0],

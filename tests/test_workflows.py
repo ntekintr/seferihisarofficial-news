@@ -33,6 +33,10 @@ def test_permissions_are_scoped_to_the_jobs_that_need_them():
     assert 'GEMINI_API_KEY' not in jobs['research']['env']
     secret_steps=[s for s in jobs['research']['steps'] if 'GEMINI_API_KEY' in s.get('env',{})]
     assert len(secret_steps)==1 and secret_steps[0]['run']=='python -m seferihisar.cli run'
+    image_steps=[s for s in jobs['research']['steps'] if 'CLOUDFLARE_API_TOKEN' in s.get('env',{})]
+    assert len(image_steps)==1 and image_steps[0]['run']=='python -m seferihisar.cli run'
+    assert image_steps[0]['env']['ILLUSTRATIONS_ENABLED']=='true'
+    assert 'CLOUDFLARE_API_TOKEN' not in jobs['research']['env']
     assert 'env' not in jobs['persist'] and 'env' not in jobs['deploy']
 
 
@@ -52,3 +56,16 @@ def test_external_actions_are_pinned_and_uploads_are_validated():
     check=next(i for i,s in enumerate(steps) if 'security state' in s.get('run',''))
     uploads=[i for i,s in enumerate(steps) if s.get('uses','').startswith('actions/upload')]
     assert all(i>check for i in uploads)
+
+
+def test_free_image_check_is_manual_and_cannot_publish_or_write_state():
+    path=Path('.github/workflows/illustration-check.yml')
+    workflow=yaml.load(path.read_text(),Loader=yaml.BaseLoader)
+    assert list(workflow['on'])==['workflow_dispatch']
+    assert workflow['permissions']=={'contents':'read'}
+    assert workflow['jobs']['preview']['if']=="github.ref == 'refs/heads/main'"
+    assert 'INSTAGRAM_ACCESS_TOKEN' not in path.read_text()
+    assert 'state_git' not in path.read_text() and 'deploy-pages' not in path.read_text()
+    uploads=[s for s in workflow['jobs']['preview']['steps'] if s.get('uses','').startswith('actions/upload')]
+    assert len(uploads)==1
+    assert uploads[0]['with']['path'].splitlines()==['work/illustration-preview/feed.jpg','work/illustration-preview/story.jpg']
