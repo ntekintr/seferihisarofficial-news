@@ -49,6 +49,7 @@ def restore(path: Path):
                 raise RuntimeError("Stored state failed integrity validation")
         finally:
             db.close()
+        validate_state(path)
 
 
 def persist(path: Path):

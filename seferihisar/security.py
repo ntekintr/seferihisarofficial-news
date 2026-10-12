@@ -12,12 +12,12 @@ ITEM_FIELDS = {"kind", "title", "description", "url", "source_id", "source_name"
                "identity", "start", "end", "time_known", "location", "organizer", "free", "price", "currency", "ticket_url", "status", "previous_start"}
 PUBLIC_ITEM_FIELDS = ITEM_FIELDS - {"identity"}
 POST_FIELDS = {"id", "item_id", "revision", "kind", "due_at", "title", "caption", "category", "source_urls", "slides", "created_at", "formats",
-               "publish_format", "parent_post_id", "story_asset", "story_index", "published_at", "status", "container_id", "media_id"}
+               "publish_format", "parent_post_id", "story_asset", "story_index", "published_at", "status", "container_id", "media_id", "illustration_keys"}
 SECRET_PATTERN = re.compile(
     r"AIza[\w-]{35}|(?:gh[pousr]_[A-Za-z0-9]{20,})|github_pat_[A-Za-z0-9_]{20,}|EAA[A-Za-z0-9]{50,}|"
     r"-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----|"
     r"(?:access[_-]?token|api[_-]?key|password|secret|authorization)\s*[=:]\s*[\"']?[^\s\"'&,;<>]{8,}", re.I)
-SECRET_VARIABLES = ("GEMINI_API_KEY", "INSTAGRAM_ACCESS_TOKEN", "INSTAGRAM_USER_ID", "GITHUB_TOKEN", "GH_TOKEN", "STATE_WRITE_TOKEN")
+SECRET_VARIABLES = ("GEMINI_API_KEY", "CLOUDFLARE_API_TOKEN", "INSTAGRAM_ACCESS_TOKEN", "INSTAGRAM_USER_ID", "GITHUB_TOKEN", "GH_TOKEN", "STATE_WRITE_TOKEN")
 
 
 def contains_secret(value) -> bool:
@@ -52,9 +52,40 @@ def validate_state(path: Path):
     db = sqlite3.connect(f"file:{path.resolve()}?mode=ro", uri=True)
     try:
         tables = {r[0] for r in db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
-        if not tables <= {"items", "posts", "withheld", "runs", "candidates", "annotations"}:
+        if not tables <= {"items", "posts", "withheld", "runs", "candidates", "annotations", "illustrations", "illustration_days"}:
             raise ValueError("Unexpected state tables")
         for table in sorted(tables):
+            if table == 'illustrations':
+                from .image_safety import MAX_CACHE_BYTES, MAX_CACHED_IMAGES, validate_jpeg
+                columns = [r[1] for r in db.execute('PRAGMA table_info(illustrations)')]
+                if columns != ['id', 'item_id', 'status', 'image', 'attempts', 'retry_at', 'updated_at']:
+                    raise ValueError('Unexpected illustration fields')
+                size, count = 0, 0
+                for key, item_id, status, image, attempts, retry_at, updated_at in db.execute('SELECT * FROM illustrations'):
+                    assert_no_secrets((key, item_id, status, attempts, retry_at, updated_at))
+                    if not all(re.fullmatch(r'[a-f0-9]{24}', v) for v in (key, item_id)) or status not in ('ready', 'pending', 'failed') or type(attempts) is not int or not 1 <= attempts <= 2:
+                        raise ValueError('Invalid illustration record')
+                    from datetime import datetime
+                    for stamp in (retry_at, updated_at):
+                        if datetime.fromisoformat(stamp).tzinfo is None:
+                            raise ValueError('Invalid illustration timestamp')
+                    if status == 'ready':
+                        validate_jpeg(image)
+                        size += len(image)
+                        count += 1
+                    elif image is not None:
+                        raise ValueError('Unexpected failed illustration bytes')
+                if count > MAX_CACHED_IMAGES or size > MAX_CACHE_BYTES:
+                    raise ValueError('Illustration cache exceeds limit')
+                continue
+            if table == 'illustration_days':
+                if [r[1] for r in db.execute('PRAGMA table_info(illustration_days)')] != ['day', 'attempts']:
+                    raise ValueError('Unexpected illustration counter fields')
+                from datetime import date
+                for day, attempts in db.execute('SELECT * FROM illustration_days'):
+                    if date.fromisoformat(day).isoformat() != day or type(attempts) is not int or not 0 <= attempts <= 20:
+                        raise ValueError('Invalid illustration counter')
+                continue
             for row in db.execute(f'SELECT * FROM "{table}"'):
                 assert_no_secrets(row)
             if table in ("items", "posts"):

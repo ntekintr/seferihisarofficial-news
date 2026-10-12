@@ -18,6 +18,9 @@ seferihisar = "seferihisar.cli:main"
 [tool.setuptools.packages.find]
 include = ["seferihisar*"]
 
+[tool.setuptools.package-data]
+seferihisar = ["assets/*.png", "assets/*.md"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]

@@ -30,6 +30,9 @@ jobs:
       - name: Collect, verify and prepare (no Instagram publication)
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          ILLUSTRATIONS_ENABLED: 'true'
         run: python -m seferihisar.cli run
       - name: Validate both public boundaries before upload
         run: |
