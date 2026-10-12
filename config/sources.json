@@ -261,7 +261,8 @@
     "listing_urls": [
       "https://menderes.bel.tr/wp-json/wp/v2/haberler?per_page=12&_fields=id,date_gmt,link,title,content,status",
       "https://menderes.bel.tr/wp-json/wp/v2/duyurular?per_page=12&_fields=id,date_gmt,link,title,content,status"
-    ]
+    ],
+    "display_url": "https://menderes.bel.tr/"
   },
   {
     "id": "seferihisar-life",
@@ -283,7 +284,8 @@
     "trusted": true,
     "access": "robots",
     "max_pages": 6,
-    "follow_feed_details": false
+    "follow_feed_details": false,
+    "transient_retries": 1
   },
   {
     "id": "seferihisar-esnaf",
@@ -327,7 +329,8 @@
     "trusted": true,
     "access": "robots",
     "max_pages": 4,
-    "follow_feed_details": false
+    "follow_feed_details": false,
+    "display_url": "https://www.izmir.art/tr/etkinlikler"
   },
   {
     "id": "urla-kaymakamlik",

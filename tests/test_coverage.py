@@ -122,3 +122,16 @@ def test_school_reader_never_uses_related_article_date():
     page='<div class="icerik"><div class="icerik-yazi"><h1 class="baslik">Seferihisar kurs duyurusu</h1><div class="ara-bar"><span class="icerik-tarihi">01.10.2026</span></div><p>Seferihisar Halk Eğitimi Merkezi yeni kurs programı açıkladı.</p></div></div><div><span class="icerik-tarihi">12.10.2026</span></div>'
     assert structured(page,source['url'],source)[0]['published_at']=='2026-10-01T00:00:00+03:00'
     assert not structured(page.replace('01.10.2026',''),source['url'],source)
+
+
+def test_error_codes_classify_failures_without_copying_private_exception():
+    import requests
+    import xml.etree.ElementTree as ET
+    from seferihisar.pipeline import source_error_code
+    for exc, code in [(requests.ConnectionError('PRIVATE_VALUE'),'source_connection_failed'),
+                      (requests.Timeout('PRIVATE_VALUE'),'source_timeout'),
+                      (requests.exceptions.SSLError('PRIVATE_VALUE'),'source_tls_failed'),
+                      (ET.ParseError('PRIVATE_VALUE'),'source_parse_failed'),
+                      (ValueError('robots.txt disallows this path'),'source_robots_denied')]:
+        assert source_error_code(exc)==code
+    assert source_error_code(RuntimeError('PRIVATE_VALUE'))=='collection_failed'
