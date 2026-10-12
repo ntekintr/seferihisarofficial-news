@@ -65,6 +65,10 @@ jobs:
           INSTAGRAM_AUTH_MODE: facebook_login
           INSTAGRAM_ACCESS_TOKEN: ${{ secrets.INSTAGRAM_ACCESS_TOKEN }}
           INSTAGRAM_USER_ID: ${{ secrets.INSTAGRAM_USER_ID }}
+          FACEBOOK_PUBLISH_ENABLED: ${{ vars.FACEBOOK_PUBLISH_ENABLED }}
+          FACEBOOK_TESTS_COMPLETED: ${{ vars.FACEBOOK_TESTS_COMPLETED }}
+          FACEBOOK_PAGE_ID: ${{ vars.FACEBOOK_PAGE_ID }}
+          FACEBOOK_PAGE_ACCESS_TOKEN: ${{ secrets.FACEBOOK_PAGE_ACCESS_TOKEN }}
           META_GRAPH_VERSION: ${{ vars.META_GRAPH_VERSION || 'v25.0' }}
           SITE_URL: ${{ vars.SITE_URL }}
           STATE_GIT_CHECKPOINT: 'true'

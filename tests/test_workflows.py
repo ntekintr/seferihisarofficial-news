@@ -9,6 +9,7 @@ def test_scheduled_run_never_has_instagram_credentials_or_publish_command():
     assert workflow['concurrency']['cancel-in-progress']=='false'
     text=Path('.github/workflows/automation.yml').read_text()
     assert 'INSTAGRAM_ACCESS_TOKEN' not in text
+    assert 'FACEBOOK_PAGE_ACCESS_TOKEN' not in text
     assert 'cli publish' not in text
     assert 'state_git restore' in text and 'state_git persist' in text
 
@@ -23,6 +24,10 @@ def test_publication_requires_trusted_completed_research_or_explicit_dispatch():
     assert workflow['jobs']['publish']['steps'][0]['with']['ref']=='main'
     assert workflow['jobs']['publish']['environment']=='instagram-production'
     assert workflow['concurrency']['group']=='seferihisar-production'
+    facebook_steps=[s for s in workflow['jobs']['publish']['steps'] if 'FACEBOOK_PAGE_ACCESS_TOKEN' in s.get('env',{})]
+    assert len(facebook_steps)==1
+    assert facebook_steps[0]['env']['FACEBOOK_PUBLISH_ENABLED']=='${{ vars.FACEBOOK_PUBLISH_ENABLED }}'
+    assert facebook_steps[0]['env']['FACEBOOK_TESTS_COMPLETED']=='${{ vars.FACEBOOK_TESTS_COMPLETED }}'
 
 
 def test_permissions_are_scoped_to_the_jobs_that_need_them():

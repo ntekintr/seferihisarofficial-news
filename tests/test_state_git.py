@@ -18,12 +18,16 @@ def test_state_survives_a_fresh_runner_without_contaminating_code_branch(tmp_pat
     restore(path)
     db=Store(path)
     db.withhold('private content','human_review_required','2026-10-10T10:00:00+03:00')
+    with db.db:
+        db.db.execute('INSERT INTO facebook_deliveries VALUES(?,?,?,?,?,?,?,?,NULL)',
+            ('a'*24,'b'*24,'1234','feed','uncertain','2026-10-10T10:00:00+03:00','2026-10-10T10:00:00+03:00','[]'))
     db.close()
     persist(path)
     fresh=repo/'fresh/platform.sqlite'
     restore(fresh)
     restored=Store(fresh)
     assert restored.db.execute('SELECT COUNT(*) FROM withheld').fetchone()[0]==1
+    assert restored.rows('SELECT status FROM facebook_deliveries')==[{'status':'uncertain'}]
     restored.close()
     assert subprocess.run(['git','branch','--show-current'],check=True,capture_output=True,text=True).stdout.strip()=='main'
 

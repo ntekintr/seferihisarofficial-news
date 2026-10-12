@@ -48,6 +48,9 @@ def main():
                 checkpoint = lambda: persist(args.db)
             result = (publish_automatic(store, at, args.site_url, assets, checkpoint=checkpoint) if args.automatic
                       else publish_one(store, at, args.site_url, assets, args.story, checkpoint=checkpoint))
+            if args.automatic:
+                from .facebook import publish_recent
+                result['facebook'] = publish_recent(store, at, args.site_url, assets, checkpoint=checkpoint)
         finally:
             store.close()
     # Never print captions, source bodies or authentication details in Actions logs.
