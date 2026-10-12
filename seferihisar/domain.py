@@ -9,7 +9,7 @@ from zoneinfo import ZoneInfo
 TZ = ZoneInfo("Europe/Istanbul")
 PLACES = ("seferihisar", "sığacık", "sigacik", "ürkmez", "urkmez", "doğanbey", "doganbey", "akarca", "ulamış", "ulamis", "orhanlı", "orhanli")
 NEARBY_PLACES = ("güzelbahçe", "guzelbahce", "urla", "yelki", "özdere", "ozdere")
-NEARBY_TOPICS = ("konser", "festival", "şenlik", "senlik", "tiyatro", "sinema", "sergi", "etkinlik", "ulaşım", "ulasim", "eshot", "yol çalış", "yol calis", "yol kap", "kesinti", "fırtına", "firtina", "sağanak", "saganak", "sel uyar", "deprem", "yangın", "yangin", "tahliye", "kamu duyuru", "sağlık uyar", "saglik uyar", "hastane aç", "hastane kap")
+NEARBY_TOPICS = ("konser", "festival", "şenlik", "senlik", "tiyatro", "sinema", "sergi", "etkinlik", "atölye", "dans", "söyleşi", "kitap tanıtım", "turnuva", "koşu", "ulaşım", "ulasim", "eshot", "yol çalış", "yol calis", "yol kap", "kesinti", "fırtına", "firtina", "sağanak", "saganak", "sel uyar", "deprem", "yangın", "yangin", "tahliye", "kamu duyuru", "sağlık uyar", "saglik uyar", "hastane aç", "hastane kap")
 CATEGORIES = {
     "news": "Yerel Haberler", "municipality": "Belediye", "concert": "Konserler",
     "festival": "Festivaller", "theatre": "Tiyatro", "cinema": "Sinema",

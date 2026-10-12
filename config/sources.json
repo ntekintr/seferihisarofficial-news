@@ -16,12 +16,16 @@
   {
     "id": "seferihisar-kaymakamlik",
     "name": "Seferihisar Kaymakamlığı",
-    "url": "https://www.seferihisar.gov.tr/",
+    "url": "https://www.seferihisar.gov.tr/haberler",
     "kind": "html",
     "enabled": true,
     "trusted": true,
     "access": "robots",
-    "max_pages": 8
+    "max_pages": 8,
+    "link_selector": "a.news-card-horizontal[href]",
+    "article_selector": ".icerik",
+    "title_selector": "h2.page-title",
+    "published_date_selector": ".dateandtag .card-date"
   },
   {
     "id": "izmir-belediye",
@@ -109,6 +113,7 @@
     "allow_missing_robots": true,
     "link_selector": ".card-title a[href]",
     "article_selector": "article",
+    "transient_retries": 1,
     "listing_urls": [
       "https://www.seferihisar.com/kategori/yasam",
       "https://www.seferihisar.com/kategori/bolgesel",
@@ -125,6 +130,7 @@
     "access": "robots",
     "max_pages": 12,
     "follow_feed_details": false,
+    "transient_retries": 1,
     "article_selector": ".post-body .detay"
   },
   {
@@ -168,9 +174,11 @@
       "https://www.haberturk.com/haberleri/seferihisar",
       "https://www.haberturk.com/haberleri/urla",
       "https://www.haberturk.com/haberleri/guzelbahce",
-      "https://www.haberturk.com/haberleri/ozdere"
+      "https://www.haberturk.com/arama/ozdere?tr=%C3%96zdere"
     ],
-    "link_selector": "a[data-newsid][href]"
+    "link_selector": "a[data-newsid][href], a.block[href]",
+    "detail_url_pattern": "-\\d+/?$",
+    "transient_retries": 1
   },
   {
     "id": "dha",
@@ -185,5 +193,53 @@
     "link_selector": "a[href]",
     "detail_url_pattern": "-\\d+/?$",
     "local_links_only": true
+  },
+  {
+    "id": "urla-belediye",
+    "name": "Urla Belediyesi",
+    "url": "https://www.urla.bel.tr/Haberler.aspx",
+    "kind": "html",
+    "enabled": true,
+    "trusted": true,
+    "access": "robots",
+    "allow_missing_robots": true,
+    "max_pages": 8,
+    "listing_urls": [
+      "https://www.urla.bel.tr/Haberler.aspx",
+      "https://www.urla.bel.tr/kultur-sanat.aspx"
+    ],
+    "link_selector": "a[href*=\"/HaberDetay/\"], .takvimGrid a.etkinlikTag[href]",
+    "article_selector": "#printableArea",
+    "title_selector": ".content h1",
+    "published_date_selector": "#printableArea",
+    "published_date_parent": true,
+    "published_date_direct_text": true,
+    "body_text_fallback": true
+  },
+  {
+    "id": "guzelbahce-belediye",
+    "name": "Güzelbahçe Belediyesi",
+    "url": "https://www.guzelbahce.bel.tr/category/haberler/feed/",
+    "kind": "rss",
+    "enabled": true,
+    "trusted": true,
+    "access": "robots",
+    "max_pages": 8,
+    "article_selector": ".blog-details-content .text, .entry-content"
+  },
+  {
+    "id": "menderes-belediye",
+    "name": "Menderes Belediyesi",
+    "url": "https://menderes.bel.tr/wp-json/wp/v2/haberler?per_page=12&_fields=id,date_gmt,link,title,content,status",
+    "kind": "wp_rest",
+    "enabled": true,
+    "trusted": true,
+    "access": "robots",
+    "max_pages": 8,
+    "follow_feed_details": false,
+    "listing_urls": [
+      "https://menderes.bel.tr/wp-json/wp/v2/haberler?per_page=12&_fields=id,date_gmt,link,title,content,status",
+      "https://menderes.bel.tr/wp-json/wp/v2/duyurular?per_page=12&_fields=id,date_gmt,link,title,content,status"
+    ]
   }
 ]
