@@ -18,7 +18,7 @@ from urllib.parse import urljoin, urlsplit
 from urllib.robotparser import RobotFileParser
 
 import requests
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, NavigableString, Comment
 
 from .domain import TZ, canonical, category, digest, local, parse_date
 
@@ -89,6 +89,9 @@ class Fetcher:
         self.session = session or requests.Session()
         self.robots: dict[str, RobotFileParser] = {}
         self.last_request: dict[str, float] = {}
+        # One extra read per reviewed host/run, never a retry loop or a bypass.
+        self.retries = {urlsplit(s['url']).hostname: min(1, max(0, s.get('transient_retries', 0)))
+                        for s in sources if s.get('enabled')}
 
     def request(self, url: str) -> tuple[str, str]:
         url = safe_url(url, self.hosts)
@@ -116,6 +119,27 @@ class Fetcher:
         raise ValueError("Too many redirects")
 
     def get(self, url: str) -> tuple[str, str]:
+        try:
+            return self._get(url)
+        except requests.RequestException as exc:
+            host = urlsplit(url).hostname
+            response = exc.response
+            status = response.status_code if response is not None else None
+            retryable = isinstance(exc, (requests.Timeout, requests.ConnectionError)) or status in (429, 500, 502, 503, 504)
+            delay = 2
+            if status == 429:
+                value = response.headers.get('Retry-After', '')
+                if not value.isdigit() or int(value) > 5:
+                    retryable = False
+                else:
+                    delay = max(2, int(value))
+            if not retryable or self.retries.get(host, 0) <= 0:
+                raise
+            self.retries[host] -= 1
+            time.sleep(delay)
+            return self._get(url)
+
+    def _get(self, url: str) -> tuple[str, str]:
         host = urlsplit(url).hostname
         if host not in self.robots:
             robot = RobotFileParser()
@@ -161,12 +185,38 @@ def objects(value):
                 yield from objects(child)
 
 
+def publication_date(soup, source: dict):
+    """Source-specific publication field, never a date borrowed from body/sidebar."""
+    selector = source.get('published_date_selector')
+    if not selector:
+        node = soup.select_one('meta[property="article:published_time"], meta[name="datePublished"], meta[name="date"], time[datetime]')
+        return parse_date((node.get('content') or node.get('datetime')) if node else None)
+    nodes = soup.select(selector)
+    values = []
+    for node in nodes:
+        if source.get('published_date_parent'):
+            node = node.parent
+        value = (' '.join(str(n) for n in node.contents if isinstance(n, NavigableString) and not isinstance(n, Comment))
+                 if source.get('published_date_direct_text') else text(node))
+        match = re.fullmatch(r'\s*(\d{1,2})\.(\d{1,2})\.(20\d{2})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?\s*', value)
+        if not match:
+            return None
+        d, m, y, h, minute, second = match.groups()
+        try:
+            values.append(datetime(int(y), int(m), int(d), int(h or 0), int(minute or 0), int(second or 0), tzinfo=TZ))
+        except ValueError:
+            return None
+    return values[0] if values and len(set(values)) == 1 else None
+
+
 def structured(html: str, url: str, source: dict) -> list[dict]:
     soup = BeautifulSoup(html, "html.parser")
     article = soup.select_one(source.get("article_selector", 'article .entry-content, article .article-content, article, .news-detail, .haber-detay'))
     if article is None and source.get("article_selector"):
         article = soup.select_one('article, .news-detail, .haber-detay')
     article_text = " ".join(text(p) for p in article.select("p") if len(text(p)) > 30)[:3000] if article else ""
+    if not article_text and article and source.get('body_text_fallback'):
+        article_text = text(article)[:3000]
     results = []
     for script in soup.select('script[type="application/ld+json"]'):
         try:
@@ -242,14 +292,16 @@ def structured(html: str, url: str, source: dict) -> list[dict]:
     if not results:
         # Common WordPress and municipal article metadata, without guessing dates.
         headline = soup.select_one('meta[property="og:title"]')
-        published = soup.select_one('meta[property="article:published_time"], meta[name="datePublished"], meta[name="date"], time[datetime]')
-        date = parse_date((published.get("content") or published.get("datetime")) if published else None)
-        title = text(headline.get("content")) if headline else text(soup.find("h1"))
+        date = publication_date(soup, source)
+        title_node = soup.select_one(source['title_selector']) if source.get('title_selector') else None
+        title = text(title_node) if source.get('title_selector') else (text(headline.get("content")) if headline else text(soup.find("h1")))
         if article and date and title:
             for removable in article.select('script, style, nav, footer, .comments, .sharedaddy'):
                 removable.decompose()
             paragraphs = [text(p) for p in article.select("p")]
             description = " ".join(p for p in paragraphs if len(p) > 30)[:3000]
+            if not description and source.get('body_text_fallback'):
+                description = text(article)[:3000]
             if description and local(title + " " + description):
                 event = labelled_event(title, description, article, url, source)
                 results.append(event or {"kind": "news", "title": title[:240], "description": description,
@@ -261,6 +313,35 @@ def structured(html: str, url: str, source: dict) -> list[dict]:
                 event = labelled_event(title, description, article, url, source)
                 if event:
                     results.append(event)
+    return results
+
+
+def wordpress_items(body: str, base: str, source: dict) -> list[dict]:
+    """Public published WordPress news/announcements, using explicit GMT dates."""
+    data = json.loads(body)
+    if not isinstance(data, list):
+        raise ValueError('Expected a public WordPress collection')
+    results = []
+    for obj in data[:20]:
+        if not isinstance(obj, dict) or obj.get('status') != 'publish':
+            continue
+        title_obj, content_obj = obj.get('title'), obj.get('content')
+        if not isinstance(title_obj, dict) or not isinstance(content_obj, dict) or not isinstance(obj.get('link'), str):
+            continue
+        title, description = text(title_obj.get('rendered')), text(content_obj.get('rendered'))[:3000]
+        raw_date = obj.get('date_gmt', '')
+        if not isinstance(raw_date, str) or not re.fullmatch(r'20\d{2}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}', raw_date):
+            continue
+        date = parse_date(raw_date + 'Z')
+        if not date or not title or not description or not local(title + ' ' + description):
+            continue
+        url = page_url(urljoin(base, obj['link']))
+        article = BeautifulSoup(content_obj.get('rendered') or '', 'html.parser')
+        event = labelled_event(title, description, article, url, source)
+        results.append(event or {'kind':'news', 'title':title[:240], 'description':description,
+                       'url':url, 'identity':canonical(url), 'published_at':date.isoformat(),
+                       'source_id':source['id'], 'source_name':source['name'],
+                       'category':category(title+' '+description), 'sources':[url]})
     return results
 
 
@@ -333,8 +414,8 @@ def collect_source(source: dict, fetcher: Fetcher, known_events: list[dict]) -> 
         if urlsplit(listing).hostname != urlsplit(source["url"]).hostname:
             raise ValueError("Listing must belong to the configured source")
         body, base = fetcher.get(listing)
-        if source["kind"] == "rss":
-            found = feed_items(body, base, source)
+        if source["kind"] in ("rss", "wp_rest"):
+            found = (feed_items if source['kind'] == 'rss' else wordpress_items)(body, base, source)
             items.extend(found)
             if source.get("follow_feed_details", True):
                 links.extend(item["url"] for item in found[:8])
