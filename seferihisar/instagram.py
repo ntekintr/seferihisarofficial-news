@@ -1,4 +1,4 @@
-"""Official Meta Graph API adapter. No real publication in the scheduled workflow.
+"""Official Meta Graph API adapter with durable publication claims.
 
     Explicit publishing requires all three controls, public JPEG URLs and a test
     authorization. In-flight/uncertain publish attempts never auto-retry.
@@ -67,7 +67,7 @@ class Instagram:
         return value
 
 
-def publish_one(store: Store, at: datetime, site_url: str, assets: dict[str, dict], story: bool = False, adapter=None, checkpoint=None) -> dict:
+def publish_one(store: Store, at: datetime, site_url: str, assets: dict[str, dict], story: bool = False, adapter=None, checkpoint=None, *, target_id: str | None = None, paired_story: bool = False) -> dict:
     api = adapter or Instagram()
     if not api.enabled():
         return {"status": "disabled"}
@@ -81,13 +81,20 @@ def publish_one(store: Store, at: datetime, site_url: str, assets: dict[str, dic
         prepare_story_jobs(store, assets)
         prepare(store, at)  # Newly created frames also need fresh source evidence.
     prepared = sorted((p for p in store.posts() if p["status"] == "prepared" and parse_date(p["due_at"]) <= at and (p.get("publish_format") == "story") == story), key=lambda p: p["due_at"])
+    if target_id:
+        prepared = [p for p in prepared if p['id'] == target_id]
+    post = prepared[0] if prepared else None
     recent = store.rows("SELECT payload FROM posts WHERE status IN ('publishing','published','uncertain')")
     import json
-    if any(at - parse_date(json.loads(row["payload"])["published_at"]) < timedelta(minutes=45) for row in recent):
+    recent_posts = [json.loads(row['payload']) for row in recent]
+    # Only the first story card accompanying this already-published feed may
+    # share its publication window. Other content retains the 45-minute limit.
+    parent = next((p for p in store.posts() if post and p['id'] == post.get('parent_post_id') and p['status'] == 'published'), None)
+    allowed_parent = parent['id'] if story and paired_story and post and post.get('story_index') == 0 and parent else None
+    if any(at - parse_date(p['published_at']) < timedelta(minutes=45) and p['id'] != allowed_parent for p in recent_posts):
         return {"status": "rate_limited"}
     if not prepared:
         return {"status": "empty"}
-    post = prepared[0]
     media = ([post["story_asset"]] if story else assets.get(post["id"], {}).get("feed", []))
     if not media:
         return {"status": "media_missing"}
@@ -126,6 +133,46 @@ def publish_one(store: Store, at: datetime, site_url: str, assets: dict[str, dic
         if checkpoint:
             checkpoint()
         return {"status": "uncertain", "post_id": post["id"]}
+
+
+def publish_automatic(store: Store, at: datetime, site_url: str, assets: dict[str, dict], adapter=None, checkpoint=None) -> dict:
+    """At most two feeds per Turkish day; each gets one matching story card.
+
+    A completed/uncertain claim consumes its slot and daily budget, including
+    across runner restarts. Delays beyond one hour never dump the old queue.
+    """
+    from .domain import TZ
+    from .schedule import SLOTS, prepare
+    api = adapter or Instagram()
+    if not api.enabled():
+        return {'status':'disabled'}
+    at = at.astimezone(TZ)
+    slots = [datetime.combine(at.date(), slot, TZ) for slot in SLOTS]
+    slot = next((s for s in reversed(slots) if s <= at < s + timedelta(hours=1)), None)
+    if slot is None:
+        return {'status':'outside_window'}
+    prepare(store, at)
+    claims = [p for p in store.posts() if not p.get('publish_format') and p['status'] in ('published','publishing','uncertain') and p.get('published_at')]
+    in_slot = [p for p in claims if slot <= parse_date(p['published_at']).astimezone(TZ) < slot + timedelta(hours=1)]
+    if in_slot:
+        parent = sorted(in_slot, key=lambda p:p['published_at'])[0]
+        if parent['status'] != 'published':
+            return {'status':'awaiting_resolution'}
+        feed = {'status':'already_published','post_id':parent['id']}
+    else:
+        today = [p for p in claims if parse_date(p['published_at']).astimezone(TZ).date() == at.date()]
+        if len(today) >= 2:
+            return {'status':'daily_limit'}
+        feed = publish_one(store, at, site_url, assets, adapter=api, checkpoint=checkpoint)
+        if feed['status'] != 'published':
+            return {'status':feed['status']}
+        parent = next(p for p in store.posts() if p['id'] == feed['post_id'])
+    child_id = digest(parent['id'] + ':story:0')
+    child = next((p for p in store.posts() if p['id'] == child_id), None)
+    if child and child['status'] in ('published','publishing','uncertain'):
+        return {'status':'complete' if child['status']=='published' else 'awaiting_resolution', 'feed':feed['status'], 'story':child['status']}
+    story_result = publish_one(store, at, site_url, assets, story=True, adapter=api, checkpoint=checkpoint, target_id=child_id, paired_story=True)
+    return {'status':'complete' if story_result['status']=='published' else 'story_pending', 'feed':feed['status'], 'story':story_result['status']}
 
 
 def prepare_story_jobs(store: Store, assets: dict[str, dict]):

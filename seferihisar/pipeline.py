@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import shutil
 import tempfile
 import xml.etree.ElementTree as ET
@@ -167,7 +168,7 @@ def _export(store: Store, public_dir: Path, sources: list[dict], at: datetime, d
     public_posts = [{"id": p["id"], "kind": p["kind"], "title": p["title"], "due_at": p["due_at"], "status": p["status"],
                      "caption": p["caption"], "assets": assets.get(p["id"], {}), "category": p["category"]} for p in posts[:100] if p["status"] not in ("superseded", "expired") and not p.get("publish_format")]
     snapshot = {"schema_version": 1, "generated_at": at.isoformat(), "demo": demo,
-                "publishing_enabled": False, "illustrations": illustrator.stats,
+                "publishing_enabled": not demo and os.getenv('PUBLISHING_CONFIGURED') == 'true', "illustrations": illustrator.stats,
                 "news": news, "events": events, "posts": public_posts,
                 "withheld_count": store.db.execute("SELECT COUNT(*) FROM withheld").fetchone()[0],
                 "sources": [public_source(s) for s in sources],

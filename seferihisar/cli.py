@@ -18,6 +18,7 @@ def main():
     parser.add_argument("--fixture", type=Path)
     parser.add_argument("--site-url", default="")
     parser.add_argument("--story", action="store_true")
+    parser.add_argument("--automatic", action="store_true", help="Two daily feed/story pairs in configured Turkish time windows")
     args = parser.parse_args()
     at = parse_date(args.at) if args.at else now()
     if not at:
@@ -32,7 +33,7 @@ def main():
     elif args.command == "run":
         result = run(args.db, args.public, args.sources, at, args.fixture)
     else:
-        from .instagram import publish_one
+        from .instagram import publish_one, publish_automatic
         from .store import Store
         import os
         store = Store(args.db)
@@ -45,7 +46,8 @@ def main():
             if os.getenv("STATE_GIT_CHECKPOINT") == "true":
                 from .state_git import persist
                 checkpoint = lambda: persist(args.db)
-            result = publish_one(store, at, args.site_url, assets, args.story, checkpoint=checkpoint)
+            result = (publish_automatic(store, at, args.site_url, assets, checkpoint=checkpoint) if args.automatic
+                      else publish_one(store, at, args.site_url, assets, args.story, checkpoint=checkpoint))
         finally:
             store.close()
     # Never print captions, source bodies or authentication details in Actions logs.
