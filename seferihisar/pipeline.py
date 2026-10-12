@@ -3,6 +3,8 @@ from __future__ import annotations
 import json
 import shutil
 import tempfile
+import xml.etree.ElementTree as ET
+import requests
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -14,6 +16,25 @@ from .illustrations import Illustrator
 from .schedule import prepare
 from .store import Store
 from .security import ITEM_FIELDS, PUBLIC_ITEM_FIELDS, assert_no_secrets, contains_secret, public_url, validate_public
+
+
+def source_error_code(exc: Exception) -> str:
+    """Useful diagnostics without copying untrusted exception text or request data."""
+    if isinstance(exc, requests.exceptions.SSLError):
+        return 'source_tls_failed'
+    if isinstance(exc, requests.Timeout):
+        return 'source_timeout'
+    if isinstance(exc, requests.HTTPError) and exc.response is not None:
+        code = exc.response.status_code
+        if type(code) is int and 100 <= code <= 599:
+            return 'source_http_' + str(code)
+    if isinstance(exc, requests.ConnectionError):
+        return 'source_connection_failed'
+    if isinstance(exc, (ET.ParseError, json.JSONDecodeError)):
+        return 'source_parse_failed'
+    if isinstance(exc, ValueError) and str(exc) == 'robots.txt disallows this path':
+        return 'source_robots_denied'
+    return 'collection_failed'
 
 
 def run(db_path: Path, public_dir: Path, sources_path: Path, at: datetime | None = None, fixture: Path | None = None) -> dict:
@@ -47,9 +68,9 @@ def run(db_path: Path, public_dir: Path, sources_path: Path, at: datetime | None
                     health[source['id']] = {'checked_at':now().isoformat(), 'status':'partial' if detail_errors else ('ok' if found else 'empty'),
                                              'parsed':len(found), 'accepted':0, 'error_count':len(detail_errors),
                                              'latest_published_at':max(dates).isoformat() if dates else None}
-                except Exception:
+                except Exception as exc:
                     # Only controlled codes are retained; URLs/exceptions can contain tokens.
-                    errors.append({"source_id": source["id"], "code": "collection_failed"})
+                    errors.append({"source_id": source["id"], "code": source_error_code(exc)})
                     health[source['id']] = {'checked_at':now().isoformat(), 'status':'failed', 'parsed':0, 'accepted':0, 'error_count':1, 'latest_published_at':None}
         for candidate in candidates:
             # Candidate labels/URLs are untrusted and might contain private query data.
@@ -168,7 +189,8 @@ def _export(store: Store, public_dir: Path, sources: list[dict], at: datetime, d
 def public_source(source: dict) -> dict:
     from urllib.parse import urlsplit
     result = {k: source.get(k) for k in ("id", "name", "kind", "enabled", "trusted", "access")}
-    parts = urlsplit(source["url"])
+    display = source.get('display_url', source['url'])
+    parts = urlsplit(display if public_url(display) else source['url'])
     result["url"] = f"https://{parts.hostname}{parts.path}"
     return result
 
