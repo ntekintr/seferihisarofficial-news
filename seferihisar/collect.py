@@ -12,7 +12,7 @@ import re
 import socket
 import time
 import xml.etree.ElementTree as ET
-from datetime import datetime
+from datetime import datetime, timedelta
 from email.utils import parsedate_to_datetime
 from itertools import zip_longest
 from urllib.parse import urljoin, urlsplit
@@ -21,7 +21,7 @@ from urllib.robotparser import RobotFileParser
 import requests
 from bs4 import BeautifulSoup, NavigableString, Comment
 
-from .domain import TZ, canonical, category, digest, local, parse_date
+from .domain import TZ, canonical, category, digest, local, normalized, now, parse_date
 
 AGENT = "SeferihisarOfficial/0.1 (+https://github.com/ntekintr/seferihisarofficial-news)"
 MAX_BYTES = 2_000_000
@@ -411,6 +411,81 @@ def izmir_art_items(body: str, base: str, source: dict) -> list[dict]:
     return results
 
 
+def municipal_calendar_items(body: str, base: str, source: dict) -> list[dict]:
+    """Reviewed FullCalendar date-only feed; its end date is exclusive."""
+    rows = json.loads(body)
+    if not isinstance(rows, list) or any(not isinstance(row, dict) for row in rows):
+        raise ValueError('Expected municipal calendar collection')
+    results = []
+    for row in rows:
+        title, href = text(row.get('title')), row.get('url')
+        event_category = category(title)
+        if not title or not local(title) or event_category not in (
+            'concert', 'festival', 'theatre', 'cinema', 'family', 'sport',
+            'market', 'culture', 'event', 'food', 'education'):
+            continue
+        if not isinstance(href, str) or not href.startswith('/') or href.startswith('//'):
+            continue
+        dates = [row.get('start'), row.get('end')]
+        if not all(isinstance(d, str) and re.fullmatch(r'20\d{2}-\d{2}-\d{2}', d) for d in dates):
+            continue
+        start, exclusive_end = map(parse_date, dates)
+        if not start or not exclusive_end or exclusive_end <= start:
+            continue
+        url = page_url(urljoin(base, href))
+        if urlsplit(url).hostname != urlsplit(base).hostname or urlsplit(url).scheme != 'https':
+            continue
+        # Date-only end remains date-only; no event time, fee or venue is inferred.
+        results.append({'kind': 'event', 'identity': canonical(url), 'url': url,
+                        'title': title[:240], 'description': title[:240],
+                        'source_id': source['id'], 'source_name': source['name'],
+                        'category': event_category, 'sources': [url, base],
+                        'start': start.isoformat(), 'end': (exclusive_end - timedelta(days=1)).isoformat(),
+                        'time_known': False, 'location': None, 'organizer': None,
+                        'free': None, 'price': None, 'currency': None, 'ticket_url': None,
+                        'status': 'scheduled', 'previous_start': None})
+    return results
+
+
+def collect_municipal_calendar(source: dict, fetcher: Fetcher):
+    body, base = fetcher.get(source['url'])
+    today = now().date()
+    upcoming = [i for i in municipal_calendar_items(body, base, source)
+                if parse_date(i['end']).date() >= today
+                and parse_date(i['start']).date() <= today + timedelta(days=90)]
+    upcoming.sort(key=lambda i: (i['start'], i['url']))
+    found, errors = [], []
+    seen = set()
+    for item in upcoming:
+        if item['identity'] in seen:
+            continue
+        seen.add(item['identity'])
+        if len(seen) > source.get('max_pages', 8):
+            break
+        try:
+            detail, final = fetcher.get(item['url'])
+            soup = BeautifulSoup(detail, 'html.parser')
+            article = soup.select_one('.col-md-9 > .inner')
+            title = soup.select_one('.col-md-9 > .inner .right-title')
+            if canonical(final) != item['identity'] or not article or normalized(text(title)) != normalized(item['title']):
+                raise ValueError('Calendar detail does not match')
+            body_text = text(article)
+            richer = labelled_event(item['title'], body_text, article, final, source)
+            if richer:
+                if parse_date(richer['start']).date() != parse_date(item['start']).date():
+                    raise ValueError('Calendar detail date conflicts')
+                for field in ('location', 'organizer', 'free', 'status'):
+                    item[field] = richer[field]
+            if re.search(r'(?:etkinlik|konser|gösteri|festival)\s+iptal\s+edil(?:di|miştir)', body_text, re.I):
+                item['status'] = 'cancelled'
+            elif re.search(r'(?:etkinlik|konser|gösteri|festival)\s+ertelen(?:di|miştir)', body_text, re.I):
+                item['status'] = 'postponed'
+            found.append(item)
+        except (requests.RequestException, ValueError, OSError):
+            errors.append({'source_id': source['id'], 'code': 'calendar_detail_check_failed'})
+    return found, [], errors
+
+
 def feed_items(xml: str, base: str, source: dict) -> list[dict]:
     root = ET.fromstring(xml)
     results = []
@@ -470,6 +545,8 @@ def discover(html: str, base: str) -> list[dict]:
 
 
 def collect_source(source: dict, fetcher: Fetcher, known_events: list[dict]) -> tuple[list[dict], list[dict], list[dict]]:
+    if source['kind'] == 'municipal_calendar':
+        return collect_municipal_calendar(source, fetcher)
     items, candidates, links = [], [], []
     # A bounded set of district listings shares one source identity and page budget.
     listings = source.get("listing_urls") or [source["url"]]

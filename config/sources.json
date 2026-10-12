@@ -389,5 +389,29 @@
     "title_selector": ".icerik > .icerik-yazi > h1.baslik",
     "published_date_selector": ".icerik > .icerik-yazi > .ara-bar > span.icerik-tarihi",
     "body_text_fallback": true
+  },
+  {
+    "id": "seferihisar-calendar",
+    "name": "Seferihisar Belediyesi etkinlik takvimi",
+    "url": "https://seferihisar.bel.tr/Kurumsal/TakvimService.aspx",
+    "display_url": "https://seferihisar.bel.tr/",
+    "kind": "municipal_calendar",
+    "enabled": true,
+    "trusted": true,
+    "access": "robots",
+    "allow_missing_robots": true,
+    "max_pages": 8
+  },
+  {
+    "id": "kulturekoloji",
+    "name": "KültürEkoloji Derneği",
+    "url": "https://www.kulturekoloji.org/feed/",
+    "display_url": "https://www.kulturekoloji.org/",
+    "kind": "rss",
+    "enabled": true,
+    "trusted": true,
+    "access": "robots",
+    "max_pages": 6,
+    "follow_feed_details": false
   }
 ]

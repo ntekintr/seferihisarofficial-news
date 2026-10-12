@@ -29,7 +29,7 @@
     "url": "https://bademlersanatkoyu.com/etkinlikler-ve-workshoplar/",
     "group": "etkinlik",
     "status": "reader_pending",
-    "note": "Sayfa okunuyor; güncel tarihli etkinlik veri akışı henüz yok. RSS blog yazılarını içeriyor."
+    "note": "Etkinlik sayfası okunuyor; örneğin 25 Aralık duyurusunda yıl açıklanmıyor. Yıl ve seans tahmin edilmeden okuyucu kapalı tutuluyor."
   },
   {
     "id": "teosfest",
@@ -181,7 +181,7 @@
     "url": "https://rotary2440.org/",
     "group": "oda_dernek",
     "status": "reader_pending",
-    "note": "Bölge ve kulüp duyuruları okunuyor; tarihli yerel etkinlik okuyucusu henüz yok."
+    "note": "Tarih ve yer bilgisi okunuyor; örnek konserin görünür saati 20:30, JSON-LD saati UTC etiketi nedeniyle 23:30 oluyor. Bu çelişki çözülmeden otomatik yayın bağlı değil. Kulüp adı yerine gerçek mekân esas alınmalı."
   },
   {
     "id": "afad",
@@ -221,7 +221,7 @@
     "url": "https://www.teoskultursanat.com/",
     "group": "oda_dernek",
     "status": "reader_pending",
-    "note": "Resmî web adresi incelendi; tarihli yerel duyuru okuyucusu henüz bağlı değil."
+    "note": "Düzenli etkinlikler sayfası 2017 ve 2018–2020 yıllıklarını içeriyor; güncel tarihli seans akışı doğrulanmadı."
   },
   {
     "id": "sehayder",
@@ -229,6 +229,22 @@
     "url": "https://www.sehayder.com/",
     "group": "oda_dernek",
     "status": "reader_pending",
-    "note": "Resmî web adresi incelendi; tarihli yerel duyuru okuyucusu henüz bağlı değil."
+    "note": "Duyurular sayfası güncel haberler için kendi Facebook sayfasına yönlendiriyor; web üzerinde tarihli duyuru akışı yok."
+  },
+  {
+    "id": "seferihisar-calendar",
+    "name": "Seferihisar Belediyesi etkinlik takvimi",
+    "url": "https://seferihisar.bel.tr/",
+    "group": "etkinlik",
+    "status": "connected",
+    "note": "Açık takvim servisindeki tam yıl ve gün aralığı, eşleşen detay sayfasıyla doğrulanır. Saat/ücret/yer açıklanmazsa tahmin edilmez. Takvim bitiş günü dışlayıcıdır."
+  },
+  {
+    "id": "kulturekoloji",
+    "name": "KültürEkoloji Derneği",
+    "url": "https://www.kulturekoloji.org/",
+    "group": "oda_dernek",
+    "status": "connected",
+    "note": "RSS haber akışı okunuyor. Eski kayıtlar yeni haber sayılmaz; son testte güncel kabul edilen kayıt yok."
   }
 ]
