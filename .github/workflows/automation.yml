@@ -1,5 +1,12 @@
 name: Research and prepare Seferihisar content
 on:
+  push:
+    branches: [main]
+    paths:
+      - 'seferihisar/**'
+      - 'config/**'
+      - 'site/**'
+      - '.github/workflows/automation.yml'
   schedule:
     - cron: '7,22,37,52 * * * *'
   workflow_dispatch:
