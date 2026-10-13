@@ -117,7 +117,13 @@ def prepare_digest(store: Store, at: datetime, kind: str, days: int):
         period = at.strftime("%Y-%m")
         title = "Seferihisar ve Çevresi Etkinlik Takvimi"
     failed = blocked_sources(store)
-    upcoming = [e for e in store.items("event") if e["status"] in ("scheduled", "rescheduled") and at.date() <= parse_date(e["start"]).date() <= at.date() + timedelta(days=days)]
+    # Include festivals already under way while their verified last day/time
+    # still overlaps this edition's window.
+    upcoming = [e for e in store.items("event")
+                if e["status"] in ("scheduled", "rescheduled")
+                and parse_date(e["start"]).date() <= at.date() + timedelta(days=days)
+                and parse_date(e["end"]).date() >= at.date()
+                and (not e.get("time_known") or parse_date(e["end"]) >= at)]
     events = sorted((e for e in upcoming if source_current(e, at, failed)), key=lambda e: e["start"])
     if not events:
         with store.db:
