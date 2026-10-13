@@ -12,6 +12,7 @@ from PIL import Image
 
 from seferihisar.domain import digest
 from seferihisar.illustrations import Illustrator, STYLE, clean_image, image_key, topic
+from seferihisar.image_safety import IllustrationCheckUnavailable, IllustrationTextRejected, validate_jpeg
 from seferihisar.pipeline import export
 from seferihisar.schedule import prepare
 from seferihisar.security import validate_public, validate_state
@@ -30,6 +31,8 @@ def configured(monkeypatch):
     monkeypatch.setenv('CLOUDFLARE_API_TOKEN', 'SYNTHETIC_CLOUDFLARE_CREDENTIAL_0123456789')
     monkeypatch.setenv('CLOUDFLARE_ACCOUNT_ID', 'a' * 32)
     monkeypatch.setenv('ILLUSTRATIONS_ENABLED', 'true')
+    monkeypatch.setattr('seferihisar.illustrations.ocr_available', lambda: True)
+    monkeypatch.setattr('seferihisar.illustrations.validate_text_free_illustration', validate_jpeg)
 
 
 def client():
@@ -263,3 +266,119 @@ def test_preexisting_published_card_without_binding_does_not_inherit_new_art(sto
     old_post = {'item_id':item['id'], 'kind':'announcement', 'status':'published', 'slides':[{}]}
     assert generator.for_post(old_post, {item['id']:item}) == {}
     assert generator.session.post.call_count == 1
+
+
+def test_cached_lettering_is_quarantined_before_any_card_or_retry(store, event, at, tmp_path, configured, monkeypatch):
+    item = saved_item(store, event, at)
+    key = image_key(item)
+    with store.db:
+        store.db.execute('INSERT INTO illustrations VALUES (?,?,?,?,?,?,?)',
+                         (key, item['id'], 'ready', clean_image(png()), 1, at.isoformat(), at.isoformat()))
+    check = Mock(side_effect=IllustrationTextRejected('Illustration lettering rejected'))
+    monkeypatch.setattr('seferihisar.illustrations.validate_text_free_illustration', check)
+    session = client()
+    generator = Illustrator(store, at, tmp_path, session=session)
+    assert generator.image(item, True) is None
+    record = store.rows('SELECT status,image,attempts FROM illustrations WHERE id=?', (key,))[0]
+    assert record == {'status': 'failed', 'image': None, 'attempts': 2}
+    fresh = Illustrator(store, at + timedelta(days=2), tmp_path, session=session)
+    assert fresh.image(item, True) is None
+    session.post.assert_not_called()
+    assert check.call_count == 1
+    validate_state(store.path)
+
+
+def test_frozen_published_bindings_reject_old_lettering_without_regenerating(store, event, at, tmp_path, configured, monkeypatch):
+    item = saved_item(store, event, at)
+    session = client()
+    first = Illustrator(store, at, tmp_path / 'first', session=session)
+    assert first.image(item, True)
+    monkeypatch.setattr('seferihisar.illustrations.validate_text_free_illustration',
+                        Mock(side_effect=IllustrationTextRejected('Illustration lettering rejected')))
+    frozen = {'item_id': item['id'], 'kind': 'announcement', 'status': 'published',
+              'slides': [{}], 'illustration_keys': {'0': image_key(item)}}
+    fresh = Illustrator(store, at, tmp_path / 'fresh', session=session)
+    assert fresh.for_post(frozen, {item['id']: item}) == {}
+    assert store.rows('SELECT status,image FROM illustrations')[0] == {'status': 'failed', 'image': None}
+    assert session.post.call_count == 1
+    validate_state(store.path)
+
+
+def test_generated_lettering_never_becomes_ready_and_other_scenes_can_continue(store, event, at, tmp_path, configured, monkeypatch):
+    item = saved_item(store, event, at)
+    check = Mock(side_effect=[IllustrationTextRejected('Illustration lettering rejected'), None])
+    monkeypatch.setattr('seferihisar.illustrations.validate_text_free_illustration', check)
+    generator = Illustrator(store, at, tmp_path, session=client())
+    assert generator.image(item, True) is None
+    assert generator.stats['generated'] == 0 and generator.stats['attempted'] == 1
+    assert generator.image({**item, 'id': digest('another-scene')}, True)
+    assert generator.stats['attempted'] == 2 and generator.stats['generated'] == 1
+    assert store.rows('SELECT status,image,attempts FROM illustrations WHERE id=?', (image_key(item),))[0] == {'status': 'failed', 'image': None, 'attempts': 2}
+    validate_state(store.path)
+
+
+def test_missing_ocr_keeps_ready_cache_private_and_spends_no_provider_attempt(store, event, at, tmp_path, configured, monkeypatch):
+    item = saved_item(store, event, at)
+    key = image_key(item)
+    data = clean_image(png())
+    with store.db:
+        store.db.execute('INSERT INTO illustrations VALUES (?,?,?,?,?,?,?)',
+                         (key, item['id'], 'ready', data, 1, at.isoformat(), at.isoformat()))
+    monkeypatch.setattr('seferihisar.illustrations.ocr_available', lambda: False)
+    session = client()
+    generator = Illustrator(store, at, tmp_path, session=session)
+    assert generator.image(item, True) is None
+    assert generator.image({**item, 'id': digest('another')}, True) is None
+    frozen = {'status': 'published', 'slides': [{}], 'illustration_keys': {'0': key}}
+    assert generator.for_post(frozen, {item['id']: item}) == {}
+    assert store.rows('SELECT status,image FROM illustrations')[0] == {'status': 'ready', 'image': data}
+    assert not store.rows('SELECT * FROM illustration_days')
+    session.post.assert_not_called()
+
+
+def test_ocr_runtime_failure_does_not_materialize_cached_bytes(store, event, at, tmp_path, configured, monkeypatch):
+    item = saved_item(store, event, at)
+    key = image_key(item)
+    with store.db:
+        store.db.execute('INSERT INTO illustrations VALUES (?,?,?,?,?,?,?)',
+                         (key, item['id'], 'ready', clean_image(png()), 1, at.isoformat(), at.isoformat()))
+    check = Mock(side_effect=IllustrationCheckUnavailable('Illustration text check unavailable'))
+    monkeypatch.setattr('seferihisar.illustrations.validate_text_free_illustration', check)
+    session = client()
+    generator = Illustrator(store, at, tmp_path, session=session)
+    assert generator.image(item, True) is None
+    assert generator.image(item, True) is None
+    assert generator.image({**item, 'id': digest('another')}, True) is None
+    assert check.call_count == 1
+    assert not list(tmp_path.glob('*.jpg'))
+    session.post.assert_not_called()
+
+
+def test_scene_is_ocr_checked_once_before_reuse_in_many_cards(store, event, at, tmp_path, configured, monkeypatch):
+    item = saved_item(store, event, at)
+    check = Mock()
+    monkeypatch.setattr('seferihisar.illustrations.validate_text_free_illustration', check)
+    generator = Illustrator(store, at, tmp_path, session=client())
+    assert generator.image(item, True)
+    assert generator.image(item, True)
+    frozen = {'status': 'published', 'slides': [{}], 'illustration_keys': {'0': image_key(item)}}
+    assert generator.for_post(frozen, {item['id']: item})
+    assert generator.for_post(frozen, {item['id']: item})
+    assert check.call_count == 1
+
+
+def test_prune_quarantines_unreferenced_old_revision_and_checks_once(store, event, at, tmp_path, configured, monkeypatch):
+    item = saved_item(store, event, at)
+    old_key = digest('old-revision-no-longer-used-in-prepared-posts')
+    with store.db:
+        store.db.execute('INSERT INTO illustrations VALUES (?,?,?,?,?,?,?)',
+                         (old_key, item['id'], 'ready', clean_image(png()), 1, at.isoformat(), at.isoformat()))
+    check = Mock(side_effect=IllustrationTextRejected('Illustration lettering rejected'))
+    monkeypatch.setattr('seferihisar.illustrations.validate_text_free_illustration', check)
+    generator = Illustrator(store, at, tmp_path, session=client())
+    generator.prune({item['id']})
+    generator.prune({item['id']})
+    assert store.rows('SELECT status,image,attempts FROM illustrations')[0] == {'status': 'failed', 'image': None, 'attempts': 2}
+    check.assert_called_once()
+    generator.session.post.assert_not_called()
+    validate_state(store.path)

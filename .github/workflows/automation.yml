@@ -25,6 +25,10 @@ jobs:
           python-version: '3.12'
           cache: pip
       - run: python -m pip install -e .
+      - name: Install local illustration lettering check (no external AI request)
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends tesseract-ocr tesseract-ocr-tur
       - name: Restore durable state (never use expiring cache as database)
         id: restore
         run: python -m seferihisar.state_git restore

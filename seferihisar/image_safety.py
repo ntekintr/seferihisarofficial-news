@@ -6,6 +6,84 @@ MAX_CACHE_BYTES = 12 * 1024 * 1024
 MAX_CACHED_IMAGES = 80
 
 
+class IllustrationTextRejected(ValueError):
+    """The generated scene contains lettering that must not become news facts."""
+
+
+class IllustrationCheckUnavailable(ValueError):
+    """OCR could not verify the scene; callers must use their branded fallback."""
+
+
+def ocr_available() -> bool:
+    # Lazy, standard-library imports keep the durable-state writer independent
+    # of both Pillow and installed system programs.
+    import shutil
+    import subprocess
+    binary = shutil.which('tesseract')
+    if not binary:
+        return False
+    try:
+        result = subprocess.run([binary, '--list-langs'], check=True, stdout=subprocess.PIPE,
+                                stderr=subprocess.PIPE, timeout=10)
+        languages = result.stdout.decode('utf-8', errors='strict').splitlines()
+        return {'eng', 'tur'} <= {language.strip() for language in languages}
+    except (OSError, subprocess.SubprocessError, UnicodeError):
+        return False
+
+
+def validate_text_free_illustration(data: bytes):
+    """Reject visible AI lettering before the account's own text/logo is added.
+
+    OCR is an extra safeguard, not proof of the depicted scene's factual truth.
+    Missing programs, missing language data and malformed output fail closed.
+    Neither OCR text nor diagnostics are returned or written to public state.
+    """
+    import csv
+    import io
+    import math
+    import re
+    import shutil
+    import subprocess
+    validate_jpeg(data)
+    binary = shutil.which('tesseract')
+    if not binary:
+        raise IllustrationCheckUnavailable('Illustration text check unavailable')
+    try:
+        result = subprocess.run([binary, 'stdin', 'stdout', '-l', 'eng+tur', '--psm', '11', 'tsv'],
+                                input=data, check=True, stdout=subprocess.PIPE,
+                                stderr=subprocess.PIPE, timeout=15)
+        if len(result.stdout) > 256 * 1024:
+            raise IllustrationCheckUnavailable('Illustration text check unavailable')
+        reader = csv.DictReader(io.StringIO(result.stdout.decode('utf-8', errors='strict')), delimiter='\t')
+        expected = ['level', 'page_num', 'block_num', 'par_num', 'line_num', 'word_num',
+                    'left', 'top', 'width', 'height', 'conf', 'text']
+        if reader.fieldnames != expected:
+            raise IllustrationCheckUnavailable('Illustration text check unavailable')
+        saw_page = False
+        for row in reader:
+            if None in row or any(value is None for value in row.values()):
+                raise IllustrationCheckUnavailable('Illustration text check unavailable')
+            confidence = float(row['conf'])
+            if not math.isfinite(confidence):
+                raise IllustrationCheckUnavailable('Illustration text check unavailable')
+            saw_page |= row['level'] == '1'
+            letters = ''.join(char for char in row['text'] if char.isalnum())
+            # A possible four-digit year is unsafe even when the stylized font
+            # makes OCR uncertain. Other short tokens require modest confidence
+            # to avoid treating every decorative stroke as a written word.
+            year = bool(re.search(r'(?:19|20)\d{2}', letters))
+            if letters and ((year and confidence >= 0) or
+                            (len(letters) >= 2 and confidence >= 20) or
+                            (len(letters) == 1 and confidence >= 80)):
+                raise IllustrationTextRejected('Illustration lettering rejected')
+        if not saw_page:
+            raise IllustrationCheckUnavailable('Illustration text check unavailable')
+    except IllustrationTextRejected:
+        raise
+    except (OSError, subprocess.SubprocessError, UnicodeError, ValueError, csv.Error):
+        raise IllustrationCheckUnavailable('Illustration text check unavailable') from None
+
+
 def validate_jpeg(data: bytes):
     if not isinstance(data, bytes) or not 20 <= len(data) <= MAX_IMAGE_BYTES or data[:2] != b'\xff\xd8':
         raise ValueError('Invalid illustration bytes')

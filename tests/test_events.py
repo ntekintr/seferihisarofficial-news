@@ -2,6 +2,7 @@ from copy import deepcopy
 from datetime import timedelta
 
 from seferihisar.schedule import prepare
+from seferihisar.editor import caption, event_date_label
 from seferihisar.store import Store
 
 
@@ -94,3 +95,25 @@ def test_unknown_time_can_have_event_day_reminder(store, event, at):
     store.upsert(event, at.isoformat())
     prepare(store, at)
     assert any(p["kind"] == "reminder_day" and p["status"] == "prepared" for p in store.posts())
+
+
+def test_multiday_unknown_time_reaches_item_and_digest_cards_and_captions(store, event, at):
+    event.update(start='2026-10-13T00:00:00+03:00', end='2026-10-15T00:00:00+03:00',
+                 time_known=False)
+    store.upsert(event, at.isoformat())
+    prepare(store, at)
+    date_range = '13.10.2026 – 15.10.2026'
+    for post in store.posts():
+        assert date_range in post['caption']
+        assert any(date_range in slide['body'] for slide in post['slides'])
+        assert ' · 00:00' not in str(post)
+    assert 'Saat açıklanmadı' in caption(event, 'Bölge takviminde')
+
+
+def test_multiday_date_label_keeps_month_and_year_boundaries_and_start_time(event):
+    event.update(start='2026-12-31T20:00:00+03:00', end='2027-01-01T00:00:00+03:00',
+                 time_known=True)
+    assert event_date_label(event) == '31.12.2026 – 01.01.2027 · Başlangıç 20:00'
+    assert event_date_label(event, include_time=False) == '31.12.2026 – 01.01.2027'
+    event.update(end='2026-12-31T22:00:00+03:00')
+    assert event_date_label(event) == '31.12.2026 · 20:00'
