@@ -6,7 +6,7 @@ from copy import deepcopy
 from datetime import datetime, time, timedelta
 
 from .domain import TZ, digest, parse_date
-from .editor import caption, caption_with_hashtags, digest_hashtags, event_date_label, event_title, headline
+from .editor import caption, caption_with_hashtags, digest_hashtags, event_date_label, event_title, headline, news_body
 from .media_caption import generated_image_caption
 from .store import Store
 
@@ -131,7 +131,7 @@ def card_location(item: dict) -> str | None:
 
 def slide_body(item: dict) -> str:
     if item["kind"] == "news":
-        return item["description"][:650] + "\n\nKaynak: " + item["source_name"]
+        return news_body(item)[:650] + "\n\nKaynak: " + item["source_name"]
     details = [event_date_label(item)]
     if location := card_location(item):
         details.append(location)
@@ -196,4 +196,5 @@ def prepare_digest(store: Store, at: datetime, kind: str, days: int):
             store.db.execute("UPDATE posts SET payload=?,status='prepared' WHERE id=?", (json.dumps(post, ensure_ascii=False), key))
     else:
         store.queue(post)
+
 
