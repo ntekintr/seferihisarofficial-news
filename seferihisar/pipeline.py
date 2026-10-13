@@ -14,6 +14,7 @@ from .domain import now, parse_date
 from .editor import ai_priority, verify
 from .render import render_post
 from .illustrations import Illustrator
+from .media_caption import generated_image_caption
 from .schedule import prepare
 from .store import Store
 from .security import ITEM_FIELDS, PUBLIC_ITEM_FIELDS, assert_no_secrets, contains_secret, public_url, validate_public
@@ -158,7 +159,21 @@ def _export(store: Store, public_dir: Path, sources: list[dict], at: datetime, d
     shutil.rmtree(public_dir / "media", ignore_errors=True)
     for post in sorted([p for p in posts if not p.get("publish_format")][:100], key=lambda p: p['due_at']):
         if post["status"] in ("prepared", "published", "publishing", "uncertain"):
-            assets[post["id"]] = render_post(post, public_dir, illustrator.for_post(post, item_map))
+            illustrations = illustrator.for_post(post, item_map)
+            if post["status"] == "prepared":
+                # Research records actual assignments. The publisher renders
+                # locally with generation disabled, but uses deployed Pages
+                # assets and must retain their persisted image disclosure.
+                generated = bool(illustrations) if illustrator.enabled else bool(post.get("illustration_keys"))
+                post["caption"] = generated_image_caption(post["caption"], generated)
+                rows = store.rows("SELECT payload FROM posts WHERE id=? AND status='prepared'", (post["id"],))
+                if rows:
+                    payload = json.loads(rows[0]["payload"])
+                    payload["caption"] = post["caption"]
+                    with store.db:
+                        store.db.execute("UPDATE posts SET payload=? WHERE id=? AND status='prepared'",
+                                         (json.dumps(payload, ensure_ascii=False), post["id"]))
+            assets[post["id"]] = render_post(post, public_dir, illustrations)
     illustrator.prune(set(item_map))
     from .schedule import blocked_sources, source_current
     failed = blocked_sources(store)
@@ -224,3 +239,4 @@ def export_calendar(events: list[dict], public_dir: Path):
                   "STATUS:" + ("CANCELLED" if event["status"] == "cancelled" else "TENTATIVE" if event["status"] == "postponed" or not event.get("source_current", True) else "CONFIRMED"), "END:VEVENT"]
     lines.append("END:VCALENDAR")
     (public_dir / "events.ics").write_bytes(("\r\n".join(chunk for line in lines for chunk in fold(line)) + "\r\n").encode())
+

@@ -111,8 +111,8 @@ def test_migration_and_detention_reports_require_review(source, event, at):
 def test_nearby_caption_uses_reported_place(event):
     item = {**event,'title':'Urla konseri','description':'Konser programı açıklandı.','location':'Urla'}
     content = caption(item,headline(item,'announcement'))
-    assert '#Urla' in content
-    assert '#Sığacık' not in content
+    assert '#urla' in content
+    assert '#sigacik' not in content
 
 
 def test_districts_share_budget_fairly(source):
@@ -167,3 +167,4 @@ def test_feed_only_source_still_rechecks_known_future_events(source,event):
     collect_source(source,fetcher,[event])
     assert fetcher.get.call_count==2
     assert fetcher.get.call_args.args[0]==event['url']
+

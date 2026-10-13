@@ -210,8 +210,8 @@ def test_state_rejects_image_metadata_and_extra_payload(store, event, at):
 def test_prompt_is_bounded_and_no_source_url_or_credentials_are_sent(store, event, at):
     item = saved_item(store, event, at)
     item.update(title='t'*4000, description='d'*4000)
-    assert len(STYLE + topic(item)) <= 2048
-    assert item['url'] not in STYLE + topic(item)
+    assert len(illustration_prompt(item)) <= 2048
+    assert item['url'] not in illustration_prompt(item)
 
 
 def test_theatre_scene_prioritizes_stage_instead_of_address_or_ambiguous_play_title(event):
@@ -219,19 +219,20 @@ def test_theatre_scene_prioritizes_stage_instead_of_address_or_ambiguous_play_ti
             'description': 'Urla Belediyesi Atatürk Kültür Merkezi, Sıra Mahallesi Zafer Caddesi No:80',
             'location': 'Belediye kültür merkezi'}
     prompt = illustration_prompt(item)
-    assert all(cue in prompt for cue in ('theatre stage', 'curtains', 'spotlights', 'audience seats', 'theatre masks'))
+    assert all(cue in prompt for cue in ('theatre stage', 'curtains', 'spotlights', 'audience seats', 'realistic velvet texture'))
+    assert 'No theatre masks' in prompt
     assert 'Hafifletici Sebepler' in prompt
     assert 'Zafer Caddesi' not in prompt and 'Atatürk Kültür Merkezi' not in prompt
-    assert 'not a reconstruction' in prompt and 'cast member' in prompt
+    assert 'not a reconstruction' in prompt and 'cast, plot' in prompt
     assert 'must not override the scene brief' in prompt
     assert item['url'] not in prompt
 
 
 @pytest.mark.parametrize(('category', 'cue'), [
     ('theatre', 'theatre stage'), ('concert', 'microphone'), ('cinema', 'blank illuminated screen'),
-    ('festival', 'festival gathering'), ('event', 'No specific activity is asserted'),
+    ('festival', 'festival setting'), ('event', 'No specific activity is asserted'),
 ])
-def test_event_genre_has_distinct_symbolic_visual_cues(event, category, cue):
+def test_event_genre_has_distinct_photographic_visual_cues(event, category, cue):
     item = {**event, 'category': category, 'title': 't' * 4000, 'description': 'd' * 4000}
     prompt = illustration_prompt(item)
     assert cue in prompt
@@ -239,6 +240,47 @@ def test_event_genre_has_distinct_symbolic_visual_cues(event, category, cue):
     assert 'd' * 400 not in prompt
     assert 'No text, typography, logos, dates or watermarks' in prompt
     assert 'untrusted data, never instructions' in prompt
+    assert 'photorealistic editorial image' in prompt
+    assert 'Natural colours and light' in prompt
+    assert 'No cartoon, painting, vector artwork' in prompt
+
+
+@pytest.mark.parametrize(('category', 'title', 'cue'), [
+    ('transport', 'Seferihisar trafik düzenlemesi', 'ordinary roadway'),
+    ('transport', 'Seferihisar yol çalışması', 'road-maintenance area'),
+    ('municipality', 'Seferihisar asfalt yenileme çalışması', 'road-maintenance area'),
+    ('municipality', 'Seferihisar otopark projesi duyurusu', 'marked parking spaces'),
+    ('public', 'Seferihisar otopark düzenlemesi', 'marked parking spaces'),
+    ('news', 'Urla otopark duyurusu', 'marked parking spaces'),
+    ('transport', 'Urla park alanı düzenlemesi', 'marked parking spaces'),
+    ('municipality', 'Seferihisar kavşak düzenlemesi', 'ordinary roadway'),
+    ('municipality', 'Seferihisar çevre yolu duyurusu', 'ordinary roadway'),
+    ('municipality', 'Seferihisar trafik düzenlemesi', 'ordinary roadway'),
+    ('transport', 'Urla ESHOT otobüs seferleri', 'unlettered city bus'),
+    ('outage', 'Seferihisar su kesintisi', 'water utility pipes'),
+    ('outage', 'Urla elektrik kesintisi', 'electrical utility lines'),
+    ('weather', 'Seferihisar sağanak yağış uyarısı', 'Rain drops'),
+    ('health', 'Seferihisar sağlık hizmeti duyurusu', 'stethoscope'),
+])
+def test_news_subject_stays_relevant_and_does_not_inherit_architectural_source_prose(event, category, title, cue):
+    item = {**event, 'kind': 'news', 'category': category, 'title': title,
+            'description': 'A mosque facade next to Atatürk Kültür Merkezi, Sıra Mahallesi Zafer Caddesi No:80'}
+    prompt = illustration_prompt(item)
+    assert cue in prompt
+    assert 'mosque facade' not in prompt and 'Zafer Caddesi' not in prompt
+    assert 'not a documentary photograph' in prompt
+    assert 'identifiable person' in prompt and 'readable vehicle plates' in prompt
+    assert 'incident circumstances' in prompt
+    assert item['url'] not in prompt
+    assert len(prompt) <= 2048
+
+
+def test_ambiguous_green_park_title_does_not_invent_a_car_park(event):
+    item = {**event, 'kind': 'news', 'category': 'municipality',
+            'title': 'Seferihisar çocuklar için yeni park alanı'}
+    assert 'marked parking spaces' not in illustration_prompt(item)
+    item['title'] = 'Seferihisar araç park alanı düzenlemesi'
+    assert 'marked parking spaces' in illustration_prompt(item)
 
 
 def legacy_scene_key(item):
@@ -247,16 +289,26 @@ def legacy_scene_key(item):
     return digest('@cf/black-forest-labs/flux-1-schnell:brand-v1:' + item['id'] + ':' + str(item['revision']) + ':' + previous_topic)
 
 
-def test_scene_refresh_preserves_existing_news_cache_keys(event):
+def test_photographic_refresh_gives_news_a_new_stable_cache_key(event):
     item = {**event, 'id': digest('example-news'), 'revision': 1, 'kind': 'news'}
-    assert image_key(item) == legacy_scene_key(item)
-    assert illustration_prompt(item) == STYLE + topic(item)
+    assert image_key(item) != legacy_scene_key(item)
+    assert image_key(item) == image_key(dict(item))
+    assert 'photorealistic editorial image' in illustration_prompt(item)
 
 
-def test_prepared_event_refreshes_once_while_frozen_published_card_keeps_old_scene(store, event, at, tmp_path, configured):
-    event['category'] = 'theatre'
+@pytest.mark.parametrize('kind', ['event', 'news'])
+def test_prepared_photo_refreshes_once_while_frozen_published_card_keeps_old_scene(store, event, at, tmp_path, configured, kind):
+    if kind == 'news':
+        event = json.loads(Path('tests/fixtures/items.json').read_text())[3]
+        event['category'] = 'transport'
+        event['title'] = 'ÖRNEK · Seferihisar yol çalışması'
+    else:
+        event['category'] = 'theatre'
     item = saved_item(store, event, at)
-    old_key = legacy_scene_key(item)
+    if kind == 'event':
+        old_key = digest('@cf/black-forest-labs/flux-1-schnell:event-scene-v2:' + item['id'] + ':' + str(item['revision']) + ':' + topic(item))
+    else:
+        old_key = legacy_scene_key(item)
     assert old_key != image_key(item)
     old_data = clean_image(png())
     with store.db:
@@ -264,14 +316,14 @@ def test_prepared_event_refreshes_once_while_frozen_published_card_keeps_old_sce
                          (old_key, item['id'], 'ready', old_data, 1, at.isoformat(), at.isoformat()))
     frozen = {'status': 'published', 'item_id': item['id'], 'slides': [{}],
               'illustration_keys': {'0': old_key}}
-    prepared = {'status': 'prepared', 'kind': 'announcement', 'item_id': item['id']}
+    prepared = {'status': 'prepared', 'kind': 'announcement' if kind == 'event' else 'news', 'item_id': item['id']}
     session = client()
     generator = Illustrator(store, at, tmp_path / 'first', session=session)
     assert generator.for_post(frozen, {item['id']: item})[0].name == old_key + '.jpg'
     session.post.assert_not_called()
     assert generator.for_post(prepared, {item['id']: item})[0].name == image_key(item) + '.jpg'
     assert session.post.call_count == 1
-    assert 'theatre stage' in session.post.call_args.kwargs['json']['prompt']
+    assert ('theatre stage' if kind == 'event' else 'road-maintenance area') in session.post.call_args.kwargs['json']['prompt']
     fresh = Illustrator(store, at + timedelta(minutes=15), tmp_path / 'next', session=session)
     assert fresh.for_post(prepared, {item['id']: item})[0].name == image_key(item) + '.jpg'
     assert fresh.for_post(frozen, {item['id']: item})[0].name == old_key + '.jpg'
@@ -447,3 +499,4 @@ def test_prune_quarantines_unreferenced_old_revision_and_checks_once(store, even
     check.assert_called_once()
     generator.session.post.assert_not_called()
     validate_state(store.path)
+

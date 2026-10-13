@@ -73,6 +73,106 @@ def event_title(item: dict) -> str:
     return item["title"] + " — " + event_type_label(item["category"])
 
 
+_SOURCE_HASHTAG = re.compile(r"#(\w+)", re.UNICODE)
+_SOURCE_TEXT_TOKEN = re.compile(r"https?://\S+|#(\w+)", re.UNICODE)
+_TAG_TRANSLATION = str.maketrans("çğıöşü", "cgiosu")
+_PLACES = re.compile(r"\b(seferihisar|sigacik|urkmez|urla|guzelbahce|yelki|ozdere)\b")
+
+
+def plain_source_text(value: str) -> str:
+    """Keep source words, but do not import the source's hashtag campaign."""
+    return _SOURCE_TEXT_TOKEN.sub(lambda match: match.group(1) if match.group(1) is not None else match.group(), value)
+
+
+def _tag_text(value: str) -> str:
+    # A source hashtag is not evidence that the event is in that place.
+    text = re.sub(r"https?://\S+", "", value)
+    return normalized(_SOURCE_HASHTAG.sub("", text)).translate(_TAG_TRANSLATION)
+
+
+def _place_tags(item: dict) -> list[str]:
+    places = []
+    for field in ("location", "title", "description"):
+        for place in _PLACES.findall(_tag_text(item.get(field) or "")):
+            tag = "#" + place
+            if tag not in places:
+                places.append(tag)
+    return places[:2]
+
+
+def _topic_tags(item: dict) -> list[str]:
+    category = item.get("category")
+    text = _tag_text(" ".join(item.get(field) or "" for field in ("title", "description", "location")))
+    event = item.get("kind") == "event"
+    primary = {"theatre": "#tiyatro", "concert": "#konser", "cinema": "#sinema",
+               "festival": "#festival", "culture": "#kultursanat", "family": "#ailevecocuk",
+               "sport": "#spor", "market": "#pazarvefuar", "food": "#gastronomi",
+               "tourism": "#turizm", "transport": "#ulasim", "outage": "#kesinti",
+               "weather": "#havadurumu", "education": "#egitim", "health": "#saglik",
+               "municipality": "#belediye", "public": "#kamuduyurusu"}.get(
+                   category, "#etkinlik" if event else "#yerelhaber")
+    topics = [primary]
+    if category == "theatre" and event:
+        topics.append("#tiyatrooyunu")
+    elif category == "concert" and (event or "canli muzik" in text):
+        topics.append("#canlimuzik")
+    elif category == "cinema" and (event or "film goster" in text):
+        topics.append("#filmgosterimi")
+    elif category == "transport":
+        if re.search(r"\byol calis\w*\b|\byapim calis\w*\b|\basfalt\w*\b", text):
+            topics.append("#yolcalismasi")
+        topics.append("#trafik")
+    elif category == "outage":
+        if re.search(r"\belektrik\b", text):
+            topics.append("#elektrikkesintisi")
+        if re.search(r"\bsu\b", text):
+            topics.append("#sukesintisi")
+    elif category == "culture":
+        for cue, tag in (("atolye", "#atolye"), ("sergi", "#sergi"), ("soylesi", "#soylesi")):
+            if re.search(r"\b" + cue + r"\w*\b", text):
+                topics.append(tag)
+    elif category == "sport":
+        for cue, tag in (("kosu", "#kosu"), ("turnuva", "#turnuva")):
+            if re.search(r"\b" + cue + r"\w*\b", text):
+                topics.append(tag)
+    elif category == "food":
+        for cue, tag in (("mandalina", "#mandalina"), ("zeytin", "#zeytin")):
+            if re.search(r"\b" + cue + r"\w*\b", text):
+                topics.append(tag)
+    return topics
+
+
+def _combine_tags(places: list[str], topics: list[str]) -> list[str]:
+    geography = list(dict.fromkeys(places))[:2]
+    selected_topics = [tag for tag in dict.fromkeys(topics) if tag not in geography]
+    return geography + selected_topics[:min(3, 4 - len(geography))] + ["#seferihisarofficial"]
+
+
+def hashtags(item: dict) -> list[str]:
+    """Choose up to five lowercase tags from verified location and category."""
+    return _combine_tags(_place_tags(item), _topic_tags(item))
+
+
+def digest_hashtags(items: list[dict]) -> list[str]:
+    """Represent the selected events; source-provided campaign tags stay out."""
+    places = [tag for item in items for tag in _place_tags(item)]
+    topics = [_topic_tags(item) for item in items]
+    # Prioritize category diversity before secondary tags for one event.
+    candidates = [tags[0] for tags in topics] + [tag for tags in topics for tag in tags[1:]]
+    return _combine_tags(places, candidates)
+
+
+def caption_with_hashtags(content: str, tags: list[str], *, footer: str = "", limit: int = 2200) -> str:
+    """Reserve a complete source/footer and hashtag line before shortening text."""
+    safe_tags = list(dict.fromkeys(tag for tag in tags if re.fullmatch(r"#[a-z0-9_]+", tag)))[:5]
+    tail = "\n\n".join(part for part in (footer.strip(), " ".join(safe_tags)) if part)
+    available = max(0, limit - len(tail) - (2 if tail else 0))
+    body = plain_source_text(content).strip()
+    if len(body) > available:
+        body = body[:available].rsplit(" ", 1)[0].rstrip()
+    return "\n\n".join(part for part in (body, tail) if part)
+
+
 def caption(item: dict, label: str) -> str:
     lines = [label] if item["kind"] == "event" and item["title"] in label else [label, item["title"]]
     if item["kind"] == "event":
@@ -93,15 +193,8 @@ def caption(item: dict, label: str) -> str:
             lines.append("Etkinliğin tarihi güncellendi.")
     if item.get("description"):
         lines.append("Kaynak duyurusundan: “" + item["description"][:1000] + "”")
-    geography = normalized(item["title"] + " " + item.get("description", "") + " " + (item.get("location") or ""))
-    places = (("seferihisar", "Seferihisar"), ("sığacık", "Sığacık"), ("sigacik", "Sığacık"),
-              ("güzelbahçe", "Güzelbahçe"), ("guzelbahce", "Güzelbahçe"), ("urla", "Urla"),
-              ("yelki", "Yelki"), ("özdere", "Özdere"), ("ozdere", "Özdere"))
-    tags = list(dict.fromkeys("#" + label for place, label in places
-                             if re.search(r"\b" + re.escape(normalized(place)) + r"\b", geography)))
-    lines += ["Kaynak: " + item["source_name"] + "\n" + item["url"],
-              " ".join(tags + ["#SeferihisarOfficial", "#Etkinlik" if item["kind"] == "event" else "#YerelHaber"])]
-    return "\n\n".join(lines)[:2200]
+    source = "Kaynak: " + plain_source_text(item["source_name"]) + "\n" + item["url"]
+    return caption_with_hashtags("\n\n".join(lines), hashtags(item), footer=source)
 
 
 def ai_priority(item: dict, session=None) -> int | None:
@@ -134,3 +227,4 @@ def headline(item: dict, kind: str) -> str:
               "update": "Etkinlik bilgisi güncellendi", "cancellation": "İptal duyurusu", "news": CATEGORIES[item["category"]]}
     title = event_title(item) if item["kind"] == "event" else item["title"]
     return f"{prefix.get(kind, 'Seferihisar Official')}: {title}"
+

@@ -42,7 +42,7 @@ def test_distinct_illustrations_do_not_change_logo_or_brand_strips(tmp_path, mon
         assert first.size == second.size == (1080, 1350)
         assert ImageChops.difference(first.crop((0, 0, 1080, 128)), second.crop((0, 0, 1080, 128))).getbbox() is None
         assert ImageChops.difference(first.crop((0, 180, 1080, 440)), second.crop((0, 180, 1080, 440))).getbbox()
-    assert sum(text == 'Temsili çizim' for text, _ in observed) == 2
+    assert 'Temsili çizim' not in [text for text, _ in observed]
 
 
 def test_missing_illustration_does_not_claim_a_scene_or_ai_image(tmp_path, monkeypatch):
@@ -65,3 +65,4 @@ def test_illustration_is_assigned_to_its_slide_only(tmp_path, monkeypatch):
 
 def test_turkish_uppercase_keeps_dotted_i():
     assert render.upper_tr('Seferihisar’ın gündemi') == 'SEFERİHİSAR’IN GÜNDEMİ'
+
