@@ -97,12 +97,51 @@ def _same_region(first: dict, second: dict) -> bool:
     return 2 * width * height >= area
 
 
+def _guard_tiles(binary: str, data: bytes):
+    """Bounded overlapping scene scans catch lettering skipped as a graphic.
+
+    These are large image regions, never a forced single-word crop. Lossless
+    temporary pixels stay in memory and cannot enter the cache or public site.
+    """
+    import io
+    from PIL import Image
+    try:
+        with Image.open(io.BytesIO(data)) as image:
+            width, height = image.size
+            span_x, span_y = (2 * width + 2) // 3, (2 * height + 2) // 3
+            boxes = ((0, 0, span_x, span_y), (width - span_x, 0, width, span_y),
+                     (0, height - span_y, span_x, height),
+                     (width - span_x, height - span_y, width, height))
+            scanned = set()
+            for bounds in boxes:
+                if bounds in scanned:
+                    continue
+                scanned.add(bounds)
+                left, top, right, bottom = bounds
+                pixels = Image.new('RGB', (right - left, bottom - top))
+                pixels.paste(image.crop(bounds))
+                target = io.BytesIO()
+                pixels.save(target, format='PNG')
+                words = _scan_words(binary, target.getvalue(), 11)
+                for word in words:
+                    box = word['box']
+                    if (box['left'] + box['width'] > pixels.width or
+                            box['top'] + box['height'] > pixels.height):
+                        raise IllustrationCheckUnavailable('Illustration text check unavailable')
+                    word['box'] = {**box, 'left': left + box['left'], 'top': top + box['top']}
+                yield words
+    except (OSError, ValueError):
+        raise IllustrationCheckUnavailable('Illustration text check unavailable') from None
+
+
 def validate_text_free_illustration(data: bytes):
     """Reject lettering before the account's own text/logo is added.
 
     Two full-scene segmentations distinguish short apparent words from natural
     texture. Possible years and strongly recognized whole words remain unsafe
     in either scan; other candidates need matching text in the same image area.
+    Four fixed overlapping scene regions also check years and whole words that
+    full-image segmentation can skip as part of a graphic.
     OCR is an extra safeguard, not proof of the depicted scene's factual truth.
     Missing programs, missing language data and malformed output fail closed.
     Bounded evidence stays on the exception for a separate review artifact.
@@ -123,12 +162,15 @@ def validate_text_free_illustration(data: bytes):
             seen.add(signature)
             findings.append(word)
 
+    def directly_unsafe(word):
+        # An uncertain 19xx/20xx must not become a fabricated event date.
+        year = bool(re.search(r'(?:19|20)\d{2}', word['letters']))
+        return ((year and word['confidence'] >= 0) or
+                (len(word['letters']) >= 4 and word['confidence'] >= 80))
+
     for words in scans:
         for word in words:
-            # An uncertain 19xx/20xx must not become a fabricated event date.
-            year = bool(re.search(r'(?:19|20)\d{2}', word['letters']))
-            if ((year and word['confidence'] >= 0) or
-                    (len(word['letters']) >= 4 and word['confidence'] >= 80)):
+            if directly_unsafe(word):
                 remember(word)
 
     def candidate(word):
@@ -148,6 +190,15 @@ def validate_text_free_illustration(data: bytes):
                     break
     if findings:
         raise IllustrationTextRejected(findings=findings)
+    # A clear full-image rejection needs no extra CPU work. Acceptance also
+    # requires valid spatial scans, because a photo can hide obvious lettering
+    # from the page segmenter even when both complete-image TSVs are well formed.
+    for words in _guard_tiles(binary, data):
+        for word in words:
+            if directly_unsafe(word):
+                remember(word)
+        if findings:
+            raise IllustrationTextRejected(findings=findings)
 
 
 def validate_jpeg(data: bytes):

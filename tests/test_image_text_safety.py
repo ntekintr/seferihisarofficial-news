@@ -27,7 +27,7 @@ def output(word='', confidence=90, box=(100, 100, 180, 32)):
 
 def two_scans(engine, first, second):
     engine.side_effect = [subprocess.CompletedProcess([], 0, stdout=data, stderr=b'')
-                          for data in (first, second)]
+                          for data in (first, second, output(), output(), output(), output())]
 
 
 @pytest.fixture
@@ -41,11 +41,16 @@ def engine(monkeypatch):
 def test_plain_scene_has_no_detected_text_and_input_stays_off_command_line(engine):
     data = jpeg()
     validate_text_free_illustration(data)
-    assert engine.call_count == 2
-    for (args, kwargs), mode in zip(engine.call_args_list, ('11', '6')):
+    assert engine.call_count == 6
+    for index, ((args, kwargs), mode) in enumerate(zip(engine.call_args_list, ('11', '6', '11', '11', '11', '11'))):
         assert args[0] == ['/usr/bin/tesseract', 'stdin', 'stdout', '-l', 'eng+tur', '--psm', mode, 'tsv']
-        assert kwargs['input'] == data and kwargs['timeout'] == 15 and kwargs['check'] is True
+        assert kwargs['timeout'] == 15 and kwargs['check'] is True
         assert kwargs['stdout'] == subprocess.PIPE and kwargs['stderr'] == subprocess.PIPE
+        if index < 2:
+            assert kwargs['input'] == data
+        else:
+            with Image.open(io.BytesIO(kwargs['input'])) as tile:
+                assert tile.format == 'PNG' and tile.size == (512, 512)
 
 
 @pytest.mark.parametrize('word,confidence', [('2021', 2), ('FESTİVALİ', 46), ('festival', 90), ('15.10.2026', 1), ('S', 99)])
@@ -173,6 +178,60 @@ def test_confirmation_scan_timeout_fails_closed_without_leaking_diagnostics(engi
                           subprocess.TimeoutExpired(['tesseract'], 15, stderr=b'private OCR detail')]
     with pytest.raises(IllustrationCheckUnavailable) as caught:
         validate_text_free_illustration(jpeg())
+    assert 'private' not in str(caught.value)
+
+
+def test_year_skipped_by_full_scene_is_rejected_in_last_fixed_spatial_region(engine):
+    engine.side_effect = [subprocess.CompletedProcess([], 0, stdout=data, stderr=b'')
+                          for data in (output(), output(), output(), output(), output(), output('2021', 0))]
+    with pytest.raises(IllustrationTextRejected) as caught:
+        validate_text_free_illustration(jpeg())
+    assert caught.value.findings == [
+        {'text': '2021', 'confidence': 0,
+         'box': {'left': 356, 'top': 356, 'width': 180, 'height': 32}}
+    ]
+    assert engine.call_count == 6
+
+
+def test_strong_whole_word_skipped_by_full_scene_is_rejected_in_spatial_scan(engine):
+    engine.side_effect = [subprocess.CompletedProcess([], 0, stdout=data, stderr=b'')
+                          for data in (output(), output(), output('FESTIVAL', 80))]
+    with pytest.raises(IllustrationTextRejected):
+        validate_text_free_illustration(jpeg())
+    assert engine.call_count == 3
+
+
+def test_short_spatial_texture_tokens_cannot_approve_their_own_rejection(engine):
+    engine.side_effect = [subprocess.CompletedProcess([], 0, stdout=data, stderr=b'')
+                          for data in (output(), output(), output('A', 99), output('aI', 99), output('117', 90), output('çe', 80))]
+    validate_text_free_illustration(jpeg())
+
+
+def test_malformed_spatial_scan_fails_closed_before_acceptance(engine):
+    engine.side_effect = [subprocess.CompletedProcess([], 0, stdout=data, stderr=b'')
+                          for data in (output(), output(), b'not TSV')]
+    with pytest.raises(IllustrationCheckUnavailable):
+        validate_text_free_illustration(jpeg())
+
+
+def test_spatial_word_box_outside_tile_fails_closed(engine):
+    engine.side_effect = [subprocess.CompletedProcess([], 0, stdout=data, stderr=b'')
+                          for data in (output(), output(), output('2021', 20, (500, 10, 180, 32)))]
+    with pytest.raises(IllustrationCheckUnavailable):
+        validate_text_free_illustration(jpeg())
+
+
+@pytest.mark.parametrize('operation', ['open', 'save'])
+def test_spatial_image_decode_and_serialization_errors_fail_closed(engine, monkeypatch, operation):
+    data = jpeg()
+    def broken(*args, **kwargs):
+        raise OSError('private image decoder detail')
+    if operation == 'open':
+        monkeypatch.setattr('PIL.Image.open', broken)
+    else:
+        monkeypatch.setattr('PIL.Image.Image.save', broken)
+    with pytest.raises(IllustrationCheckUnavailable) as caught:
+        validate_text_free_illustration(data)
     assert 'private' not in str(caught.value)
 
 

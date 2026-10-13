@@ -45,6 +45,9 @@ def test_native_ocr_still_rejects_visible_year_on_the_same_photo():
     # Only this synthetic, trusted test fixture may expose bounded OCR words in
     # a test failure. Production provider text still stays out of logs/state.
     binary = shutil.which('tesseract')
+    fixture_path = Path('work/ocr-native-fixture.jpg')
+    fixture_path.parent.mkdir(parents=True, exist_ok=True)
+    fixture_path.write_bytes(encoded)
     scans = {
         str(mode): [{'text': word['text'][:160], 'confidence': word['confidence'], 'box': word['box']}
                     for word in _scan_words(binary, encoded, mode)[:32]]
