@@ -97,7 +97,7 @@ def _same_region(first: dict, second: dict) -> bool:
     return 2 * width * height >= area
 
 
-def _guard_tiles(binary: str, data: bytes):
+def _guard_tiles(binary: str, data: bytes, mode: int = 11):
     """Bounded overlapping scene scans catch lettering skipped as a graphic.
 
     These are large image regions, never a forced single-word crop. Lossless
@@ -122,7 +122,7 @@ def _guard_tiles(binary: str, data: bytes):
                 pixels.paste(image.crop(bounds))
                 target = io.BytesIO()
                 pixels.save(target, format='PNG')
-                words = _scan_words(binary, target.getvalue(), 11)
+                words = _scan_words(binary, target.getvalue(), mode)
                 for word in words:
                     box = word['box']
                     if (box['left'] + box['width'] > pixels.width or
