@@ -153,3 +153,36 @@ def test_digest_window_keeps_later_event_monthly_only(store, event, at):
     assert not any(p['kind'] == 'weekly' for p in store.posts())
     monthly = next(p for p in store.posts() if p['kind'] == 'monthly')
     assert monthly['status'] == 'prepared' and event['title'] in str(monthly['slides'])
+
+
+def test_digest_does_not_treat_annual_book_club_program_as_current_occurrence(store, event):
+    at = parse_date('2026-10-13T12:00:00+03:00')
+    event.update(title='Urladam Kitap Kulübü 2026 Takvimi',
+                 start='2026-02-11T00:00:00+03:00', end='2026-12-23T00:00:00+03:00',
+                 time_known=False)
+    store.upsert(event, at.isoformat())
+    prepare(store, at)
+    assert not any(p['kind'] in ('weekly', 'monthly') for p in store.posts())
+
+
+@pytest.mark.parametrize('inclusive_days,included', [(7, True), (8, False)])
+def test_digest_ongoing_occurrence_has_conservative_week_span(store, event, inclusive_days, included):
+    at = parse_date('2026-10-16T12:00:00+03:00')
+    start = parse_date('2026-10-12T00:00:00+03:00')
+    event.update(start=start.isoformat(), end=(start + timedelta(days=inclusive_days - 1)).isoformat(),
+                 time_known=False)
+    store.upsert(event, at.isoformat())
+    prepare(store, at)
+    for kind in ('weekly', 'monthly'):
+        assert any(p['kind'] == kind and p['status'] == 'prepared' for p in store.posts()) is included
+
+
+@pytest.mark.parametrize('start_offset', [0, 2])
+def test_digest_retains_long_program_that_starts_today_or_within_window(store, event, start_offset):
+    at = parse_date('2026-10-16T12:00:00+03:00')
+    start = at.replace(hour=0) + timedelta(days=start_offset)
+    event.update(start=start.isoformat(), end=(start + timedelta(days=30)).isoformat(),
+                 time_known=False)
+    store.upsert(event, at.isoformat())
+    prepare(store, at)
+    assert {p['kind'] for p in store.posts() if p['kind'] in ('weekly', 'monthly') and p['status'] == 'prepared'} == {'weekly', 'monthly'}
