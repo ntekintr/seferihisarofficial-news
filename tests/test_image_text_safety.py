@@ -48,6 +48,46 @@ def test_text_and_year_are_rejected_even_when_no_factual_matching_is_attempted(e
         validate_text_free_illustration(jpeg())
 
 
+@pytest.mark.parametrize('word,confidence', [('ab', 20), ('S', 80), ('2021', 0)])
+def test_exact_existing_rejection_boundaries_include_private_evidence(engine, word, confidence):
+    engine.return_value.stdout = output(word, confidence)
+    with pytest.raises(IllustrationTextRejected) as caught:
+        validate_text_free_illustration(jpeg())
+    assert caught.value.findings == [
+        {'text': word, 'confidence': float(confidence),
+         'box': {'left': 100, 'top': 100, 'width': 180, 'height': 32}}
+    ]
+    assert caught.value.args == ('Illustration lettering rejected',)
+    assert word not in repr(caught.value)
+
+
+@pytest.mark.parametrize('word,confidence', [('ab', 19.99), ('S', 79.99), ('2021', -1), ('...', 99)])
+def test_tokens_below_existing_rejection_boundaries_are_accepted(engine, word, confidence):
+    engine.return_value.stdout = output(word, confidence)
+    validate_text_free_illustration(jpeg())
+
+
+def test_private_findings_are_bounded_without_skipping_later_validation(engine):
+    row = output('x' * 200, 90).decode().splitlines()[-1] + '\n'
+    engine.return_value.stdout = (HEADER + PAGE + row * 40).encode()
+    with pytest.raises(IllustrationTextRejected) as caught:
+        validate_text_free_illustration(jpeg())
+    assert len(caught.value.findings) == 32
+    assert all(len(finding['text']) == 160 for finding in caught.value.findings)
+    assert 'x' * 160 not in str(caught.value)
+    # Reaching the evidence limit must not hide malformed later OCR output.
+    engine.return_value.stdout += b'malformed\n'
+    with pytest.raises(IllustrationCheckUnavailable):
+        validate_text_free_illustration(jpeg())
+
+
+@pytest.mark.parametrize('left', ['invalid', '-1', '769'])
+def test_malformed_or_unbounded_ocr_coordinates_fail_closed(engine, left):
+    engine.return_value.stdout = output('word', 90).replace(b'\t100\t100\t', f'\t{left}\t100\t'.encode())
+    with pytest.raises(IllustrationCheckUnavailable):
+        validate_text_free_illustration(jpeg())
+
+
 @pytest.mark.parametrize('bad', [b'', b'not TSV', HEADER.encode() + b'malformed\n', output('abc', 'NaN'), b'X' * (256 * 1024 + 1)],
                          ids=['empty', 'wrong-format', 'incomplete-row', 'invalid-confidence', 'oversized'])
 def test_malformed_ocr_output_fails_closed(engine, bad):
@@ -81,3 +121,4 @@ def test_corrupt_jpeg_is_rejected_before_engine_execution(engine):
     with pytest.raises(ValueError, match='Invalid illustration bytes'):
         validate_text_free_illustration(b'not an image')
     engine.assert_not_called()
+

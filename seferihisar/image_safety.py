@@ -4,10 +4,23 @@ from __future__ import annotations
 MAX_IMAGE_BYTES = 512 * 1024
 MAX_CACHE_BYTES = 12 * 1024 * 1024
 MAX_CACHED_IMAGES = 80
+MAX_OCR_FINDINGS = 32
+MAX_OCR_TEXT = 160
 
 
 class IllustrationTextRejected(ValueError):
-    """The generated scene contains lettering that must not become news facts."""
+    """Rejected lettering, with bounded evidence for a private review artifact.
+
+    Findings never enter the exception message, logs or public durable state.
+    """
+
+    def __init__(self, message='Illustration lettering rejected', *, findings=None):
+        super().__init__(message)
+        self.findings = [
+            {'text': finding['text'][:MAX_OCR_TEXT],
+             'confidence': finding['confidence'], 'box': dict(finding['box'])}
+            for finding in (findings or [])[:MAX_OCR_FINDINGS]
+        ]
 
 
 class IllustrationCheckUnavailable(ValueError):
@@ -36,7 +49,8 @@ def validate_text_free_illustration(data: bytes):
 
     OCR is an extra safeguard, not proof of the depicted scene's factual truth.
     Missing programs, missing language data and malformed output fail closed.
-    Neither OCR text nor diagnostics are returned or written to public state.
+    Bounded rejected-word evidence is attached only to the rejection exception
+    for a separate private review artifact; it is never written to public state.
     """
     import csv
     import io
@@ -60,11 +74,15 @@ def validate_text_free_illustration(data: bytes):
         if reader.fieldnames != expected:
             raise IllustrationCheckUnavailable('Illustration text check unavailable')
         saw_page = False
+        findings = []
         for row in reader:
             if None in row or any(value is None for value in row.values()):
                 raise IllustrationCheckUnavailable('Illustration text check unavailable')
             confidence = float(row['conf'])
             if not math.isfinite(confidence):
+                raise IllustrationCheckUnavailable('Illustration text check unavailable')
+            box = {field: int(row[field]) for field in ('left', 'top', 'width', 'height')}
+            if any(not 0 <= value <= 768 for value in box.values()):
                 raise IllustrationCheckUnavailable('Illustration text check unavailable')
             saw_page |= row['level'] == '1'
             letters = ''.join(char for char in row['text'] if char.isalnum())
@@ -75,9 +93,13 @@ def validate_text_free_illustration(data: bytes):
             if letters and ((year and confidence >= 0) or
                             (len(letters) >= 2 and confidence >= 20) or
                             (len(letters) == 1 and confidence >= 80)):
-                raise IllustrationTextRejected('Illustration lettering rejected')
+                if len(findings) < MAX_OCR_FINDINGS:
+                    findings.append({'text': row['text'][:MAX_OCR_TEXT],
+                                     'confidence': confidence, 'box': box})
         if not saw_page:
             raise IllustrationCheckUnavailable('Illustration text check unavailable')
+        if findings:
+            raise IllustrationTextRejected(findings=findings)
     except IllustrationTextRejected:
         raise
     except (OSError, subprocess.SubprocessError, UnicodeError, ValueError, csv.Error):
@@ -129,3 +151,4 @@ def validate_jpeg(data: bytes):
             raise ValueError('Unexpected illustration metadata')
         position = end
     raise ValueError('Missing illustration scan')
+
