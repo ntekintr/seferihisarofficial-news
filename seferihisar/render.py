@@ -93,6 +93,19 @@ def readable_date_line(value: str) -> str:
     return re.sub(r'\b\d{2}\.\d{2}\.\d{4}\b', date, value)
 
 
+def footer_band(image: Image.Image):
+    """Rasterize the diagonal brand strip with smooth, straight edges."""
+    width, height = image.size
+    band_height, scale = 180, 4
+    top = height - band_height
+    mask = Image.new('L', (width * scale, band_height * scale), 0)
+    points = [(0, height - 50), (width, height - 160),
+              (width, height - 120), (0, height - 10)]
+    ImageDraw.Draw(mask).polygon([(x * scale, (y - top) * scale) for x, y in points], fill=255)
+    mask = mask.resize((width, band_height), Image.Resampling.LANCZOS)
+    image.paste(TURQUOISE, (0, top, width, height), mask)
+
+
 def card(title: str, body: str, category: str, target: Path, story: bool = False,
          index: str = '', illustration: Path | None = None, preview: bool = False,
          event_details: bool = False):
@@ -163,10 +176,9 @@ def card(title: str, body: str, category: str, target: Path, story: bool = False
     if index:
         draw.text((right, source_top + 53), index, font=font(23), fill=ORANGE, anchor='rt')
     # Decorative footer only; story content leaves top/bottom UI safe zones.
-    draw.polygon([(0, height - 50), (width, height - 160), (width, height - 120),
-                  (0, height - 10)], fill=TURQUOISE)
+    footer_band(image)
     target.parent.mkdir(parents=True, exist_ok=True)
-    image.save(target, 'JPEG', quality=92)
+    image.save(target, 'JPEG', quality=92, subsampling=0)
 
 
 def render_post(post: dict, public_dir: Path, illustrations: dict[int, Path] | None = None) -> dict:
