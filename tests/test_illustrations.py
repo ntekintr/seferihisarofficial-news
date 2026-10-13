@@ -311,6 +311,15 @@ def test_ambiguous_green_park_title_does_not_invent_a_car_park(event):
     assert 'marked parking spaces' in illustration_prompt(item)
 
 
+def test_adult_life_skills_news_does_not_default_to_childrens_toys(event):
+    item = {**event, 'kind': 'news', 'category': 'family',
+            'title': 'İzmir’de engelli gençlere bağımsız yaşam ve istihdam desteği'}
+    prompt = illustration_prompt(item)
+    assert 'adult life-skills training workspace' in prompt
+    assert 'No people, children, toys, kite' in prompt
+    assert len(prompt) <= 2048
+
+
 def legacy_scene_key(item):
     previous_topic = json.dumps({k: item.get(k, '')[:limit] for k, limit in
                                 (('title', 250), ('description', 650), ('category', 50))}, ensure_ascii=False)
@@ -548,4 +557,5 @@ def test_prune_quarantines_unreferenced_old_revision_and_checks_once(store, even
     check.assert_called_once()
     generator.session.post.assert_not_called()
     validate_state(store.path)
+
 

@@ -24,6 +24,7 @@ jobs:
           tesseract --version
       - run: python -m pytest -q
       - run: node --check site/app.js
-      - run: node --test ops/cron-worker.test.mjs
+      - run: node --test ops/cron-worker.test.mjs site/app.test.mjs
       - run: python -m seferihisar.cli demo --public work/demo-site
       - run: python -m seferihisar.security public work/demo-site
+
