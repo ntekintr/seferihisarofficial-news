@@ -73,6 +73,60 @@ def event_title(item: dict) -> str:
     return item["title"] + " — " + event_type_label(item["category"])
 
 
+_COURSE_REGISTRATION_TITLE = re.compile(
+    r"^(?:Yeni\s+Başlayacak\s+)?(?P<subject>.+?)\s+Kurslarımıza\s+Kayıtlarımız\s+Devam\s+Ediyor$", re.I)
+_QUOTED_COURSE = re.compile(r'["“]([^"“”\n]{3,160})["”]')
+
+
+def news_title(item: dict) -> str:
+    """Use neutral display wording without rewriting the source record."""
+    title = item["title"]
+    if item.get("kind") != "news" or item.get("source_id") != "seferihisar-hem":
+        return title
+    if registration := _COURSE_REGISTRATION_TITLE.fullmatch(title.strip()):
+        subject = registration["subject"]
+        if normalized(subject) == normalized("el sanatları"):
+            subject = "El sanatları"
+        return subject + " kurslarına kayıtlar sürüyor"
+    # These possessive forms describe the institution, not this news account.
+    for original, neutral in ((r"\bkurslarımıza\b", "kurslarına"),
+                              (r"\bkurslarımız\b", "kursları"),
+                              (r"\bkursumuz\b", "kursu"),
+                              (r"\bkayıtlarımız\b", "kayıtlar")):
+        title = re.sub(original, neutral, title, flags=re.I)
+    return title
+
+
+def news_body(item: dict) -> str:
+    """Keep source facts, removing exact repeated sentences from news cards."""
+    text = " ".join(item.get("description", "").split())
+    sentences, seen = [], set()
+    for sentence in re.split(r"(?<=[.!?])\s+", text):
+        # Short fragments can be repeated abbreviations or distinct numbered
+        # facts (No. 5. No. 8.); only exact long sentence duplicates are noise.
+        if len(sentence) >= 60:
+            if sentence in seen:
+                continue
+            seen.add(sentence)
+        sentences.append(sentence)
+    if (item.get("kind") == "news" and item.get("source_id") == "seferihisar-hem"
+            and _COURSE_REGISTRATION_TITLE.fullmatch(item["title"].strip())):
+        for sentence in sentences:
+            if normalized("açmayı planladığımız") not in normalized(sentence):
+                continue
+            names = list(dict.fromkeys(name.strip() for name in _QUOTED_COURSE.findall(sentence)))
+            # Only names explicitly quoted in the planned-course sentence.
+            # Unrecognized/ambiguous prose stays an excerpt; do not guess.
+            if not 1 <= len(names) <= 3 or not all(re.search(r"\bKursu$", name, re.I) for name in names):
+                continue
+            names = [re.sub(r"\s+Kursu$", "", name, flags=re.I) for name in names]
+            courses = " ve ".join("“" + name + "”" for name in names)
+            return (item["source_name"] + ", " + courses + " kurslarını açmayı planlıyor. "
+                    "Kurslara kayıtlar sürüyor.")
+    return " ".join(sentence for sentence in sentences
+                    if not re.fullmatch(r"(?:Ayrıntılı|Detaylı) bilgi için lütfen tıklayınız[.!]?", sentence, re.I))
+
+
 _SOURCE_HASHTAG = re.compile(r"#(\w+)", re.UNICODE)
 _SOURCE_TEXT_TOKEN = re.compile(r"https?://\S+|#(\w+)", re.UNICODE)
 _TAG_TRANSLATION = str.maketrans("çğıöşü", "cgiosu")
@@ -174,7 +228,8 @@ def caption_with_hashtags(content: str, tags: list[str], *, footer: str = "", li
 
 
 def caption(item: dict, label: str) -> str:
-    lines = [label] if item["kind"] == "event" and item["title"] in label else [label, item["title"]]
+    display_title = news_title(item) if item["kind"] == "news" else item["title"]
+    lines = [label] if display_title in label else [label, display_title]
     if item["kind"] == "event":
         lines += [event_date_label(item),
                   "Yer: " + (item.get("location") or "Açıklanmadı"),
@@ -192,7 +247,10 @@ def caption(item: dict, label: str) -> str:
         elif item.get("status") == "rescheduled":
             lines.append("Etkinliğin tarihi güncellendi.")
     if item.get("description"):
-        lines.append("Kaynak duyurusundan: “" + item["description"][:1000] + "”")
+        if item["kind"] == "news":
+            lines.append("Kaynak duyurusuna göre: " + news_body(item)[:1000])
+        else:
+            lines.append("Kaynak duyurusundan: “" + item["description"][:1000] + "”")
     source = "Kaynak: " + plain_source_text(item["source_name"]) + "\n" + item["url"]
     return caption_with_hashtags("\n\n".join(lines), hashtags(item), footer=source)
 
@@ -225,6 +283,7 @@ def headline(item: dict, kind: str) -> str:
         return event_title(item)
     prefix = {"reminder_3d": "3 gün kaldı", "reminder_day": "Bugün yakınınızda",
               "update": "Etkinlik bilgisi güncellendi", "cancellation": "İptal duyurusu", "news": CATEGORIES[item["category"]]}
-    title = event_title(item) if item["kind"] == "event" else item["title"]
+    title = event_title(item) if item["kind"] == "event" else news_title(item)
     return f"{prefix.get(kind, 'Seferihisar Official')}: {title}"
+
 
