@@ -172,6 +172,7 @@
     "trusted": true,
     "access": "robots",
     "max_pages": 12,
+    "transient_retries": 1,
     "listing_urls": [
       "https://www.haberler.com/seferihisar/",
       "https://www.haberler.com/urla/",
@@ -415,3 +416,4 @@
     "follow_feed_details": false
   }
 ]
+
