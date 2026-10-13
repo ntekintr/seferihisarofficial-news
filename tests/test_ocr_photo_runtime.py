@@ -25,7 +25,12 @@ def photo():
 
 def test_native_ocr_accepts_inspected_photo_instead_of_toy_and_kite_texture():
     assert ocr_available(), 'English and Turkish OCR language data are required'
-    validate_text_free_illustration(photo())
+    try:
+        validate_text_free_illustration(photo())
+    except IllustrationTextRejected as error:
+        # Only this inspected, trusted fixture can report its bounded words.
+        pytest.fail('Text-free inspected photo was rejected; fixture-only OCR: ' +
+                    json.dumps(error.findings, ensure_ascii=False))
 
 
 def test_native_ocr_still_rejects_visible_year_on_the_same_photo():

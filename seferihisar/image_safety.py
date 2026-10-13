@@ -125,7 +125,9 @@ def validate_text_free_illustration(data: bytes):
     texture. Possible years and strongly recognized whole words remain unsafe
     in either scan; other candidates need matching text in the same image area.
     A fixed full-image contrast view also checks years and whole words that
-    colour-page segmentation can skip as part of a graphic.
+    colour-page segmentation can skip as part of a graphic. This extra view
+    needs agreement between both segmentations, because binarization can turn
+    scene texture into strongly recognized apparent words.
     OCR is an extra safeguard, not proof of the depicted scene's factual truth.
     Missing programs, missing language data and malformed output fail closed.
     Bounded evidence stays on the exception for a separate review artifact.
@@ -161,28 +163,28 @@ def validate_text_free_illustration(data: bytes):
         length, confidence = len(word['letters']), word['confidence']
         return (length >= 2 and confidence >= 20) or (length == 1 and confidence >= 80)
 
-    second_candidates = {}
-    for word in scans[1]:
-        if candidate(word):
-            second_candidates.setdefault(word['token'], []).append(word)
-    for first in scans[0]:
-        if candidate(first):
-            for second in second_candidates.get(first['token'], []):
-                if _same_region(first['box'], second['box']):
-                    remember(first)
-                    remember(second)
-                    break
+    def confirm(results, predicate):
+        second_candidates = {}
+        for word in results[1]:
+            if predicate(word):
+                second_candidates.setdefault(word['token'], []).append(word)
+        for first in results[0]:
+            if predicate(first):
+                for second in second_candidates.get(first['token'], []):
+                    if _same_region(first['box'], second['box']):
+                        remember(first)
+                        remember(second)
+                        break
+
+    confirm(scans, candidate)
     if findings:
         raise IllustrationTextRejected(findings=findings)
     # A clear colour-image rejection needs no extra CPU work. Acceptance also
     # requires valid contrast scans: native OCR can classify an obvious date
     # label as photo graphics even when both colour-image TSVs are well formed.
-    for words in _contrast_words(binary, data):
-        for word in words:
-            if directly_unsafe(word):
-                remember(word)
-        if findings:
-            raise IllustrationTextRejected(findings=findings)
+    confirm(_contrast_words(binary, data), directly_unsafe)
+    if findings:
+        raise IllustrationTextRejected(findings=findings)
 
 
 def validate_jpeg(data: bytes):

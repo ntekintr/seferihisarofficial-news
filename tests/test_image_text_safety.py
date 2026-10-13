@@ -184,25 +184,22 @@ def test_confirmation_scan_timeout_fails_closed_without_leaking_diagnostics(engi
     assert 'private' not in str(caught.value)
 
 
-@pytest.mark.parametrize('scan', [0, 1], ids=['sparse', 'block'])
-def test_year_skipped_by_colour_scene_is_rejected_in_full_image_contrast_scan(engine, scan):
-    contrast = [output(), output()]
-    contrast[scan] = output('2021', 0, (549, 665, 148, 43))
+@pytest.mark.parametrize('confidence', [0, 96])
+def test_year_skipped_by_colour_scene_is_rejected_by_matching_contrast_scans(engine, confidence):
+    contrast = [output('2021', confidence, (549, 665, 148, 43))] * 2
     engine.side_effect = [subprocess.CompletedProcess([], 0, stdout=data, stderr=b'')
                           for data in (output(), output(), *contrast)]
     with pytest.raises(IllustrationTextRejected) as caught:
         validate_text_free_illustration(jpeg())
     assert caught.value.findings == [
-        {'text': '2021', 'confidence': 0,
+        {'text': '2021', 'confidence': confidence,
          'box': {'left': 549, 'top': 665, 'width': 148, 'height': 43}}
     ]
     assert engine.call_count == 4
 
 
-@pytest.mark.parametrize('scan', [0, 1], ids=['sparse', 'block'])
-def test_strong_whole_word_skipped_by_colour_scene_is_rejected_in_contrast_scan(engine, scan):
-    contrast = [output(), output()]
-    contrast[scan] = output('FESTIVAL', 80)
+def test_strong_whole_word_skipped_by_colour_scene_is_rejected_by_matching_contrast_scans(engine):
+    contrast = [output('FESTIVAL', 80)] * 2
     engine.side_effect = [subprocess.CompletedProcess([], 0, stdout=data, stderr=b'')
                           for data in (output(), output(), *contrast)]
     with pytest.raises(IllustrationTextRejected):
@@ -213,6 +210,29 @@ def test_strong_whole_word_skipped_by_colour_scene_is_rejected_in_contrast_scan(
 def test_short_contrast_texture_tokens_cannot_approve_their_own_rejection(engine):
     engine.side_effect = [subprocess.CompletedProcess([], 0, stdout=data, stderr=b'')
                           for data in (output(), output(), output('aI', 99), output('aI', 99))]
+    validate_text_free_illustration(jpeg())
+
+
+@pytest.mark.parametrize('word,confidence', [('2021', 0), ('FESTIVAL', 90)])
+@pytest.mark.parametrize('scan', [0, 1], ids=['sparse', 'block'])
+def test_contrast_only_single_pass_findings_need_confirmation(engine, word, confidence, scan):
+    contrast = [output(), output()]
+    contrast[scan] = output(word, confidence)
+    engine.side_effect = [subprocess.CompletedProcess([], 0, stdout=data, stderr=b'')
+                          for data in (output(), output(), *contrast)]
+    validate_text_free_illustration(jpeg())
+
+
+def test_strong_contrast_words_in_distant_regions_do_not_confirm(engine):
+    engine.side_effect = [subprocess.CompletedProcess([], 0, stdout=data, stderr=b'')
+                          for data in (output(), output(), output('FESTIVAL', 90, (10, 10, 180, 32)),
+                                       output('FESTIVAL', 90, (400, 400, 180, 32)))]
+    validate_text_free_illustration(jpeg())
+
+
+def test_contrast_word_confirmation_requires_strong_confidence_in_both_modes(engine):
+    engine.side_effect = [subprocess.CompletedProcess([], 0, stdout=data, stderr=b'')
+                          for data in (output(), output(), output('FESTIVAL', 80), output('FESTIVAL', 79.99))]
     validate_text_free_illustration(jpeg())
 
 
