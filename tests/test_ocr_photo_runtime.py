@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 from PIL import Image, ImageDraw
 
-from seferihisar.image_safety import (IllustrationTextRejected, _guard_tiles, _scan_words, ocr_available,
+from seferihisar.image_safety import (IllustrationTextRejected, _scan_words, ocr_available,
                                     validate_text_free_illustration)
 from seferihisar.illustrations import clean_image
 from seferihisar.render import font
@@ -56,8 +56,6 @@ def test_native_ocr_still_rejects_visible_year_on_the_same_photo():
     def bounded(words):
         return [{'text': word['text'][:160], 'confidence': word['confidence'], 'box': word['box']}
                 for word in words[:32]]
-    for mode in (11, 6):
-        scans[f'spatial-{mode}'] = [bounded(words) for words in _guard_tiles(binary, encoded, mode)]
     with Image.open(io.BytesIO(encoded)) as image:
         contrast = image.convert('L').point(lambda value: 255 if value >= 128 else 0).convert('RGB')
         buffer = io.BytesIO()

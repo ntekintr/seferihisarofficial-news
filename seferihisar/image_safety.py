@@ -97,39 +97,23 @@ def _same_region(first: dict, second: dict) -> bool:
     return 2 * width * height >= area
 
 
-def _guard_tiles(binary: str, data: bytes, mode: int = 11):
-    """Bounded overlapping scene scans catch lettering skipped as a graphic.
+def _contrast_words(binary: str, data: bytes) -> list[list[dict]]:
+    """Read lettering that colour-page segmentation can skip as photo graphics.
 
-    These are large image regions, never a forced single-word crop. Lossless
-    temporary pixels stay in memory and cannot enter the cache or public site.
+    A fixed full-image black/white view separates ink-like shapes from colour
+    texture. Temporary pixels stay in memory; the cached/rendered photo stays
+    untouched. Both scans use full-scene modes, never a forced single word.
     """
     import io
     from PIL import Image
     try:
         with Image.open(io.BytesIO(data)) as image:
-            width, height = image.size
-            span_x, span_y = (2 * width + 2) // 3, (2 * height + 2) // 3
-            boxes = ((0, 0, span_x, span_y), (width - span_x, 0, width, span_y),
-                     (0, height - span_y, span_x, height),
-                     (width - span_x, height - span_y, width, height))
-            scanned = set()
-            for bounds in boxes:
-                if bounds in scanned:
-                    continue
-                scanned.add(bounds)
-                left, top, right, bottom = bounds
-                pixels = Image.new('RGB', (right - left, bottom - top))
-                pixels.paste(image.crop(bounds))
-                target = io.BytesIO()
-                pixels.save(target, format='PNG')
-                words = _scan_words(binary, target.getvalue(), mode)
-                for word in words:
-                    box = word['box']
-                    if (box['left'] + box['width'] > pixels.width or
-                            box['top'] + box['height'] > pixels.height):
-                        raise IllustrationCheckUnavailable('Illustration text check unavailable')
-                    word['box'] = {**box, 'left': left + box['left'], 'top': top + box['top']}
-                yield words
+            contrast = image.convert('L').point(lambda value: 255 if value >= 128 else 0)
+            pixels = Image.new('RGB', image.size)
+            pixels.paste(contrast.convert('RGB'))
+            target = io.BytesIO()
+            pixels.save(target, format='PNG')
+        return [_scan_words(binary, target.getvalue(), mode) for mode in (11, 6)]
     except (OSError, ValueError):
         raise IllustrationCheckUnavailable('Illustration text check unavailable') from None
 
@@ -140,8 +124,8 @@ def validate_text_free_illustration(data: bytes):
     Two full-scene segmentations distinguish short apparent words from natural
     texture. Possible years and strongly recognized whole words remain unsafe
     in either scan; other candidates need matching text in the same image area.
-    Four fixed overlapping scene regions also check years and whole words that
-    full-image segmentation can skip as part of a graphic.
+    A fixed full-image contrast view also checks years and whole words that
+    colour-page segmentation can skip as part of a graphic.
     OCR is an extra safeguard, not proof of the depicted scene's factual truth.
     Missing programs, missing language data and malformed output fail closed.
     Bounded evidence stays on the exception for a separate review artifact.
@@ -190,10 +174,10 @@ def validate_text_free_illustration(data: bytes):
                     break
     if findings:
         raise IllustrationTextRejected(findings=findings)
-    # A clear full-image rejection needs no extra CPU work. Acceptance also
-    # requires valid spatial scans, because a photo can hide obvious lettering
-    # from the page segmenter even when both complete-image TSVs are well formed.
-    for words in _guard_tiles(binary, data):
+    # A clear colour-image rejection needs no extra CPU work. Acceptance also
+    # requires valid contrast scans: native OCR can classify an obvious date
+    # label as photo graphics even when both colour-image TSVs are well formed.
+    for words in _contrast_words(binary, data):
         for word in words:
             if directly_unsafe(word):
                 remember(word)
