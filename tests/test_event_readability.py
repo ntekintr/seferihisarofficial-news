@@ -103,6 +103,7 @@ def test_refresh_unclaimed_card_keeps_identity_dates_bindings_and_source_revisio
     assert refreshed["created_at"] == at.isoformat()
     assert refreshed["title"] == "Hafifletici Sebepler — Tiyatro oyunu"
     assert refreshed["illustration_keys"] == {"0": "a" * 24}
+    assert "Görsel: yapay zekâyla hazırlanmış temsili görsel." in refreshed["caption"]
     assert refreshed["status"] == status
     assert store.items()[0] == source_payload
 
@@ -130,3 +131,4 @@ def test_existing_card_revision_mismatch_is_not_refreshed(store, event, at):
     before = store.rows("SELECT * FROM posts WHERE id=?", (post["id"],))[0]
     queue_item(store, item, "announcement", at + timedelta(hours=1), at + timedelta(minutes=15))
     assert store.rows("SELECT * FROM posts WHERE id=?", (post["id"],))[0] == before
+

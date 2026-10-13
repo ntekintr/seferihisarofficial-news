@@ -2,10 +2,12 @@ from __future__ import annotations
 
 import json
 import re
+from copy import deepcopy
 from datetime import datetime, time, timedelta
 
 from .domain import TZ, digest, parse_date
-from .editor import caption, event_date_label, event_title, headline
+from .editor import caption, caption_with_hashtags, digest_hashtags, event_date_label, event_title, headline
+from .media_caption import generated_image_caption
 from .store import Store
 
 SLOTS = (time(8, 30), time(12, 30), time(15), time(18, 30), time(21))
@@ -111,6 +113,7 @@ def queue_item(store: Store, item: dict, kind: str, due: datetime, at: datetime)
     post["created_at"] = previous["created_at"]
     if "illustration_keys" in previous:
         post["illustration_keys"] = previous["illustration_keys"]
+    post["caption"] = generated_image_caption(post["caption"], bool(post.get("illustration_keys")))
     with store.db:
         store.db.execute("UPDATE posts SET payload=? WHERE id=? AND revision=? AND status IN ('prepared','blocked_source')",
                          (json.dumps(post, ensure_ascii=False), key, item["revision"]))
@@ -177,12 +180,20 @@ def prepare_digest(store: Store, at: datetime, kind: str, days: int):
     slides = [{"title": title, "body": description}] + [{"title": event_title(e), "body": slide_body(e), "category": e["category"]} for e in selected]
     content = "\n\n".join([title, description] + [event_title(e) + " · " + event_date_label(e, include_time=False) + "\nKaynak: " + e["url"] for e in selected])
     post = {"id": key, "kind": kind, "revision": 1, "due_at": next_slot(at, event=True).isoformat(),
-            "title": title, "caption": content[:2200], "category": "event", "slides": slides,
+            "title": title, "caption": caption_with_hashtags(content, digest_hashtags(selected)), "category": "event", "slides": slides,
             "source_urls": [e["url"] for e in selected], "created_at": at.isoformat(), "formats": ["carousel", "story"]}
     if existing:
         # Keep original due date so frequent runs cannot postpone it indefinitely.
         post["due_at"] = existing["due_at"]
+        # The publisher refreshes text with illustration generation disabled.
+        # Retain bindings only while each event still occupies the same slide.
+        if (existing["source_urls"] == post["source_urls"]
+                and len(existing["slides"]) == len(post["slides"])
+                and "illustration_keys" in existing):
+            post["illustration_keys"] = deepcopy(existing["illustration_keys"])
+        post["caption"] = generated_image_caption(post["caption"], bool(post.get("illustration_keys")))
         with store.db:
             store.db.execute("UPDATE posts SET payload=?,status='prepared' WHERE id=?", (json.dumps(post, ensure_ascii=False), key))
     else:
         store.queue(post)
+
