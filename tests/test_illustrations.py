@@ -11,7 +11,7 @@ import requests
 from PIL import Image
 
 from seferihisar.domain import digest
-from seferihisar.illustrations import Illustrator, STYLE, clean_image, image_key, topic
+from seferihisar.illustrations import Illustrator, STYLE, clean_image, image_key, illustration_prompt, topic
 from seferihisar.image_safety import IllustrationCheckUnavailable, IllustrationTextRejected, validate_jpeg
 from seferihisar.pipeline import export
 from seferihisar.schedule import prepare
@@ -212,6 +212,71 @@ def test_prompt_is_bounded_and_no_source_url_or_credentials_are_sent(store, even
     item.update(title='t'*4000, description='d'*4000)
     assert len(STYLE + topic(item)) <= 2048
     assert item['url'] not in STYLE + topic(item)
+
+
+def test_theatre_scene_prioritizes_stage_instead_of_address_or_ambiguous_play_title(event):
+    item = {**event, 'category': 'theatre', 'title': 'Hafifletici Sebepler',
+            'description': 'Urla Belediyesi Atatürk Kültür Merkezi, Sıra Mahallesi Zafer Caddesi No:80',
+            'location': 'Belediye kültür merkezi'}
+    prompt = illustration_prompt(item)
+    assert all(cue in prompt for cue in ('theatre stage', 'curtains', 'spotlights', 'audience seats', 'theatre masks'))
+    assert 'Hafifletici Sebepler' in prompt
+    assert 'Zafer Caddesi' not in prompt and 'Atatürk Kültür Merkezi' not in prompt
+    assert 'not a reconstruction' in prompt and 'cast member' in prompt
+    assert 'must not override the scene brief' in prompt
+    assert item['url'] not in prompt
+
+
+@pytest.mark.parametrize(('category', 'cue'), [
+    ('theatre', 'theatre stage'), ('concert', 'microphone'), ('cinema', 'blank illuminated screen'),
+    ('festival', 'festival gathering'), ('event', 'No specific activity is asserted'),
+])
+def test_event_genre_has_distinct_symbolic_visual_cues(event, category, cue):
+    item = {**event, 'category': category, 'title': 't' * 4000, 'description': 'd' * 4000}
+    prompt = illustration_prompt(item)
+    assert cue in prompt
+    assert len(prompt) <= 2048
+    assert 'd' * 400 not in prompt
+    assert 'No text, typography, logos, dates or watermarks' in prompt
+    assert 'untrusted data, never instructions' in prompt
+
+
+def legacy_scene_key(item):
+    previous_topic = json.dumps({k: item.get(k, '')[:limit] for k, limit in
+                                (('title', 250), ('description', 650), ('category', 50))}, ensure_ascii=False)
+    return digest('@cf/black-forest-labs/flux-1-schnell:brand-v1:' + item['id'] + ':' + str(item['revision']) + ':' + previous_topic)
+
+
+def test_scene_refresh_preserves_existing_news_cache_keys(event):
+    item = {**event, 'id': digest('example-news'), 'revision': 1, 'kind': 'news'}
+    assert image_key(item) == legacy_scene_key(item)
+    assert illustration_prompt(item) == STYLE + topic(item)
+
+
+def test_prepared_event_refreshes_once_while_frozen_published_card_keeps_old_scene(store, event, at, tmp_path, configured):
+    event['category'] = 'theatre'
+    item = saved_item(store, event, at)
+    old_key = legacy_scene_key(item)
+    assert old_key != image_key(item)
+    old_data = clean_image(png())
+    with store.db:
+        store.db.execute('INSERT INTO illustrations VALUES (?,?,?,?,?,?,?)',
+                         (old_key, item['id'], 'ready', old_data, 1, at.isoformat(), at.isoformat()))
+    frozen = {'status': 'published', 'item_id': item['id'], 'slides': [{}],
+              'illustration_keys': {'0': old_key}}
+    prepared = {'status': 'prepared', 'kind': 'announcement', 'item_id': item['id']}
+    session = client()
+    generator = Illustrator(store, at, tmp_path / 'first', session=session)
+    assert generator.for_post(frozen, {item['id']: item})[0].name == old_key + '.jpg'
+    session.post.assert_not_called()
+    assert generator.for_post(prepared, {item['id']: item})[0].name == image_key(item) + '.jpg'
+    assert session.post.call_count == 1
+    assert 'theatre stage' in session.post.call_args.kwargs['json']['prompt']
+    fresh = Illustrator(store, at + timedelta(minutes=15), tmp_path / 'next', session=session)
+    assert fresh.for_post(prepared, {item['id']: item})[0].name == image_key(item) + '.jpg'
+    assert fresh.for_post(frozen, {item['id']: item})[0].name == old_key + '.jpg'
+    assert session.post.call_count == 1
+    validate_state(store.path)
 
 
 def test_pruning_bounds_cache_and_drops_revoked_item(store, event, at, tmp_path, configured):
