@@ -67,7 +67,7 @@ class Instagram:
         return value
 
 
-def publish_one(store: Store, at: datetime, site_url: str, assets: dict[str, dict], story: bool = False, adapter=None, checkpoint=None, *, target_id: str | None = None, paired_story: bool = False) -> dict:
+def publish_one(store: Store, at: datetime, site_url: str, assets: dict[str, dict], story: bool = False, adapter=None, checkpoint=None, *, target_id: str | None = None, paired_story: bool = False, exclude_event_ids: set[str] | None = None) -> dict:
     api = adapter or Instagram()
     if not api.enabled():
         return {"status": "disabled"}
@@ -81,6 +81,11 @@ def publish_one(store: Store, at: datetime, site_url: str, assets: dict[str, dic
         prepare_story_jobs(store, assets)
         prepare(store, at)  # Newly created frames also need fresh source evidence.
     prepared = sorted((p for p in store.posts() if p["status"] == "prepared" and parse_date(p["due_at"]) <= at and (p.get("publish_format") == "story") == story), key=lambda p: p["due_at"])
+    # Automatic announcements/reminders must not consume both daily feed slots
+    # for the same event. Explicit corrections and cancellation notices remain eligible.
+    if exclude_event_ids and not story:
+        prepared = [p for p in prepared if p.get('item_id') not in exclude_event_ids
+                    or p['kind'] not in ('announcement', 'reminder_3d', 'reminder_day')]
     if target_id:
         prepared = [p for p in prepared if p['id'] == target_id]
     post = prepared[0] if prepared else None
@@ -163,7 +168,8 @@ def publish_automatic(store: Store, at: datetime, site_url: str, assets: dict[st
         today = [p for p in claims if parse_date(p['published_at']).astimezone(TZ).date() == at.date()]
         if len(today) >= 2:
             return {'status':'daily_limit'}
-        feed = publish_one(store, at, site_url, assets, adapter=api, checkpoint=checkpoint)
+        covered = {p['item_id'] for p in today if p.get('item_id')}
+        feed = publish_one(store, at, site_url, assets, adapter=api, checkpoint=checkpoint, exclude_event_ids=covered)
         if feed['status'] != 'published':
             return {'status':feed['status']}
         parent = next(p for p in store.posts() if p['id'] == feed['post_id'])

@@ -96,3 +96,53 @@ def test_explicit_cancellation_preserves_date_and_unknown_time(monkeypatch):
                               (detail(body='<p>Festival iptal edilmiştir.</p>'), 'https://seferihisar.bel.tr/urkmez-festivali')]
     item = collect_source(SOURCE, fetcher, [])[0][0]
     assert item['status'] == 'cancelled' and not item['time_known']
+
+
+@pytest.mark.parametrize('row,body,location,last_day', [
+    (ROW, '<p>15 Ekim Perşembe</p><p>16 Ekim Cuma</p><p>17 Ekim Cumartesi</p>'
+     '<p>*15 Ekim günü Seferihisar Kapalı Pazar Yeri\'nden 18.00\'da Araç Kaldırılacaktır.</p>'
+     '<p>📍 <strong>Ürkmez Hizmet Binası - Ürkmez Tiyatro Salonu</strong><br> </p>',
+     'Ürkmez Hizmet Binası - Ürkmez Tiyatro Salonu', '2026-10-17'),
+    ({**ROW, 'title': 'Orhanlı Köyü 3.Erkence Zeytin Festivali',
+      'start': '2026-10-31', 'end': '2026-11-02'},
+     '<p>📅 <strong>31 Ekim-1 Kasım 2026</strong><br>'
+     '📍Orhanlı Köyü Piknik Alanı Seferihisar / İzmir<br>'
+     '*Orhanlı Vadisi zeytin kültürünü kutlamak için bir araya geliyoruz.</p>',
+     'Orhanlı Köyü Piknik Alanı Seferihisar / İzmir', '2026-11-01'),
+])
+def test_live_template_reads_event_body_and_explicit_venue_without_guessing_time(monkeypatch, row, body, location, last_day):
+    monkeypatch.setattr('seferihisar.collect.now', lambda: AT)
+    page = ('<div class="col-md-9"><div class="inner pd0"><div class="right-title">'
+            + row['title'] + '</div></div><div class="inner">' + body + '</div></div>'
+            '<footer><p>Yer: Belediye hizmet binası, başka adres</p><p>Ücret: Ücretsiz</p></footer>')
+    fetcher = Mock()
+    fetcher.get.side_effect = [(json.dumps([row]), SOURCE['url']),
+                              (page, 'https://seferihisar.bel.tr/urkmez-festivali')]
+    items, _, errors = collect_source(SOURCE, fetcher, [])
+    assert not errors and len(items) == 1
+    item = items[0]
+    assert item['location'] == location
+    assert not item['time_known'] and item['free'] is None and item['organizer'] is None
+    assert item['start'].endswith('T00:00:00+03:00')
+    assert item['end'].startswith(last_day)
+
+
+def test_municipal_detail_labels_do_not_require_a_labelled_date(monkeypatch):
+    monkeypatch.setattr('seferihisar.collect.now', lambda: AT)
+    fetcher = Mock()
+    fetcher.get.side_effect = [(json.dumps([ROW]), SOURCE['url']),
+                              (detail(body='<p>Konum: Ürkmez Salonu</p><p>Düzenleyen: Kültür Derneği</p>'
+                                      '<p>Ücret: Ücretsiz</p>'), 'https://seferihisar.bel.tr/urkmez-festivali')]
+    item = collect_source(SOURCE, fetcher, [])[0][0]
+    assert item['location'] == 'Ürkmez Salonu' and item['organizer'] == 'Kültür Derneği'
+    assert item['free'] is True and not item['time_known']
+
+
+def test_conflicting_venue_labels_reject_detail(monkeypatch):
+    monkeypatch.setattr('seferihisar.collect.now', lambda: AT)
+    fetcher = Mock()
+    fetcher.get.side_effect = [(json.dumps([ROW]), SOURCE['url']),
+                              (detail(body='<p>Yer: Birinci Salon</p><p>📍İkinci Salon</p>'),
+                               'https://seferihisar.bel.tr/urkmez-festivali')]
+    items, _, errors = collect_source(SOURCE, fetcher, [])
+    assert not items and errors == [{'source_id': SOURCE['id'], 'code': 'calendar_detail_check_failed'}]

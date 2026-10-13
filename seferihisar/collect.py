@@ -447,6 +447,33 @@ def municipal_calendar_items(body: str, base: str, source: dict) -> list[dict]:
     return results
 
 
+def municipal_detail_fields(article) -> dict:
+    """Read explicit labels from the event body, independently of date syntax."""
+    content = BeautifulSoup(str(article), 'html.parser')
+    for removable in content.select('script, style, nav, footer'):
+        removable.decompose()
+    for br in content.select('br'):
+        br.replace_with('\n')
+    lines = [re.sub(r'\s+', ' ', line).strip()
+             for node in content.select('p, li')
+             for line in node.get_text(' ', strip=False).splitlines()]
+
+    def field(pattern):
+        values = {match[1].strip() for line in lines
+                  if (match := re.fullmatch(pattern + r'(.{1,200})', line, re.I))}
+        if len(values) > 1:
+            raise ValueError('Conflicting event detail labels')
+        return next(iter(values), None)
+
+    fee = field(r'(?:ücret|bilet ücreti)\s*[:：]\s*')
+    return {
+        'location': field(r'(?:📍\s*|(?:yer|konum|mek[âa]n)\s*[:：]\s*)'),
+        'organizer': field(r'(?:organizatör|düzenleyen)\s*[:：]\s*'),
+        'free': True if fee and fee.casefold() == 'ücretsiz' else
+                False if fee and re.fullmatch(r'\d+(?:[.,]\d+)?\s*(?:TL|₺)', fee, re.I) else None,
+    }
+
+
 def collect_municipal_calendar(source: dict, fetcher: Fetcher):
     body, base = fetcher.get(source['url'])
     today = now().date()
@@ -465,9 +492,13 @@ def collect_municipal_calendar(source: dict, fetcher: Fetcher):
         try:
             detail, final = fetcher.get(item['url'])
             soup = BeautifulSoup(detail, 'html.parser')
-            article = soup.select_one('.col-md-9 > .inner')
             title = soup.select_one('.col-md-9 > .inner .right-title')
-            if canonical(final) != item['identity'] or not article or normalized(text(title)) != normalized(item['title']):
+            heading = title.find_parent(class_='inner') if title else None
+            # The reviewed template separates its heading and event body into
+            # sibling blocks. Do not fall back to the page/sidebar/footer.
+            article = heading.find_next_sibling('div', class_='inner') if heading else None
+            article = article if article is not None else heading
+            if canonical(final) != item['identity'] or article is None or normalized(text(title)) != normalized(item['title']):
                 raise ValueError('Calendar detail does not match')
             body_text = text(article)
             richer = labelled_event(item['title'], body_text, article, final, source)
@@ -476,6 +507,8 @@ def collect_municipal_calendar(source: dict, fetcher: Fetcher):
                     raise ValueError('Calendar detail date conflicts')
                 for field in ('location', 'organizer', 'free', 'status'):
                     item[field] = richer[field]
+            item.update({field: value for field, value in municipal_detail_fields(article).items()
+                         if value is not None})
             if re.search(r'(?:etkinlik|konser|gösteri|festival)\s+iptal\s+edil(?:di|miştir)', body_text, re.I):
                 item['status'] = 'cancelled'
             elif re.search(r'(?:etkinlik|konser|gösteri|festival)\s+ertelen(?:di|miştir)', body_text, re.I):

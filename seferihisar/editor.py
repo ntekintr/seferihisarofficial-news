@@ -44,11 +44,25 @@ def verify(item: dict, source: dict, at: datetime) -> str | None:
     return None
 
 
+def event_date_label(item: dict, include_time: bool = True) -> str:
+    """Show verified first/last days without inventing an event's end time."""
+    start, end = parse_date(item['start']), parse_date(item.get('end'))
+    value = start.strftime('%d.%m.%Y')
+    multiple_days = end is not None and end.date() > start.date()
+    if multiple_days:
+        value += ' – ' + end.strftime('%d.%m.%Y')
+    if include_time:
+        if item.get('time_known'):
+            value += (' · Başlangıç ' if multiple_days else ' · ') + start.strftime('%H:%M')
+        else:
+            value += ' · Saat açıklanmadı'
+    return value
+
+
 def caption(item: dict, label: str) -> str:
     lines = [label, item["title"]]
     if item["kind"] == "event":
-        start = parse_date(item["start"])
-        lines += [start.strftime("%d.%m.%Y") + (start.strftime(" · %H:%M") if item.get("time_known") else " · Saat açıklanmadı"),
+        lines += [event_date_label(item),
                   "Yer: " + (item.get("location") or "Açıklanmadı"),
                   "Organizatör: " + (item.get("organizer") or "Açıklanmadı")]
         price = "Ücretsiz" if item.get("free") is True else "Ücret bilgisi açıklanmadı"

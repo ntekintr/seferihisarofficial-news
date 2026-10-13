@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime, time, timedelta
 
 from .domain import TZ, digest, parse_date
-from .editor import caption, headline
+from .editor import caption, event_date_label, headline
 from .store import Store
 
 SLOTS = (time(8, 30), time(12, 30), time(15), time(18, 30), time(21))
@@ -102,8 +102,7 @@ def queue_item(store: Store, item: dict, kind: str, due: datetime, at: datetime)
 def slide_body(item: dict) -> str:
     if item["kind"] == "news":
         return item["description"][:650] + "\n\nKaynak: " + item["source_name"]
-    date = parse_date(item["start"])
-    details = [date.strftime("%d.%m.%Y") + (date.strftime(" · %H:%M") if item.get("time_known") else " · Saat açıklanmadı"),
+    details = [event_date_label(item),
                item.get("location") or "Konum açıklanmadı", item.get("organizer") or "Organizatör açıklanmadı",
                "Ücretsiz" if item.get("free") is True else ("Ücretli" if item.get("free") is False else "Ücret bilgisi açıklanmadı"),
                "Kaynak: " + item["source_name"]]
@@ -132,7 +131,7 @@ def prepare_digest(store: Store, at: datetime, kind: str, days: int):
     selected = events[:9]  # Meta carousel cover + 9 slides; do not imply a complete calendar.
     description = f"{at.strftime('%d.%m.%Y')} itibarıyla önümüzdeki {days} gün için doğrulanmış etkinliklerden seçki."
     slides = [{"title": title, "body": description}] + [{"title": e["title"], "body": slide_body(e)} for e in selected]
-    content = "\n\n".join([title, description] + [e["title"] + " · " + parse_date(e["start"]).strftime("%d.%m.%Y") + "\nKaynak: " + e["url"] for e in selected])
+    content = "\n\n".join([title, description] + [e["title"] + " · " + event_date_label(e, include_time=False) + "\nKaynak: " + e["url"] for e in selected])
     post = {"id": key, "kind": kind, "revision": 1, "due_at": next_slot(at, event=True).isoformat(),
             "title": title, "caption": content[:2200], "category": "event", "slides": slides,
             "source_urls": [e["url"] for e in selected], "created_at": at.isoformat(), "formats": ["carousel", "story"]}
