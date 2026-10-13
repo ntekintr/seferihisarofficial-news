@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import json
+import re
 from datetime import datetime, time, timedelta
 
 from .domain import TZ, digest, parse_date
-from .editor import caption, event_date_label, headline
+from .editor import caption, event_date_label, event_title, headline
 from .store import Store
 
 SLOTS = (time(8, 30), time(12, 30), time(15), time(18, 30), time(21))
@@ -90,22 +92,56 @@ def queue_item(store: Store, item: dict, kind: str, due: datetime, at: datetime)
     days = (parse_date(item["start"]).date() - at.date()).days if item["kind"] == "event" else None
     title = headline(item, kind)
     if kind == "reminder_3d" and days != 3:
-        title = f"{days} gün kaldı: {item['title']}"
+        title = f"{days} gün kaldı: {event_title(item)}"
     key = digest(f"{item['id']}:{item['revision']}:{kind}")
-    store.queue({"id": key, "item_id": item["id"], "revision": item["revision"], "kind": kind,
+    post = {"id": key, "item_id": item["id"], "revision": item["revision"], "kind": kind,
                  "due_at": due.isoformat(), "title": title, "caption": caption(item, title),
                  "category": item["category"], "source_urls": item["sources"],
                  "slides": [{"title": title, "body": slide_body(item)}],
-                 "created_at": at.isoformat(), "formats": ["carousel", "story"] if item["kind"] == "event" else ["feed", "story"]})
+                 "created_at": at.isoformat(), "formats": ["carousel", "story"] if item["kind"] == "event" else ["feed", "story"]}
+    if store.queue(post):
+        return
+    rows = store.rows("SELECT payload,status,revision FROM posts WHERE id=?", (key,))
+    if not rows or rows[0]["status"] not in ("prepared", "blocked_source") or rows[0]["revision"] != item["revision"]:
+        return
+    # A wording/layout change may refresh an unclaimed card, but keeps its
+    # identity and due date. Published, in-flight and uncertain claims are frozen.
+    previous = json.loads(rows[0]["payload"])
+    post["due_at"] = previous["due_at"]
+    post["created_at"] = previous["created_at"]
+    if "illustration_keys" in previous:
+        post["illustration_keys"] = previous["illustration_keys"]
+    with store.db:
+        store.db.execute("UPDATE posts SET payload=? WHERE id=? AND revision=? AND status IN ('prepared','blocked_source')",
+                         (json.dumps(post, ensure_ascii=False), key, item["revision"]))
+
+
+def card_location(item: dict) -> str | None:
+    """Use the named venue; leave its explicit street address in the caption."""
+    location = item.get("location")
+    if location and " · " in location:
+        venue, address = location.split(" · ", 1)
+        if venue.strip() and re.search(r"\b(?:mahalle\w*|mah\.?|cadde\w*|cad\.?|sokak\w*|sok\.?|adres)\b|\bno\s*[:.]", address, re.I):
+            return venue.strip()
+    return location
 
 
 def slide_body(item: dict) -> str:
     if item["kind"] == "news":
         return item["description"][:650] + "\n\nKaynak: " + item["source_name"]
-    details = [event_date_label(item),
-               item.get("location") or "Konum açıklanmadı", item.get("organizer") or "Organizatör açıklanmadı",
-               "Ücretsiz" if item.get("free") is True else ("Ücretli" if item.get("free") is False else "Ücret bilgisi açıklanmadı"),
-               "Kaynak: " + item["source_name"]]
+    details = [event_date_label(item)]
+    if location := card_location(item):
+        details.append(location)
+    if item.get("organizer"):
+        details.append("Düzenleyen: " + item["organizer"])
+    if item.get("free") is True:
+        details.append("Ücretsiz")
+    elif item.get("price"):
+        currency = 'TL' if (item.get('currency') or '').upper() == 'TRY' else item.get('currency')
+        details.append("Ücret: " + item["price"] + (" " + currency if currency else ""))
+    elif item.get("free") is False:
+        details.append("Ücretli")
+    details.append("Kaynak: " + item["source_name"])
     return "\n\n".join(details)
 
 
@@ -138,15 +174,14 @@ def prepare_digest(store: Store, at: datetime, kind: str, days: int):
         return
     selected = events[:9]  # Meta carousel cover + 9 slides; do not imply a complete calendar.
     description = f"{at.strftime('%d.%m.%Y')} itibarıyla önümüzdeki {days} gün için doğrulanmış etkinliklerden seçki."
-    slides = [{"title": title, "body": description}] + [{"title": e["title"], "body": slide_body(e)} for e in selected]
-    content = "\n\n".join([title, description] + [e["title"] + " · " + event_date_label(e, include_time=False) + "\nKaynak: " + e["url"] for e in selected])
+    slides = [{"title": title, "body": description}] + [{"title": event_title(e), "body": slide_body(e), "category": e["category"]} for e in selected]
+    content = "\n\n".join([title, description] + [event_title(e) + " · " + event_date_label(e, include_time=False) + "\nKaynak: " + e["url"] for e in selected])
     post = {"id": key, "kind": kind, "revision": 1, "due_at": next_slot(at, event=True).isoformat(),
             "title": title, "caption": content[:2200], "category": "event", "slides": slides,
             "source_urls": [e["url"] for e in selected], "created_at": at.isoformat(), "formats": ["carousel", "story"]}
     if existing:
         # Keep original due date so frequent runs cannot postpone it indefinitely.
         post["due_at"] = existing["due_at"]
-        import json
         with store.db:
             store.db.execute("UPDATE posts SET payload=?,status='prepared' WHERE id=?", (json.dumps(post, ensure_ascii=False), key))
     else:

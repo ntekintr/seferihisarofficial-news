@@ -59,8 +59,22 @@ def event_date_label(item: dict, include_time: bool = True) -> str:
     return value
 
 
+def event_type_label(category: str) -> str:
+    """Describe the verified category without inventing an event's genre."""
+    return {"theatre": "Tiyatro oyunu", "concert": "Konser", "cinema": "Film gösterimi",
+            "festival": "Festival", "culture": "Kültür ve sanat etkinliği",
+            "family": "Aile ve çocuk etkinliği", "sport": "Spor etkinliği",
+            "market": "Pazar ve fuar", "food": "Gastronomi etkinliği",
+            "education": "Eğitim etkinliği"}.get(category, "Etkinlik")
+
+
+def event_title(item: dict) -> str:
+    """Retain the source's name and make the type clear at first glance."""
+    return item["title"] + " — " + event_type_label(item["category"])
+
+
 def caption(item: dict, label: str) -> str:
-    lines = [label, item["title"]]
+    lines = [label] if item["kind"] == "event" and item["title"] in label else [label, item["title"]]
     if item["kind"] == "event":
         lines += [event_date_label(item),
                   "Yer: " + (item.get("location") or "Açıklanmadı"),
@@ -114,6 +128,9 @@ def ai_priority(item: dict, session=None) -> int | None:
 
 
 def headline(item: dict, kind: str) -> str:
-    prefix = {"announcement": "Bölge takviminde", "reminder_3d": "3 gün kaldı", "reminder_day": "Bugün yakınınızda",
+    if item["kind"] == "event" and kind == "announcement":
+        return event_title(item)
+    prefix = {"reminder_3d": "3 gün kaldı", "reminder_day": "Bugün yakınınızda",
               "update": "Etkinlik bilgisi güncellendi", "cancellation": "İptal duyurusu", "news": CATEGORIES[item["category"]]}
-    return f"{prefix.get(kind, 'Seferihisar Official')}: {item['title']}"
+    title = event_title(item) if item["kind"] == "event" else item["title"]
+    return f"{prefix.get(kind, 'Seferihisar Official')}: {title}"
