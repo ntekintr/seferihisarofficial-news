@@ -45,6 +45,7 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
           ILLUSTRATIONS_ENABLED: 'true'
+          ILLUSTRATION_REVIEW_ENABLED: 'true'
         run: python -m seferihisar.cli run
       - name: Validate both public boundaries before upload
         run: |
@@ -59,6 +60,14 @@ jobs:
       - uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3
         with:
           path: dist
+      - name: Retain bounded rejected-image evidence for review only
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: illustration-review
+          path: work/illustration-review
+          if-no-files-found: ignore
+          retention-days: 3
 
   persist:
     needs: research
@@ -99,3 +108,4 @@ jobs:
           enablement: true
       - uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4
         id: deployment
+

@@ -17,6 +17,7 @@ from .image_safety import (MAX_CACHE_BYTES, MAX_CACHED_IMAGES, IllustrationCheck
                            IllustrationTextRejected, ocr_available, validate_jpeg,
                            validate_text_free_illustration)
 from .security import contains_secret
+from .illustration_review import save_rejected_image
 
 MODEL = '@cf/black-forest-labs/flux-1-schnell'
 DAILY_ATTEMPTS = 20
@@ -178,7 +179,8 @@ class Illustrator:
             raise IllustrationCheckUnavailable('Illustration text check unavailable')
         try:
             validate_text_free_illustration(data)
-        except IllustrationTextRejected:
+        except IllustrationTextRejected as exc:
+            save_rejected_image(key, data, exc.findings)
             self.checked_images[key] = 'rejected'
             raise
         except IllustrationCheckUnavailable:
@@ -402,4 +404,5 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Free cloud illustration preview; no publication')
     parser.add_argument('--preview', type=Path, required=True)
     preview(parser.parse_args().preview)
+
 
