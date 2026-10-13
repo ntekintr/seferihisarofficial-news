@@ -23,7 +23,16 @@ jobs:
           sudo apt-get install -y --no-install-recommends tesseract-ocr tesseract-ocr-tur
           tesseract --version
       - run: python -m pytest -q
+      - name: Keep synthetic native OCR regression image when validation fails
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: native-ocr-test-fixture
+          path: work/ocr-native-fixture.jpg
+          if-no-files-found: ignore
+          retention-days: 1
       - run: node --check site/app.js
-      - run: node --test ops/cron-worker.test.mjs
+      - run: node --test ops/cron-worker.test.mjs site/app.test.mjs
       - run: python -m seferihisar.cli demo --public work/demo-site
       - run: python -m seferihisar.security public work/demo-site
+

@@ -474,6 +474,29 @@ def municipal_detail_fields(article) -> dict:
     }
 
 
+def detail_error_code(exc: Exception, *, calendar: bool = False) -> str:
+    """Classify failed detail reads without retaining request or exception text."""
+    code = 'detail_check_failed'
+    if isinstance(exc, requests.exceptions.SSLError):
+        code = 'detail_tls_failed'
+    elif isinstance(exc, requests.Timeout):
+        code = 'detail_timeout'
+    elif isinstance(exc, requests.HTTPError) and exc.response is not None:
+        status = exc.response.status_code
+        if type(status) is int and 100 <= status <= 599:
+            code = 'detail_http_' + str(status)
+    elif isinstance(exc, requests.ConnectionError):
+        code = 'detail_connection_failed'
+    elif isinstance(exc, ValueError):
+        # Only Fetcher's own exact, fixed messages have a diagnostic meaning.
+        code = {
+            'robots.txt disallows this path': 'detail_robots_denied',
+            'Response too large': 'detail_response_too_large',
+            'Too many redirects': 'detail_redirect_limit',
+        }.get(str(exc), code)
+    return 'calendar_' + code if calendar else code
+
+
 def collect_municipal_calendar(source: dict, fetcher: Fetcher):
     body, base = fetcher.get(source['url'])
     today = now().date()
@@ -514,8 +537,8 @@ def collect_municipal_calendar(source: dict, fetcher: Fetcher):
             elif re.search(r'(?:etkinlik|konser|gösteri|festival)\s+ertelen(?:di|miştir)', body_text, re.I):
                 item['status'] = 'postponed'
             found.append(item)
-        except (requests.RequestException, ValueError, OSError):
-            errors.append({'source_id': source['id'], 'code': 'calendar_detail_check_failed'})
+        except (requests.RequestException, ValueError, OSError) as exc:
+            errors.append({'source_id': source['id'], 'code': detail_error_code(exc, calendar=True)})
     return found, [], errors
 
 
@@ -641,9 +664,10 @@ def collect_source(source: dict, fetcher: Fetcher, known_events: list[dict]) -> 
                     update.update(status="cancelled" if cancelled else "postponed", description=body_text[:3000])
                     items.append(update)
             candidates.extend(discover(page, final))
-        except (requests.RequestException, ValueError, OSError):
+        except (requests.RequestException, ValueError, OSError) as exc:
             # Surface the source failure, rather than treating disappearance as cancellation.
-            errors.append({"source_id": source["id"], "code": "detail_check_failed"})
+            errors.append({"source_id": source["id"], "code": detail_error_code(exc)})
     # The feed representation of an event isn't an extra news announcement.
     event_urls = {i["url"] for i in items if i["kind"] == "event"}
     return [i for i in items if i["kind"] == "event" or i["url"] not in event_urls], candidates, errors
+

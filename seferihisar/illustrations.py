@@ -58,7 +58,7 @@ NEWS_SCENES = {
     'health': 'A neutral clinic workspace with a stethoscope and unlabelled equipment. No patients, diagnosis or treatment claim.',
     'tourism': 'A generic natural coastal view with realistic sea and vegetation. No recognizable landmark or invented attraction.',
 }
-SCENE_VERSION = 'editorial-photo-v4'
+SCENE_VERSION = 'editorial-photo-v5'
 UNCLASSIFIED_NEWS_SCENE = ('A photographic close view of ordinary objects associated with the quoted title. '
                            'Keep it neutral if the subject is unclear; never substitute a landmark or invent an incident.')
 SCENE_RULES = ('This is a generic visual about the subject, not a reconstruction of the event. '
@@ -85,8 +85,12 @@ def scene_brief(item: dict) -> str:
     transport_categories = ('news', 'municipality', 'public', 'transport')
     parking = mentions('otopark') or (mentions('park alanı') and (category == 'transport' or mentions('araç')))
     if category in transport_categories and parking:
-        return ('A generic ordinary parking area with marked parking spaces and a few unbranded cars. '
-                'The parking spaces are the focal point. No civic building, people, signs or readable plates.')
+        return ('A generic ordinary parking area with marked parking spaces, plain unnumbered bays and a few unbranded cars viewed from the side. '
+                'The parking spaces are the focal point. No numbers or symbols painted on the pavement. '
+                'No civic building, people or signs. Vehicle plates must not be visible.')
+    if category == 'family' and mentions('bağımsız yaşam', 'istihdam', 'engelli genç'):
+        return ('An adult life-skills training workspace with everyday household objects, folded clothes and unlettered craft materials on a table. '
+                'Natural photographic light and realistic textures. No people, children, toys, kite or written instructions.')
     roadwork = mentions('yol çalış', 'asfalt', 'yol yap', 'yol onar', 'yol bakım')
     road_subject = mentions('kavşak', 'çevre yolu', 'trafik')
     if category == 'transport' or (category in transport_categories and (roadwork or road_subject)):
@@ -124,7 +128,7 @@ def illustration_prompt(item: dict) -> str:
 
 
 def image_key(item: dict) -> str:
-    # Refresh prepared scenes once after removing source titles from fixed scenes.
+    # Refresh prepared scenes once after correcting photo-texture OCR rejection.
     # Published posts keep their stored illustration_keys without regeneration.
     return digest(MODEL + ':' + SCENE_VERSION + ':' + item['id'] + ':' + str(item['revision']) + ':' + topic(item))
 

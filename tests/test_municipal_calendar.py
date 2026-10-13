@@ -75,7 +75,8 @@ def test_failed_detail_never_refreshes_stored_event(monkeypatch):
     fetcher = Mock()
     fetcher.get.side_effect = [(json.dumps([ROW]), SOURCE['url']), requests.Timeout('private request body')]
     items, _, errors = collect_source(SOURCE, fetcher, [])
-    assert not items and len(errors) == 1 and 'private' not in json.dumps(errors)
+    assert not items and errors == [{'source_id': SOURCE['id'], 'code': 'calendar_detail_timeout'}]
+    assert 'private' not in json.dumps(errors)
 
 
 def test_past_events_and_far_future_do_not_consume_detail_budget(monkeypatch):
@@ -146,3 +147,4 @@ def test_conflicting_venue_labels_reject_detail(monkeypatch):
                                'https://seferihisar.bel.tr/urkmez-festivali')]
     items, _, errors = collect_source(SOURCE, fetcher, [])
     assert not items and errors == [{'source_id': SOURCE['id'], 'code': 'calendar_detail_check_failed'}]
+
