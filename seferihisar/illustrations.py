@@ -260,6 +260,16 @@ class Illustrator:
                 return None
         if not generate:
             return None
+        # v5 changes only a few custom scenes. Reuse an already-checked v4
+        # photo for an unchanged fixed brief, without spending another request.
+        unchanged = (SCENE_VERSION == 'editorial-photo-v5' and
+                     scene_brief(item) in (*EVENT_SCENES.values(), *NEWS_SCENES.values()))
+        if old is None and unchanged:
+            if self._frozen_key(key):
+                self.stats['deferred'] += 1
+                return None
+            if path := self._reuse_v4(item, key):
+                return path
         if not self.can_check_text():
             self.stats['deferred'] += 1
             return None
@@ -301,6 +311,45 @@ class Illustrator:
             self.stats['failed'] += 1
             self.stopped = True
             return None
+
+    def _frozen_key(self, key: str) -> bool:
+        for row in self.store.rows("SELECT payload FROM posts WHERE status IN ('published','publishing','uncertain')"):
+            try:
+                bindings = json.loads(row['payload']).get('illustration_keys', {})
+                values = bindings.values() if isinstance(bindings, dict) else bindings
+                if not isinstance(bindings, (dict, list)) or key in values:
+                    return True
+            except (ValueError, TypeError, AttributeError):
+                return True
+        return False
+
+    def _reuse_v4(self, item: dict, key: str) -> Path | None:
+        # The legacy digest binds the exact model, item ID, revision and topic;
+        # the row must also belong to that item. No legacy row is rewritten.
+        legacy_key = digest(MODEL + ':editorial-photo-v4:' + item['id'] + ':' + str(item['revision']) + ':' + topic(item))
+        rows = self.store.rows("SELECT * FROM illustrations WHERE id=? AND item_id=? AND status='ready'",
+                               (legacy_key, item['id']))
+        if not rows:
+            return None
+        legacy = rows[0]
+        try:
+            validate_jpeg(legacy['image'])
+            self.check_image(legacy_key, legacy['image'])
+        except IllustrationCheckUnavailable:
+            self.stats['deferred'] += 1
+            return None
+        except (IllustrationTextRejected, ValueError):
+            self.stats['failed'] += 1
+            return None
+        with self.store.db:
+            inserted = self.store.db.execute('INSERT OR IGNORE INTO illustrations VALUES (?,?,?,?,?,?,?)',
+                                             (key, item['id'], 'ready', legacy['image'], legacy['attempts'],
+                                              legacy['retry_at'], self.at.isoformat()))
+        if inserted.rowcount != 1:
+            return None
+        self.checked_images[key] = 'safe'
+        self.stats['reused'] += 1
+        return self.materialize(key, legacy['image'])
 
     def generate(self, item: dict) -> bytes:
         endpoint = f'https://api.cloudflare.com/client/v4/accounts/{self.account}/ai/run/{MODEL}'

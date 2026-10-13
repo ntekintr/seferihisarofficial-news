@@ -11,7 +11,7 @@ import requests
 from PIL import Image
 
 from seferihisar.domain import digest
-from seferihisar.illustrations import Illustrator, STYLE, clean_image, image_key, illustration_prompt, topic
+from seferihisar.illustrations import Illustrator, MODEL, STYLE, clean_image, image_key, illustration_prompt, topic
 from seferihisar.image_safety import IllustrationCheckUnavailable, IllustrationTextRejected, validate_jpeg
 from seferihisar.pipeline import export
 from seferihisar.schedule import prepare
@@ -557,5 +557,175 @@ def test_prune_quarantines_unreferenced_old_revision_and_checks_once(store, even
     check.assert_called_once()
     generator.session.post.assert_not_called()
     validate_state(store.path)
+
+
+def seed_v4_photo(store, item, at, *, key_item=None, item_id=None, status='ready'):
+    source = key_item or item
+    key = digest(MODEL + ':editorial-photo-v4:' + source['id'] + ':' + str(source['revision']) + ':' + topic(source))
+    data = clean_image(png()) if status == 'ready' else None
+    with store.db:
+        store.db.execute('INSERT INTO illustrations VALUES (?,?,?,?,?,?,?)',
+                         (key, item_id or item['id'], status, data, 1 if status == 'ready' else 2,
+                          (at + timedelta(days=1)).isoformat(), at.isoformat()))
+        store.db.execute('INSERT INTO illustration_days VALUES (?,20)', (at.date().isoformat(),))
+    return key, data
+
+
+def test_unchanged_culture_photo_is_reused_at_daily_quota_without_rewriting_legacy(store, event, at, tmp_path, configured, monkeypatch):
+    event['category'] = 'culture'
+    item = saved_item(store, event, at)
+    legacy_key, data = seed_v4_photo(store, item, at)
+    legacy = store.rows('SELECT * FROM illustrations WHERE id=?', (legacy_key,))[0]
+    check = Mock()
+    monkeypatch.setattr('seferihisar.illustrations.validate_text_free_illustration', check)
+    generator = Illustrator(store, at + timedelta(minutes=15), tmp_path, session=client())
+    path = generator.image(item, True)
+    assert path.name == image_key(item) + '.jpg' and path.read_bytes() == data
+    assert store.rows('SELECT * FROM illustrations WHERE id=?', (legacy_key,))[0] == legacy
+    current = store.rows('SELECT * FROM illustrations WHERE id=?', (image_key(item),))[0]
+    assert current['status'] == 'ready' and current['image'] == data and current['attempts'] == legacy['attempts']
+    assert generator.stats['reused'] == 1 and generator.stats['generated'] == generator.stats['attempted'] == 0
+    assert store.rows('SELECT attempts FROM illustration_days')[0]['attempts'] == 20
+    generator.session.post.assert_not_called()
+    check.assert_called_once_with(data)
+    assert generator.image(item, True) == path
+    check.assert_called_once()
+    validate_state(store.path)
+
+
+@pytest.mark.parametrize(('category', 'title'), [
+    ('municipality', 'ÖRNEK · Seferihisar otopark projesi'),
+    ('family', 'ÖRNEK · Engelli gençlere bağımsız yaşam ve istihdam desteği'),
+])
+def test_changed_custom_scenes_do_not_alias_v4_photos(store, event, at, tmp_path, configured, category, title):
+    news = json.loads(Path('tests/fixtures/items.json').read_text())[3]
+    news.update(category=category, title=title)
+    item = saved_item(store, news, at)
+    seed_v4_photo(store, item, at)
+    before = store.rows('SELECT * FROM illustrations')
+    generator = Illustrator(store, at, tmp_path, session=client())
+    assert generator.image(item, True) is None
+    assert store.rows('SELECT * FROM illustrations') == before
+    generator.session.post.assert_not_called()
+
+
+@pytest.mark.parametrize('mismatch', ['revision', 'topic', 'item-owner'])
+def test_legacy_alias_requires_exact_revision_topic_and_item_owner(store, event, at, tmp_path, configured, mismatch):
+    event['category'] = 'culture'
+    item = saved_item(store, event, at)
+    key_item = {**item}
+    owner = item['id']
+    if mismatch == 'revision':
+        key_item['revision'] += 1
+    elif mismatch == 'topic':
+        key_item['title'] += ' başka konu'
+    else:
+        owner = digest('another-item-owner')
+    seed_v4_photo(store, item, at, key_item=key_item, item_id=owner)
+    before = store.rows('SELECT * FROM illustrations')
+    generator = Illustrator(store, at, tmp_path, session=client())
+    assert generator.image(item, True) is None
+    assert store.rows('SELECT * FROM illustrations') == before
+    generator.session.post.assert_not_called()
+
+
+@pytest.mark.parametrize('status', ['failed', 'pending'])
+def test_legacy_alias_never_promotes_failed_or_pending_v4_rows(store, event, at, tmp_path, configured, status):
+    event['category'] = 'culture'
+    item = saved_item(store, event, at)
+    seed_v4_photo(store, item, at, status=status)
+    before = store.rows('SELECT * FROM illustrations')
+    generator = Illustrator(store, at, tmp_path, session=client())
+    assert generator.image(item, True) is None
+    assert store.rows('SELECT * FROM illustrations') == before
+    generator.session.post.assert_not_called()
+
+
+@pytest.mark.parametrize('status', ['failed', 'pending', 'ready'])
+def test_legacy_alias_never_overwrites_an_existing_active_row(store, event, at, tmp_path, configured, status):
+    event['category'] = 'culture'
+    item = saved_item(store, event, at)
+    seed_v4_photo(store, item, at)
+    active_data = clean_image(png()) if status == 'ready' else None
+    with store.db:
+        store.db.execute('INSERT INTO illustrations VALUES (?,?,?,?,?,?,?)',
+                         (image_key(item), item['id'], status, active_data, 2,
+                          (at + timedelta(days=1)).isoformat(), at.isoformat()))
+    before = store.rows('SELECT * FROM illustrations')
+    generator = Illustrator(store, at, tmp_path, session=client())
+    result = generator.image(item, True)
+    assert bool(result) == (status == 'ready')
+    assert store.rows('SELECT * FROM illustrations') == before
+    generator.session.post.assert_not_called()
+
+
+@pytest.mark.parametrize('status', ['published', 'publishing', 'uncertain'])
+@pytest.mark.parametrize('binding_type', ['dict', 'list'])
+def test_missing_active_key_bound_to_claimed_post_is_not_filled_by_legacy_alias(store, event, at, tmp_path, configured, status, binding_type):
+    event['category'] = 'culture'
+    item = saved_item(store, event, at)
+    seed_v4_photo(store, item, at)
+    # Also leave fresh generation available: a frozen binding must not fall
+    # through to a new provider call after migration has been refused.
+    with store.db:
+        store.db.execute('DELETE FROM illustration_days')
+    bindings = {'0': image_key(item)} if binding_type == 'dict' else [image_key(item)]
+    post = {'id': digest('claimed-legacy-test'), 'item_id': item['id'], 'revision': 1,
+            'kind': 'announcement', 'due_at': at.isoformat(), 'illustration_keys': bindings}
+    store.queue(post)
+    with store.db:
+        store.db.execute('UPDATE posts SET status=? WHERE id=?', (status, post['id']))
+    before = store.rows('SELECT * FROM illustrations')
+    frozen = store.rows('SELECT * FROM posts')
+    generator = Illustrator(store, at, tmp_path, session=client())
+    assert generator.image(item, True) is None
+    assert store.rows('SELECT * FROM illustrations') == before
+    assert store.rows('SELECT * FROM posts') == frozen
+    assert not store.rows('SELECT * FROM illustration_days')
+    generator.session.post.assert_not_called()
+
+
+@pytest.mark.parametrize('mode', ['disabled', 'demo', 'read-only'])
+def test_legacy_alias_does_not_mutate_disabled_demo_or_read_only_cache_lookups(store, event, at, tmp_path, configured, monkeypatch, mode):
+    event['category'] = 'culture'
+    item = saved_item(store, event, at)
+    seed_v4_photo(store, item, at)
+    before = store.rows('SELECT * FROM illustrations')
+    if mode == 'disabled':
+        monkeypatch.setenv('ILLUSTRATIONS_ENABLED', 'false')
+    generator = Illustrator(store, at, tmp_path, demo=mode == 'demo', session=client())
+    assert generator.image(item, mode != 'read-only') is None
+    assert store.rows('SELECT * FROM illustrations') == before
+    generator.session.post.assert_not_called()
+
+
+@pytest.mark.parametrize('error', [IllustrationTextRejected, IllustrationCheckUnavailable])
+def test_legacy_alias_requires_current_ocr_without_quarantining_legacy_row(store, event, at, tmp_path, configured, monkeypatch, error):
+    event['category'] = 'culture'
+    item = saved_item(store, event, at)
+    seed_v4_photo(store, item, at)
+    before = store.rows('SELECT * FROM illustrations')
+    monkeypatch.setattr('seferihisar.illustrations.validate_text_free_illustration', Mock(side_effect=error('rejected')))
+    generator = Illustrator(store, at, tmp_path, session=client())
+    assert generator.image(item, True) is None
+    assert store.rows('SELECT * FROM illustrations') == before
+    generator.session.post.assert_not_called()
+
+
+def test_legacy_alias_flows_through_normal_public_ai_disclosure(store, event, at, tmp_path, configured, monkeypatch):
+    from seferihisar.media_caption import GENERATED_IMAGE_NOTE
+    event['category'] = 'culture'
+    item = saved_item(store, event, at)
+    seed_v4_photo(store, item, at)
+    prepare(store, at)
+    session = client()
+    monkeypatch.setattr('seferihisar.illustrations.requests', session)
+    export(store, tmp_path / 'public', json.loads(Path('config/sources.json').read_text()), at)
+    illustrated = [post for post in store.posts() if image_key(item) in post.get('illustration_keys', {}).values()]
+    assert illustrated and all(GENERATED_IMAGE_NOTE in post['caption'] for post in illustrated)
+    session.post.assert_not_called()
+    assert store.rows('SELECT attempts FROM illustration_days')[0]['attempts'] == 20
+    validate_state(store.path)
+    validate_public(tmp_path / 'public')
 
 
