@@ -207,7 +207,9 @@ def _export(store: Store, public_dir: Path, sources: list[dict], at: datetime, d
     if catalogue_path.exists():
         from .source_catalog import public_catalog
         catalogue = json.loads(catalogue_path.read_text(encoding='utf-8'))
-        snapshot['source_catalog'] = public_catalog(catalogue, sources, snapshot['source_health'], at)
+        # A crawl can take several minutes after its reference/start time.
+        # Evaluate live health at export time, not against that older start.
+        snapshot['source_catalog'] = public_catalog(catalogue, sources, snapshot['source_health'], at if demo else now())
     assert_no_secrets(snapshot)
     (public_dir / "data.json").write_text(json.dumps(snapshot, ensure_ascii=False, indent=2), encoding="utf-8")
     (public_dir / ".nojekyll").touch()

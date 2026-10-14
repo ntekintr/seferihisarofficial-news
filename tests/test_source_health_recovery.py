@@ -10,6 +10,7 @@ import pytest
 import requests
 
 from seferihisar.collect import Fetcher, collect_source, feed_items
+from seferihisar.pipeline import export
 from seferihisar.source_catalog import public_catalog
 from seferihisar.source_readers import ticket_items
 
@@ -129,3 +130,16 @@ def test_every_reviewed_connected_catalog_entry_has_an_explicit_reader_binding()
     for entry in entries:
         if entry['status'] == 'connected':
             assert entry.get('reader_id', entry['id']) in SOURCES
+
+
+def test_export_uses_completion_time_for_health_of_late_crawl_sources(store, at, tmp_path, monkeypatch):
+    checked = at + timedelta(minutes=7)
+    with store.db:
+        store.db.execute('INSERT INTO source_health VALUES (?,?,?,?,?,?,?)',
+                         ('sehayder', checked.isoformat(), 'empty', 0, 0, 0, None))
+    monkeypatch.setattr('seferihisar.pipeline.now', lambda: checked + timedelta(minutes=1))
+    public = tmp_path / 'public'
+    export(store, public, list(SOURCES.values()), at)
+    data = json.loads((public / 'data.json').read_text(encoding='utf-8'))
+    entry = next(e for e in data['source_catalog'] if e['id'] == 'sehayder')
+    assert entry['status'] == 'connected'
