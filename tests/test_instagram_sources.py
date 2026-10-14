@@ -154,6 +154,34 @@ def test_global_permission_error_stops_further_calls(ig_source,at,monkeypatch):
     assert {r['code'] for r in result['health']}=={'instagram_permission_required'}
 
 
+def test_target_unavailable_error_does_not_stop_other_sources(ig_source,at,monkeypatch):
+    monkeypatch.setattr(reader,'now',lambda:at)
+    monkeypatch.setattr(reader,'safe_url',lambda url,hosts:url)
+    monkeypatch.setenv('IG_SOURCE_ACCESS_TOKEN','dummy-private-key')
+    monkeypatch.setenv('IG_SOURCE_USER_ID','123456789')
+    other={**ig_source,'id':'second','instagram_username':'second','url':'https://www.instagram.com/second/'}
+    responses=[Response({'error':{'code':110,'error_subcode':2207013,
+                                  'message':'PRIVATE_RESPONSE target account unavailable'}},400),
+               Response({'business_discovery':{**account(at),'username':'second'}})]
+    session=Session({})
+    session.get=lambda *args,**kwargs:responses.pop(0)
+    result=reader.manifest([ig_source,other],at,session)
+    assert not responses
+    assert result['health'][0]['code']=='instagram_source_unavailable'
+    assert result['health'][0]['status']=='failed'
+    assert result['health'][1]['status']=='ok'
+    assert len(result['items'])==1 and result['items'][0]['source_id']=='second'
+    assert 'PRIVATE_RESPONSE' not in json.dumps(result)
+
+
+def test_unknown_110_subcode_keeps_generic_read_failure(ig_source,monkeypatch):
+    monkeypatch.setattr(reader,'safe_url',lambda url,hosts:url)
+    session=Session({'error':{'code':110,'error_subcode':999}},400)
+    with pytest.raises(reader.SourceReadError) as exc:
+        reader.read_account(ig_source,'key','123456789','v26.0',session)
+    assert exc.value.code=='instagram_read_failed'
+
+
 @pytest.mark.parametrize('caption',[
  'Seferihisar elektrik kesintisi duyurusu. Tarih: 10.10.2026 Saat: 08:00–09:00',
  'Seferihisar elektrik kesintisi duyurusu. Tarih: 10 Ekim Saat: 10:00–13:00',
