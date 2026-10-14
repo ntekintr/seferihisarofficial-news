@@ -52,10 +52,15 @@ def main():
             if args.automatic:
                 from .facebook import publish_recent
                 result['facebook'] = publish_recent(store, at, args.site_url, assets, checkpoint=checkpoint)
+            from .operations import record_check, write_job_summary, failed
+            observation = record_check(store, result, at, 'automatic' if args.automatic else 'story' if args.story else 'feed')
+            write_job_summary(observation)
         finally:
             store.close()
     # Never print captions, source bodies or authentication details in Actions logs.
     print(json.dumps({k: v for k, v in result.items() if k != "assets"}, ensure_ascii=False))
+    if args.command == 'publish' and failed(observation):
+        raise SystemExit(1)  # The workflow still persists state in its always() step.
 
 
 if __name__ == "__main__":

@@ -9,6 +9,14 @@ const context={};
 vm.runInNewContext(source.slice(0,source.indexOf('const labels =')),context);
 const label=context.errorLabel;
 
+test('publication waits, missing media and uncertainty have separate safe labels',()=>{
+ assert.equal(context.publicationLabel('outside_window'),'Yayın saati bekleniyor');
+ assert.match(context.publicationLabel('uncertain'),/tekrar gönderilmez/);
+ assert.match(context.publicationLabel('media_not_deployed'),/Görsel bağlantısı/);
+ assert.equal(context.publicationLabel('__proto__'),'Henüz doğrulanmadı');
+ assert.equal(context.publicationLabel('PRIVATE_BODY'),'Henüz doğrulanmadı');
+});
+
 test('detail and calendar failures have Turkish labels',()=>{
  const codes=['timeout','tls_failed','connection_failed','robots_denied','response_too_large','redirect_limit','check_failed'];
  for(const code of codes){

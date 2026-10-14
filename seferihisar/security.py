@@ -52,9 +52,22 @@ def validate_state(path: Path):
     db = sqlite3.connect(f"file:{path.resolve()}?mode=ro", uri=True)
     try:
         tables = {r[0] for r in db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
-        if not tables <= {"items", "posts", "withheld", "runs", "candidates", "annotations", "illustrations", "illustration_days", "source_health", "facebook_deliveries"}:
+        if not tables <= {"items", "posts", "withheld", "runs", "candidates", "annotations", "illustrations", "illustration_days", "source_health", "facebook_deliveries", "publication_checks"}:
             raise ValueError("Unexpected state tables")
         for table in sorted(tables):
+            if table == 'publication_checks':
+                from datetime import datetime
+                from .operations import validate_result
+                if [r[1] for r in db.execute('PRAGMA table_info(publication_checks)')] != ['id', 'checked_at', 'mode', 'result']:
+                    raise ValueError('Unexpected publication check fields')
+                if db.execute('SELECT COUNT(*) FROM publication_checks').fetchone()[0] > 100:
+                    raise ValueError('Publication check history exceeds limit')
+                for key, stamp, mode, result in db.execute('SELECT * FROM publication_checks'):
+                    assert_no_secrets((stamp, mode, result))
+                    if type(key) is not int or key < 1 or mode not in ('automatic', 'feed', 'story') or datetime.fromisoformat(stamp).tzinfo is None:
+                        raise ValueError('Invalid publication check')
+                    validate_result(json.loads(result))
+                continue
             if table == 'facebook_deliveries':
                 from datetime import datetime
                 columns = ['id', 'post_id', 'page_id', 'format', 'status', 'claimed_at', 'updated_at', 'photo_ids', 'media_id']
