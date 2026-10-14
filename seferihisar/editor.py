@@ -7,7 +7,7 @@ from urllib.parse import urlsplit
 
 import requests
 
-from .domain import CATEGORIES, SENSITIVE, local, normalized, parse_date
+from .domain import CATEGORIES, SENSITIVE, canonical, local, normalized, parse_date
 from .security import contains_secret, public_url
 
 
@@ -71,8 +71,25 @@ def event_date_label(item: dict, include_time: bool = True) -> str:
     return value
 
 
-def event_type_label(category: str) -> str:
+def event_activity(category: str, title: str = '') -> str | None:
+    """Only explicit activity words in broad categories; never infer a plot."""
+    if category not in ('event', 'family', 'culture', 'education'):
+        return None
+    value = normalized(title)
+    if re.search(r'\byoga\b', value) and not re.search(r'\byoga (?:salon|merkez|stüdyo)', value):
+        return 'yoga'
+    if re.search(r'\bçini\b', value):
+        return 'tile_art'
+    if re.search(r'\batölye(?:si)?\b|\bworkshop\b', value):
+        return 'workshop'
+    return None
+
+
+def event_type_label(category: str, title: str = '') -> str:
     """Describe the verified category without inventing an event's genre."""
+    activity = event_activity(category, title)
+    if activity:
+        return {'yoga':'Yoga etkinliği', 'tile_art':'Çini etkinliği', 'workshop':'Atölye'}[activity]
     return {"theatre": "Tiyatro oyunu", "concert": "Konser", "cinema": "Film gösterimi",
             "festival": "Festival", "culture": "Kültür ve sanat etkinliği",
             "family": "Aile ve çocuk etkinliği", "sport": "Spor etkinliği",
@@ -82,17 +99,36 @@ def event_type_label(category: str) -> str:
 
 def event_title(item: dict) -> str:
     """Retain the source's name and make the type clear at first glance."""
-    return item['title'] if item['category']=='outage' else item["title"] + " — " + event_type_label(item["category"])
+    title, category = item['title'], item['category']
+    if category == 'outage':
+        return title
+    explicit = {'concert':r'\bkonser(?:i)?\b', 'festival':r'\bfestival(?:i)?\b',
+                'theatre':r'\btiyatro\b|\boyunu\b', 'cinema':r'\bfilm gösterimi\b'}
+    if event_activity(category, title) or re.search(explicit.get(category, r'(?!)'), normalized(title)):
+        return title
+    return title + " — " + event_type_label(category, title)
+
+
+def news_type_label(category: str, title: str = '') -> str:
+    """An adult support story must not be presented as a children's activity."""
+    value = normalized(title)
+    if category == 'family' and 'engelli genç' in value and ('bağimsiz yaşam' in value or 'istihdam' in value):
+        return 'Sosyal destek'
+    return CATEGORIES.get(category, 'Yerel gündem')
 
 
 _COURSE_REGISTRATION_TITLE = re.compile(
     r"^(?:Yeni\s+Başlayacak\s+)?(?P<subject>.+?)\s+Kurslarımıza\s+Kayıtlarımız\s+Devam\s+Ediyor$", re.I)
 _QUOTED_COURSE = re.compile(r'["“]([^"“”\n]{3,160})["”]')
+_HOSPITAL_STAFF_TITLE = 'Seferihisar Necat Hepkon Devlet Hastanesi: Çalışan Memnuniyeti ve Sürekli İyileştirme Toplantısı'
 
 
 def news_title(item: dict) -> str:
     """Use neutral display wording without rewriting the source record."""
     title = item["title"]
+    if (item.get('kind') == 'news' and item.get('source_id') == 'seferihisar-hastane'
+            and title == _HOSPITAL_STAFF_TITLE):
+        return 'Seferihisar Devlet Hastanesi’nde çalışan memnuniyeti toplantısı'
     if item.get("kind") != "news" or item.get("source_id") != "seferihisar-hem":
         return title
     if registration := _COURSE_REGISTRATION_TITLE.fullmatch(title.strip()):
@@ -112,6 +148,14 @@ def news_title(item: dict) -> str:
 def news_body(item: dict) -> str:
     """Keep source facts, removing exact repeated sentences from news cards."""
     text = " ".join(item.get("description", "").split())
+    if (item.get('source_id') == 'seferihisar-hastane' and item.get('title') == _HOSPITAL_STAFF_TITLE
+            and all(normalized(cue) in normalized(text) for cue in (
+                'aylık çalışan memnuniyeti toplantılarımızı sürdürüyoruz',
+                'çalışanlarımızın görüş ve önerilerini değerlendiriyor',
+                'çalışma ortamımızı sürekli iyileştirmek'))):
+        return ('Seferihisar Necat Hepkon Devlet Hastanesi’nde çalışan memnuniyetini artırmak '
+                've çalışma ortamını iyileştirmek amacıyla aylık toplantılar düzenleniyor. '
+                'Toplantılarda çalışanların görüş ve önerileri değerlendiriliyor.')
     # Some RSS publishers append a syndication credit to the excerpt. Keep
     # the explicit caption attribution instead of painting this duplicate.
     if item.get('source_name'):
@@ -145,6 +189,17 @@ def news_body(item: dict) -> str:
                     if not re.fullmatch(r"(?:Ayrıntılı|Detaylı) bilgi için lütfen tıklayınız[.!]?", sentence, re.I))
 
 
+def excerpt(text: str, limit: int) -> str:
+    """A bounded excerpt with complete words and an explicit shortening mark."""
+    if len(text) <= limit:
+        return text
+    if limit <= 0:
+        return ''
+    prefix = text[:limit - 1]
+    shortened = prefix.rsplit(' ', 1)[0].rstrip(' ,;:') if ' ' in prefix else ''
+    return shortened + '…'
+
+
 _SOURCE_HASHTAG = re.compile(r"#(\w+)", re.UNICODE)
 _SOURCE_TEXT_TOKEN = re.compile(r"https?://\S+|#(\w+)", re.UNICODE)
 _TAG_TRANSLATION = str.maketrans("çğıöşü", "cgiosu")
@@ -176,6 +231,12 @@ def _topic_tags(item: dict) -> list[str]:
     category = item.get("category")
     text = _tag_text(" ".join(item.get(field) or "" for field in ("title", "description", "location")))
     event = item.get("kind") == "event"
+    if not event and news_type_label(category, item.get('title', '')) == 'Sosyal destek':
+        return ['#sosyaldestek'] + (['#istihdam'] if 'istihdam' in text else [])
+    activity = event_activity(category, item.get('title', '')) if event else None
+    if activity:
+        primary = {'yoga':'#yoga', 'tile_art':'#cini', 'workshop':'#atolye'}[activity]
+        return [primary, '#ailevecocuk' if category == 'family' else '#etkinlik']
     primary = {"theatre": "#tiyatro", "concert": "#konser", "cinema": "#sinema",
                "festival": "#festival", "culture": "#kultursanat", "family": "#ailevecocuk",
                "sport": "#spor", "market": "#pazarvefuar", "food": "#gastronomi",
@@ -241,7 +302,7 @@ def caption_with_hashtags(content: str, tags: list[str], *, footer: str = "", li
     available = max(0, limit - len(tail) - (2 if tail else 0))
     body = plain_source_text(content).strip()
     if len(body) > available:
-        body = body[:available].rsplit(" ", 1)[0].rstrip()
+        body = excerpt(body, available)
     return "\n\n".join(part for part in (body, tail) if part)
 
 
@@ -256,9 +317,10 @@ def caption(item: dict, label: str) -> str:
                   "Organizatör: " + (item.get("organizer") or "Açıklanmadı")]
         price = "Ücretsiz" if item.get("free") is True else "Ücret bilgisi açıklanmadı"
         if item.get("free") is not True and (item.get("free") is False or item.get("price")):
-            price = "Ücretli" + ((": " + item["price"] + " " + (item.get("currency") or "")) if item.get("price") else "")
+            currency = 'TL' if (item.get('currency') or '').upper() == 'TRY' else item.get('currency')
+            price = "Ücretli" + ((": " + item["price"] + (" " + currency if currency else "")) if item.get("price") else "")
         lines.append(price)
-        if item.get("ticket_url"):
+        if item.get("ticket_url") and canonical(item['ticket_url']) != canonical(item['url']):
             lines.append("Bilet: " + item["ticket_url"])
         if item.get("status") == "cancelled":
             lines.append("Etkinlik iptal edildi. Kaynaktaki güncel duyuruyu kontrol edin.")
@@ -266,11 +328,14 @@ def caption(item: dict, label: str) -> str:
             lines.append("Etkinlik ertelendi; yeni tarih için organizatörün duyurusunu takip edin.")
         elif item.get("status") == "rescheduled":
             lines.append("Etkinliğin tarihi güncellendi.")
-    if item.get("description"):
+    description = item.get('description', '')
+    redundant = item['kind'] == 'event' and normalized(description) in (
+        normalized(item['title']), normalized('Etkinlik duyurusu. ' + item['title']))
+    if description and not redundant:
         if item["kind"] == "news":
-            lines.append("Kaynak duyurusuna göre: " + news_body(item)[:1000])
+            lines.append("Kaynak duyurusuna göre: " + excerpt(news_body(item), 1000))
         else:
-            lines.append("Kaynak duyurusundan: “" + item["description"][:1000] + "”")
+            lines.append("Kaynak duyurusundan: “" + excerpt(description, 1000) + "”")
     source = "Kaynak: " + plain_source_text(item["source_name"]) + "\n" + item["url"]
     return caption_with_hashtags("\n\n".join(lines), hashtags(item), footer=source)
 
@@ -304,7 +369,7 @@ def headline(item: dict, kind: str) -> str:
     if item["kind"] == "event" and kind == "announcement":
         return event_title(item)
     prefix = {"reminder_3d": "3 gün kaldı", "reminder_day": "Bugün yakınınızda",
-              "update": "Etkinlik bilgisi güncellendi", "cancellation": "İptal duyurusu", "news": CATEGORIES[item["category"]]}
+              "update": "Etkinlik bilgisi güncellendi", "cancellation": "İptal duyurusu", "news": news_type_label(item['category'], item['title'])}
     title = event_title(item) if item["kind"] == "event" else news_title(item)
     return f"{prefix.get(kind, 'Seferihisar Official')}: {title}"
 

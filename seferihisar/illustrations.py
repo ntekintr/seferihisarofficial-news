@@ -18,6 +18,7 @@ from .image_safety import (MAX_CACHE_BYTES, MAX_CACHED_IMAGES, IllustrationCheck
                            validate_text_free_illustration)
 from .security import contains_secret
 from .illustration_review import save_rejected_image
+from .editor import event_activity
 
 MODEL = '@cf/black-forest-labs/flux-1-schnell'
 DAILY_ATTEMPTS = 20
@@ -49,6 +50,11 @@ EVENT_SCENES = {
     'food': 'A welcoming table with simple dishes and baskets of produce, photographed with natural food textures. Do not invent a named dish or menu.',
     'education': 'A learning workspace with an open blank notebook, pencils and a desk lamp, photographed in natural light. No lettering on any surface.',
 }
+ACTIVITY_SCENES = {
+    'yoga': 'An empty yoga practice space with a rolled and an open yoga mat, plain cork blocks and a folded blanket. Natural window light and realistic fabric and cork textures. No chairs, audience seats, people or lettering.',
+    'tile_art': 'A close photographic view of a ceramic tile painting worktable with plain unfinished tiles, brushes, small unlabelled bowls of colour and simple clay tools. Realistic ceramic and brush textures. No children, people, toys, words or specific exhibition artwork.',
+    'workshop': 'A close photographic view of a craft workshop table with plain paper, scissors, unlettered materials and simple hand tools. Natural light and realistic textures. No empty audience seating, people or written instructions.',
+}
 NEWS_SCENES = {
     'transport': 'An ordinary roadway with clear lane markings and generic traffic seen from a distance. The road is the focal point. No collision, damage, police response or readable plates.',
     'outage': 'A close view of ordinary utility pipes, a valve and maintenance tools. No burst pipe, flood or invented damage.',
@@ -60,6 +66,7 @@ NEWS_SCENES = {
 }
 SCENE_VERSION = 'editorial-photo-v5'
 SIGNLESS_SCENE_VERSION = 'editorial-photo-signless-v6'
+ACTIVITY_SCENE_VERSION = 'editorial-photo-activity-v7'
 UNCLASSIFIED_NEWS_SCENE = ('A photographic close view of ordinary objects associated with the quoted title. '
                            'Keep it neutral if the subject is unclear; never substitute a landmark or invent an incident.')
 SCENE_RULES = ('This is a generic visual about the subject, not a reconstruction of the event. '
@@ -70,6 +77,8 @@ SCENE_RULES = ('This is a generic visual about the subject, not a reconstruction
 def event_scene(item: dict) -> str | None:
     if item.get('kind') != 'event':
         return None
+    if activity := event_activity(item.get('category'), item.get('title', '')):
+        return ACTIVITY_SCENES[activity]
     return EVENT_SCENES.get(item.get('category'),
                             'An unoccupied generic gathering space with a few empty seats and warm natural light. No specific activity is asserted.')
 
@@ -129,6 +138,8 @@ def illustration_prompt(item: dict) -> str:
 
 
 def scene_version(item: dict) -> str:
+    if item.get('kind') == 'event' and event_activity(item.get('category'), item.get('title', '')):
+        return ACTIVITY_SCENE_VERSION
     # Only the two revised briefs need new images. Other verified photographs
     # retain their exact v5 keys and do not spend another generation request.
     if scene_brief(item) in (EVENT_SCENES['festival'], EVENT_SCENES['market']):
