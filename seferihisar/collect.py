@@ -603,6 +603,8 @@ def discover(html: str, base: str) -> list[dict]:
 
 def collect_source(source: dict, fetcher: Fetcher, known_events: list[dict]) -> tuple[list[dict], list[dict], list[dict]]:
     from . import source_readers
+    if source['kind']=='gdz_planned':
+        return source_readers.collect_gdz_planned(source,fetcher,known_events)
     if source['kind']=='ticketing':
         return source_readers.collect_tickets(source,fetcher,known_events)
     if source['kind']=='rotary':
@@ -616,7 +618,8 @@ def collect_source(source: dict, fetcher: Fetcher, known_events: list[dict]) -> 
         reader=source_readers.afad_items if source['kind']=='afad_earthquakes' else source_readers.program_items
         return reader(body,base,source),[],[]
     detail_reader = {'rotary':source_readers.rotary_items,
-                     'hospital':source_readers.hospital_items}.get(source['kind'],structured)
+                     'hospital':source_readers.hospital_items,
+                     'official_notice':source_readers.official_notice_items}.get(source['kind'],structured)
     if source['kind'] == 'municipal_calendar':
         return collect_municipal_calendar(source, fetcher)
     items, candidates, links = [], [], []
@@ -636,7 +639,7 @@ def collect_source(source: dict, fetcher: Fetcher, known_events: list[dict]) -> 
             if source.get("follow_feed_details", True):
                 links.extend(item["url"] for item in found[:8])
         else:
-            if source['kind'] not in ('hospital','rotary'):
+            if source['kind'] not in ('hospital','rotary','official_notice'):
                 items.extend(structured(body, base, source))
             candidates.extend(discover(body, base))
             soup = BeautifulSoup(body, "html.parser")

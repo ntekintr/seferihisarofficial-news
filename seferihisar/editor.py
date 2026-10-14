@@ -57,6 +57,8 @@ def verify(item: dict, source: dict, at: datetime) -> str | None:
 def event_date_label(item: dict, include_time: bool = True) -> str:
     """Show verified first/last days without inventing an event's end time."""
     start, end = parse_date(item['start']), parse_date(item.get('end'))
+    if item.get('category')=='outage' and include_time and end and item.get('time_known'):
+        return start.strftime('%d.%m.%Y · %H:%M')+' – '+end.strftime('%H:%M' if start.date()==end.date() else '%d.%m.%Y %H:%M')
     value = start.strftime('%d.%m.%Y')
     multiple_days = end is not None and end.date() > start.date()
     if multiple_days:
@@ -80,7 +82,7 @@ def event_type_label(category: str) -> str:
 
 def event_title(item: dict) -> str:
     """Retain the source's name and make the type clear at first glance."""
-    return item["title"] + " — " + event_type_label(item["category"])
+    return item['title'] if item['category']=='outage' else item["title"] + " — " + event_type_label(item["category"])
 
 
 _COURSE_REGISTRATION_TITLE = re.compile(
@@ -240,7 +242,9 @@ def caption_with_hashtags(content: str, tags: list[str], *, footer: str = "", li
 def caption(item: dict, label: str) -> str:
     display_title = news_title(item) if item["kind"] == "news" else item["title"]
     lines = [label] if display_title in label else [label, display_title]
-    if item["kind"] == "event":
+    if item['kind']=='event' and item['category']=='outage':
+        lines += [event_date_label(item),'Etkilenen bölge: '+(item.get('location') or 'Açıklanmadı')]
+    elif item["kind"] == "event":
         lines += [event_date_label(item),
                   "Yer: " + (item.get("location") or "Açıklanmadı"),
                   "Organizatör: " + (item.get("organizer") or "Açıklanmadı")]
@@ -289,6 +293,8 @@ def ai_priority(item: dict, session=None) -> int | None:
 
 
 def headline(item: dict, kind: str) -> str:
+    if item['category']=='outage' and item['kind']=='event':
+        return item['title']
     if item["kind"] == "event" and kind == "announcement":
         return event_title(item)
     prefix = {"reminder_3d": "3 gün kaldı", "reminder_day": "Bugün yakınınızda",

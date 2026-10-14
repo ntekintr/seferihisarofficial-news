@@ -59,6 +59,10 @@ def prepare(store: Store, at: datetime):
             queue_item(store, item, "news", at if urgent else next_slot(at), at)
             continue
         start = parse_date(item["start"])
+        if item['category']=='outage':
+            if parse_date(item['end'])>at:
+                queue_item(store,item,'cancellation' if item['status']=='cancelled' else 'update' if item['revision']>1 else 'announcement',at,at)
+            continue
         if item["status"] in ("cancelled", "postponed"):
             queue_item(store, item, "cancellation" if item["status"] == "cancelled" else "update", at, at)
             continue
@@ -104,7 +108,7 @@ def queue_item(store: Store, item: dict, kind: str, due: datetime, at: datetime)
                  "due_at": due.isoformat(), "title": title, "caption": caption(item, title),
                  "category": item["category"], "source_urls": item["sources"],
                  "slides": [{"title": title, "body": slide_body(item)}],
-                 "created_at": at.isoformat(), "formats": ["carousel", "story"] if item["kind"] == "event" else ["feed", "story"]}
+                 "created_at": at.isoformat(), "formats": ["carousel", "story"] if item["kind"] == "event" and item['category']!='outage' else ["feed", "story"]}
     if store.queue(post):
         return
     rows = store.rows("SELECT payload,status,revision FROM posts WHERE id=?", (key,))
@@ -136,6 +140,8 @@ def card_location(item: dict) -> str | None:
 def slide_body(item: dict) -> str:
     if item["kind"] == "news":
         return news_body(item)[:650] + "\n\nKaynak: " + item["source_name"]
+    if item['category']=='outage':
+        return event_date_label(item)+'\n\nEtkilenen bölge: '+(item.get('location') or 'Açıklanmadı')+'\n\nMahalle ve sokak ayrıntıları için resmî duyuruyu kontrol edin.\n\nKaynak: '+item['source_name']
     details = [event_date_label(item)]
     if location := card_location(item):
         details.append(location)
@@ -164,6 +170,7 @@ def prepare_digest(store: Store, at: datetime, kind: str, days: int):
     # program/annual series is not evidence of a continuous current occurrence.
     upcoming = [e for e in store.items("event")
                 if e["status"] in ("scheduled", "rescheduled")
+                and e['category']!='outage'
                 and parse_date(e["start"]).date() <= at.date() + timedelta(days=days)
                 and parse_date(e["end"]).date() >= at.date()
                 and (not e.get("time_known") or parse_date(e["end"]) >= at)

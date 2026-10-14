@@ -232,7 +232,7 @@ def test_reviewed_local_source_links_are_checked_before_unrelated_card_budget():
 def test_new_sources_are_connected_and_unreadable_catalogue_entries_are_explicit():
     for sid in ('afad','mgm','biletix','biletinial','bubilet','biletino','rotary2440','seferihisar-hastane','izmir-kultur','urla-ot','barbaros-oyuk'):
         assert SOURCES[sid]['enabled'] and SOURCES[sid]['trusted']
-    assert not SOURCES['gdz']['enabled']
+    assert SOURCES['gdz']['enabled'] and SOURCES['gdz']['kind']=='gdz_planned'
     catalogue=json.loads(Path('config/source_catalog.json').read_text(encoding='utf-8'))
     assert not [r for r in catalogue if r['status']=='reader_pending']
 

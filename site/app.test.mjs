@@ -47,3 +47,14 @@ test('Instagram source permissions and missing runs are distinguishable',()=>{
  assert.equal(label('instagram_permission_required access_token=PRIVATE_VALUE'),'Erişim veya ayrıştırma kontrolü gerekli');
 });
 
+test('service intervals appear with local news only before their verified end',()=>{
+ const outage={kind:'event',category:'outage',end:'2026-10-15T17:30:00+03:00'};
+ const show={kind:'event',category:'theatre',end:'2026-10-15T20:30:00+03:00'};
+ const news={kind:'news',category:'news'};
+ assert.equal(context.isService(outage),true);
+ assert.equal(context.isService(show),false);
+ const data={news:[news],events:[outage,show]};
+ assert.equal(context.displayNews(data,Date.parse('2026-10-14T16:00:00+03:00')).length,2);
+ assert.equal(context.displayNews(data,Date.parse('2026-10-15T17:31:00+03:00')).length,1);
+});
+
