@@ -100,15 +100,16 @@ def safe_url(url: str, allowed_hosts: set[str]) -> str:
 
 class Fetcher:
     def __init__(self, sources: list[dict], session=None):
-        self.hosts = {urlsplit(s["url"]).hostname for s in sources if s.get("enabled")}
-        self.missing_robots_hosts = {urlsplit(s["url"]).hostname for s in sources
+        web_sources = [s for s in sources if s.get('kind')!='instagram_api']
+        self.hosts = {urlsplit(s["url"]).hostname for s in web_sources if s.get("enabled")}
+        self.missing_robots_hosts = {urlsplit(s["url"]).hostname for s in web_sources
                                     if s.get("enabled") and s.get("allow_missing_robots") is True}
         self.session = session or requests.Session()
         self.robots: dict[str, RobotFileParser] = {}
         self.last_request: dict[str, float] = {}
         # One extra read per reviewed host/run, never a retry loop or a bypass.
         self.retries = {urlsplit(s['url']).hostname: min(1, max(0, s.get('transient_retries', 0)))
-                        for s in sources if s.get('enabled')}
+                        for s in web_sources if s.get('enabled')}
 
     def request(self, url: str) -> tuple[str, str]:
         url = safe_url(url, self.hosts)
@@ -601,6 +602,21 @@ def discover(html: str, base: str) -> list[dict]:
 
 
 def collect_source(source: dict, fetcher: Fetcher, known_events: list[dict]) -> tuple[list[dict], list[dict], list[dict]]:
+    from . import source_readers
+    if source['kind']=='ticketing':
+        return source_readers.collect_tickets(source,fetcher,known_events)
+    if source['kind']=='rotary':
+        return source_readers.collect_tickets(source,fetcher,known_events,reader=source_readers.rotary_items)
+    if source['kind']=='mgm_warnings':
+        return source_readers.collect_mgm(source,fetcher)
+    if source['kind']=='izmir_culture':
+        return source_readers.collect_culture(source,fetcher)
+    if source['kind'] in ('afad_earthquakes','dated_program'):
+        body,base=fetcher.get(source['url'])
+        reader=source_readers.afad_items if source['kind']=='afad_earthquakes' else source_readers.program_items
+        return reader(body,base,source),[],[]
+    detail_reader = {'rotary':source_readers.rotary_items,
+                     'hospital':source_readers.hospital_items}.get(source['kind'],structured)
     if source['kind'] == 'municipal_calendar':
         return collect_municipal_calendar(source, fetcher)
     items, candidates, links = [], [], []
@@ -620,7 +636,8 @@ def collect_source(source: dict, fetcher: Fetcher, known_events: list[dict]) -> 
             if source.get("follow_feed_details", True):
                 links.extend(item["url"] for item in found[:8])
         else:
-            items.extend(structured(body, base, source))
+            if source['kind'] not in ('hospital','rotary'):
+                items.extend(structured(body, base, source))
             candidates.extend(discover(body, base))
             soup = BeautifulSoup(body, "html.parser")
             for anchor in soup.select(source.get("link_selector", "article a[href], a[href*='haber'], a[href*='etkinlik']")):
@@ -649,7 +666,7 @@ def collect_source(source: dict, fetcher: Fetcher, known_events: list[dict]) -> 
     for link in links:
         try:
             page, final = fetcher.get(link)
-            extracted = structured(page, final, source)
+            extracted = detail_reader(page, final, source)
             items.extend(extracted)
             # Dedicated event pages can remove schema.org markup when cancelled.
             # Only an explicit statement at the original URL changes stored status.

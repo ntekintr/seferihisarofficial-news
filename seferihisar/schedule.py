@@ -22,6 +22,10 @@ def blocked_sources(store: Store) -> set[str]:
 
 def source_current(item: dict, at: datetime, failed: set[str]) -> bool:
     seen = parse_date(item.get("last_seen"))
+    if 'valid_until' in item:
+        expiry = parse_date(item['valid_until'])
+        if not expiry or expiry <= at:
+            return False
     return item["source_id"] not in failed and seen is not None and at - SOURCE_MAX_AGE <= seen <= at + timedelta(minutes=5)
 
 

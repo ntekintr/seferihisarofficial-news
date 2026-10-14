@@ -40,3 +40,10 @@ test('existing whole-source error labels remain available',()=>{
  assert.equal(label('source_robots_denied'),'Kaynak taramaya izin vermiyor');
 });
 
+test('Instagram source permissions and missing runs are distinguishable',()=>{
+ assert.equal(label('instagram_permission_required'),'Meta ek okuma izni gerekli');
+ assert.equal(label('instagram_manifest_missing'),'Bu turda Instagram okuma sonucu alınamadı');
+ assert.equal(label('instagram_token_expired'),'Meta bağlantısının süresi dolmuş');
+ assert.equal(label('instagram_permission_required access_token=PRIVATE_VALUE'),'Erişim veya ayrıştırma kontrolü gerekli');
+});
+

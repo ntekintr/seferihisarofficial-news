@@ -23,7 +23,11 @@ def verify(item: dict, source: dict, at: datetime) -> str | None:
         return "invalid_item"
     if not public_url(item.get("url")) or not all(public_url(u) for u in item.get("sources", [])) or any(not public_url(item[k]) for k in ("identity", "ticket_url") if item.get(k)):
         return "non_public_url"
-    if urlsplit(item["url"]).hostname != urlsplit(source["url"]).hostname:
+    origin = urlsplit(source["url"]).hostname
+    if (source.get('kind')=='izmir_culture' and origin=='kultursanatapi.izmir.bel.tr'
+            and source.get('content_origin')=='https://kultursanat.izmir.bel.tr'):
+        origin = 'kultursanat.izmir.bel.tr'
+    if urlsplit(item["url"]).hostname != origin:
         return "unverified_origin"
     if not local(item["title"] + " " + item.get("description", "") + " " + (item.get("location") or "")):
         return "not_local"
@@ -35,6 +39,12 @@ def verify(item: dict, source: dict, at: datetime) -> str | None:
             return "outdated_or_missing_date"
         if not item.get("description"):
             return "insufficient_information"
+        if 'valid_until' in item:
+            expiry = parse_date(item['valid_until'])
+            if not expiry or expiry <= published:
+                return 'invalid_service_validity'
+            if expiry <= at:
+                return 'expired_service_notice'
     else:
         start, end = parse_date(item.get("start")), parse_date(item.get("end"))
         if not start or not end or end < start:
