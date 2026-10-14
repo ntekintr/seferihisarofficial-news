@@ -53,6 +53,9 @@ class Store:
               id TEXT PRIMARY KEY, post_id TEXT NOT NULL, page_id TEXT NOT NULL,
               format TEXT NOT NULL, status TEXT NOT NULL, claimed_at TEXT NOT NULL,
               updated_at TEXT NOT NULL, photo_ids TEXT NOT NULL, media_id TEXT);
+            CREATE TABLE IF NOT EXISTS publication_checks (
+              id INTEGER PRIMARY KEY, checked_at TEXT NOT NULL,
+              mode TEXT NOT NULL, result TEXT NOT NULL);
         """)
         self.db.commit()
 

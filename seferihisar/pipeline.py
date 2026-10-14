@@ -204,6 +204,8 @@ def _export(store: Store, public_dir: Path, sources: list[dict], at: datetime, d
                 "source_health": store.rows('SELECT * FROM source_health ORDER BY source_id'),
                 "runs": [{**r, "errors": json.loads(r["errors"])} for r in store.rows("SELECT * FROM runs ORDER BY id DESC LIMIT 20")]}
     catalogue_path = Path(__file__).resolve().parents[1] / 'config/source_catalog.json'
+    from .operations import summary
+    snapshot['operations'] = summary(store, at)
     if catalogue_path.exists():
         from .source_catalog import public_catalog
         catalogue = json.loads(catalogue_path.read_text(encoding='utf-8'))
