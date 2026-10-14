@@ -712,7 +712,7 @@ def test_legacy_alias_requires_current_ocr_without_quarantining_legacy_row(store
     generator.session.post.assert_not_called()
 
 
-def test_legacy_alias_flows_through_normal_public_ai_disclosure(store, event, at, tmp_path, configured, monkeypatch):
+def test_legacy_alias_keeps_caption_source_without_image_boilerplate(store, event, at, tmp_path, configured, monkeypatch):
     from seferihisar.media_caption import GENERATED_IMAGE_NOTE
     event['category'] = 'culture'
     item = saved_item(store, event, at)
@@ -722,7 +722,7 @@ def test_legacy_alias_flows_through_normal_public_ai_disclosure(store, event, at
     monkeypatch.setattr('seferihisar.illustrations.requests', session)
     export(store, tmp_path / 'public', json.loads(Path('config/sources.json').read_text()), at)
     illustrated = [post for post in store.posts() if image_key(item) in post.get('illustration_keys', {}).values()]
-    assert illustrated and all(GENERATED_IMAGE_NOTE in post['caption'] for post in illustrated)
+    assert illustrated and all(GENERATED_IMAGE_NOTE not in post['caption'] for post in illustrated)
     session.post.assert_not_called()
     assert store.rows('SELECT attempts FROM illustration_days')[0]['attempts'] == 20
     validate_state(store.path)

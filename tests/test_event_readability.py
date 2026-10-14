@@ -38,11 +38,13 @@ def test_event_card_omits_unknown_extras_and_caption_keeps_full_address(event):
     assert "Zafer Caddesi" not in body
     assert "Organizatör açıklanmadı" not in body
     assert "Ücret bilgisi açıklanmadı" not in body
+    assert "Kaynak:" not in body
     content = caption(event, headline(event, "announcement"))
     assert address in content
     assert "Organizatör: Açıklanmadı" in content
     assert "Ücret bilgisi açıklanmadı" in content
     assert content.split("\n\n")[0] == "Hafifletici Sebepler — Tiyatro oyunu"
+    assert 'Kaynak: ' + event['source_name'] in content and event['url'] in content
 
 
 def test_event_card_keeps_known_organizer_price_and_unambiguous_location(event):
@@ -80,6 +82,8 @@ def test_digest_slides_and_caption_make_each_event_type_explicit(store, event, a
         assert post["slides"][1]["title"] == "Hafifletici Sebepler — Tiyatro oyunu"
         assert post["slides"][1]["category"] == "theatre"
         assert "Hafifletici Sebepler — Tiyatro oyunu" in post["caption"]
+        assert 'Kaynak: ' + event['source_name'] in post['caption'] and event['url'] in post['caption']
+        assert all('Kaynak:' not in slide['body'] for slide in post['slides'])
 
 
 @pytest.mark.parametrize("status", ["prepared", "blocked_source"])
@@ -103,7 +107,7 @@ def test_refresh_unclaimed_card_keeps_identity_dates_bindings_and_source_revisio
     assert refreshed["created_at"] == at.isoformat()
     assert refreshed["title"] == "Hafifletici Sebepler — Tiyatro oyunu"
     assert refreshed["illustration_keys"] == {"0": "a" * 24}
-    assert "Görsel: yapay zekâyla hazırlanmış temsili görsel." in refreshed["caption"]
+    assert "Görsel: yapay zekâyla hazırlanmış temsili görsel." not in refreshed["caption"]
     assert refreshed["status"] == status
     assert store.items()[0] == source_payload
 
