@@ -5,7 +5,8 @@
     "url": "https://seferihisar.bel.tr/duyurular/",
     "group": "kamu",
     "status": "connected",
-    "note": "Doğrulanmış adres; kaydın güncelliği ve kapsamı her turda ayrıca kontrol edilir."
+    "note": "Doğrulanmış adres; kaydın güncelliği ve kapsamı her turda ayrıca kontrol edilir.",
+    "reader_id": "seferihisar-duyurular"
   },
   {
     "id": "izmir-kultur",
@@ -29,7 +30,7 @@
     "url": "https://bademlersanatkoyu.com/etkinlikler-ve-workshoplar/",
     "group": "etkinlik",
     "status": "date_missing",
-    "note": "14 Ekim yeniden kontrol edildi: etkinlikte 25 Aralık 20:00 yazıyor, yıl yok; resmî RSS gerçek fakat boş. Rezervasyon/iletişim sayfalarında doğrulanabilir tarihli alternatif bulunmadı. Sayfanın yayın tarihi etkinlik yılı yerine kullanılmadı; otomatik etkinlik yayınına bağlı değil."
+    "note": "Resmî sayfadaki 25 Aralık 20:00 duyurusunda yıl yok; etkinlik yılı tahmin edilmez. Alternatif olarak Bubilet’in Bademler mekân akışı bağlandı; her seansın tam tarihi, saati ve kendi mekân adresi ayrıca doğrulanır."
   },
   {
     "id": "teosfest",
@@ -69,7 +70,8 @@
     "url": "https://www.urlaadahaber.com/",
     "group": "yerel_basın",
     "status": "connected",
-    "note": "Doğrulanmış adres; kaydın güncelliği ve kapsamı her turda ayrıca kontrol edilir."
+    "note": "Doğrulanmış adres; kaydın güncelliği ve kapsamı her turda ayrıca kontrol edilir.",
+    "reader_id": "urla-ada-haber"
   },
   {
     "id": "urla-yasam",
@@ -85,7 +87,8 @@
     "url": "https://seso.org.tr/",
     "group": "oda_dernek",
     "status": "connected",
-    "note": "Doğrulanmış adres; kaydın güncelliği ve kapsamı her turda ayrıca kontrol edilir."
+    "note": "Doğrulanmış adres; kaydın güncelliği ve kapsamı her turda ayrıca kontrol edilir.",
+    "reader_id": "seferihisar-esnaf"
   },
   {
     "id": "seferihisar-mem",
@@ -141,7 +144,8 @@
     "url": "https://izsu.gov.tr/",
     "group": "hizmet",
     "status": "connected",
-    "note": "Yeni adresteki tarihli kurum haberleri bağlandı. Anlık su kesintileri henüz bağlı değil."
+    "note": "Yeni adresteki tarihli kurum haberleri bağlandı. Anlık su kesintileri henüz bağlı değil.",
+    "reader_id": "izsu"
   },
   {
     "id": "eshot-duyuru",
@@ -149,7 +153,8 @@
     "url": "https://www.eshot.gov.tr/tr/HaberArsivi/92/2",
     "group": "hizmet",
     "status": "connected",
-    "note": "Tarihi açıklanan haber/duyurular için okuyucu bağlı. Tarihsiz güzergâh değişiklikleri yayıma alınmaz."
+    "note": "Tarihi açıklanan haber/duyurular için okuyucu bağlı. Tarihsiz güzergâh değişiklikleri yayıma alınmaz.",
+    "reader_id": "eshot"
   },
   {
     "id": "gdz-kesinti",
@@ -157,7 +162,8 @@
     "url": "https://www.gdzelektrik.com.tr/",
     "group": "hizmet",
     "status": "connected",
-    "note": "Resmî planlı kesinti servisi 14 Ekim 16:09 sonrası gerçek JSON döndürdü. Seferihisar, Urla, Güzelbahçe ve açıkça doğrulanmış Özdere mahalleleri sınırlı okunur. Kesinti kimliği ve tam başlangıç/bitiş korunur; eski, arşivlenmiş, iptal edilmiş ve bitişi bilinmeyen anlık kesintiler yeni duyuru sayılmaz. Son bulut erişimi kaynak sağlığında ayrıca gösterilir. GDZ Instagram kanalı da okunuyor."
+    "note": "Dört ilçe için resmî planlı kesinti aralıkları okunur. Geçici bağlantı/500 hatasında bu sunucuya tur başına en fazla bir ek okuma yapılır; devam eden hata görünür kalır. Tam başlangıç/bitiş ve mahalle doğrulaması korunur.",
+    "reader_id": "gdz"
   },
   {
     "id": "biletino",
@@ -228,8 +234,8 @@
     "name": "Seferihisar Doğa ve Hayvan Dostları Derneği",
     "url": "https://www.sehayder.com/",
     "group": "oda_dernek",
-    "status": "access_failed",
-    "note": "Web adresi incelendi; RSS isteği gerçek besleme yerine site koruması sayfası döndürüyor. Koruma aşılmadı. Tam tarihli bağımsız akış doğrulanmadı."
+    "status": "connected",
+    "note": "14 Ekim yeniden kontrolde gerçek RSS XML akışı döndü; içinde kayıt yok. Web okuyucusu yeniden bağlandı. Ayrı resmî Instagram okuyucusu da mevcut; son erişim ve içerik sonucu canlı kontrolle gösterilir."
   },
   {
     "id": "seferihisar-calendar",
@@ -253,63 +259,63 @@
     "url": "https://www.instagram.com/shgundem/",
     "group": "yerel_basın",
     "status": "access_failed",
-    "note": "Profil adresi gazetenin kendi sitesinden 14 Ekim 2026'da yeniden doğrulandı. Ek okuma izni verildi ve diğer yedi hesap bulutta okunuyor; bu hedef hesap Business Discovery'de 110/2207013 erişim hatası veriyor. Hesabın türü veya kapatıldığı sonucuna varılmadı. Gazetenin ayrı web haber akışı etkin ve okunuyor."
+    "note": "Resmî site @shgundem profilini doğruluyor. Hedef erişimi mevcut Meta API bağlantısıyla her turda kontrol edilir; hesap türü hakkında tahmin yapılmaz. Gazetenin ayrı web haber akışı bağlı."
   },
   {
     "id": "instagram-life",
     "name": "SeferihisarLife Instagram",
     "url": "https://www.instagram.com/seferihisar.life/",
     "group": "yerel_basın",
-    "status": "access_failed",
-    "note": "Profil kurumun kendi sitesinden doğrulandı. 14 Ekim bulut okuması Meta ek okuma izni istedi; instagram_manage_insights bağlantısı tamamlanana kadar içerik alınamaz."
+    "status": "connected",
+    "note": "Resmî profil kurumun kendi sitesinden doğrulandı. Mevcut Meta izinleriyle açık hesap açıklamaları okunur; gerçek erişim sonucu her turda kaynak sağlığında gösterilir."
   },
   {
     "id": "instagram-urla",
     "name": "Urla Belediyesi Instagram",
     "url": "https://www.instagram.com/urlabelediyesi/",
     "group": "kamu",
-    "status": "access_failed",
-    "note": "Profil kurumun kendi sitesinden doğrulandı. 14 Ekim bulut okuması Meta ek okuma izni istedi; instagram_manage_insights bağlantısı tamamlanana kadar içerik alınamaz."
+    "status": "connected",
+    "note": "Resmî profil kurumun kendi sitesinden doğrulandı. Mevcut Meta izinleriyle açık hesap açıklamaları okunur; gerçek erişim sonucu her turda kaynak sağlığında gösterilir."
   },
   {
     "id": "instagram-guzelbahce",
     "name": "Güzelbahçe Belediyesi Instagram",
     "url": "https://www.instagram.com/guzelbahcebld/",
     "group": "kamu",
-    "status": "access_failed",
-    "note": "Profil kurumun kendi sitesinden doğrulandı. 14 Ekim bulut okuması Meta ek okuma izni istedi; instagram_manage_insights bağlantısı tamamlanana kadar içerik alınamaz."
+    "status": "connected",
+    "note": "Resmî profil kurumun kendi sitesinden doğrulandı. Mevcut Meta izinleriyle açık hesap açıklamaları okunur; gerçek erişim sonucu her turda kaynak sağlığında gösterilir."
   },
   {
     "id": "instagram-kulturekoloji",
     "name": "KültürEkoloji Instagram",
     "url": "https://www.instagram.com/kultur.ekoloji/",
     "group": "oda_dernek",
-    "status": "access_failed",
-    "note": "Profil kurumun kendi sitesinden doğrulandı. 14 Ekim bulut okuması Meta ek okuma izni istedi; instagram_manage_insights bağlantısı tamamlanana kadar içerik alınamaz."
+    "status": "connected",
+    "note": "Resmî profil kurumun kendi sitesinden doğrulandı. Mevcut Meta izinleriyle açık hesap açıklamaları okunur; gerçek erişim sonucu her turda kaynak sağlığında gösterilir."
   },
   {
     "id": "instagram-sehayder",
     "name": "SEHAYDER Instagram",
     "url": "https://www.instagram.com/sehayder/",
     "group": "oda_dernek",
-    "status": "access_failed",
-    "note": "Profil kurumun kendi sitesinden doğrulandı. 14 Ekim bulut okuması Meta ek okuma izni istedi; instagram_manage_insights bağlantısı tamamlanana kadar içerik alınamaz."
+    "status": "connected",
+    "note": "Resmî profil kurumun kendi sitesinden doğrulandı. Mevcut Meta izinleriyle açık hesap açıklamaları okunur; gerçek erişim sonucu her turda kaynak sağlığında gösterilir."
   },
   {
     "id": "instagram-gdz",
     "name": "GDZ Elektrik Instagram",
     "url": "https://www.instagram.com/gdzelektrik/",
     "group": "hizmet",
-    "status": "access_failed",
-    "note": "Profil kurumun kendi sitesinden doğrulandı. 14 Ekim bulut okuması Meta ek okuma izni istedi; instagram_manage_insights bağlantısı tamamlanana kadar içerik alınamaz."
+    "status": "connected",
+    "note": "Resmî profil kurumun kendi sitesinden doğrulandı. Mevcut Meta izinleriyle açık hesap açıklamaları okunur; gerçek erişim sonucu her turda kaynak sağlığında gösterilir."
   },
   {
     "id": "instagram-afad",
     "name": "AFAD Instagram",
     "url": "https://www.instagram.com/afadbaskanlik/",
     "group": "kamu",
-    "status": "access_failed",
-    "note": "Profil kurumun kendi sitesinden doğrulandı. 14 Ekim bulut okuması Meta ek okuma izni istedi; instagram_manage_insights bağlantısı tamamlanana kadar içerik alınamaz."
+    "status": "connected",
+    "note": "Resmî profil kurumun kendi sitesinden doğrulandı. Mevcut Meta izinleriyle açık hesap açıklamaları okunur; gerçek erişim sonucu her turda kaynak sağlığında gösterilir."
   },
   {
     "id": "izmir-valilik",
@@ -326,5 +332,13 @@
     "group": "oda_dernek",
     "status": "connected",
     "note": "Profil derneğin resmî iletişim sayfasından doğrulandı. Yalnızca mevcut izinlerle API üzerinden açık açıklamalar okunur; gerçek erişim ve uygun kayıt sonucu kaynak sağlığında ayrıca ölçülür."
+  },
+  {
+    "id": "bubilet-bademler",
+    "name": "Bademler Sanat Köyü — tarihli etkinlikler",
+    "url": "https://www.bubilet.com.tr/mekan/bademler-sanat-koyu",
+    "group": "etkinlik",
+    "status": "connected",
+    "note": "Mekânın bilet sağlayıcısındaki açık seans verileri okunur. Yalnız kendi kaydında Bademler Sanat Köyü ve Urla adresi bulunan, tam başlangıç/bitişi açıklanan etkinlikler alınır. Liste tarihinden veya biyografiden tarih/mekân çıkarılmaz."
   }
 ]
