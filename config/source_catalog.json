@@ -5,7 +5,8 @@
     "url": "https://seferihisar.bel.tr/duyurular/",
     "group": "kamu",
     "status": "connected",
-    "note": "Doğrulanmış adres; kaydın güncelliği ve kapsamı her turda ayrıca kontrol edilir."
+    "note": "Doğrulanmış adres; kaydın güncelliği ve kapsamı her turda ayrıca kontrol edilir.",
+    "reader_id": "seferihisar-duyurular"
   },
   {
     "id": "izmir-kultur",
@@ -69,7 +70,8 @@
     "url": "https://www.urlaadahaber.com/",
     "group": "yerel_basın",
     "status": "connected",
-    "note": "Doğrulanmış adres; kaydın güncelliği ve kapsamı her turda ayrıca kontrol edilir."
+    "note": "Doğrulanmış adres; kaydın güncelliği ve kapsamı her turda ayrıca kontrol edilir.",
+    "reader_id": "urla-ada-haber"
   },
   {
     "id": "urla-yasam",
@@ -85,7 +87,8 @@
     "url": "https://seso.org.tr/",
     "group": "oda_dernek",
     "status": "connected",
-    "note": "Doğrulanmış adres; kaydın güncelliği ve kapsamı her turda ayrıca kontrol edilir."
+    "note": "Doğrulanmış adres; kaydın güncelliği ve kapsamı her turda ayrıca kontrol edilir.",
+    "reader_id": "seferihisar-esnaf"
   },
   {
     "id": "seferihisar-mem",
@@ -141,7 +144,8 @@
     "url": "https://izsu.gov.tr/",
     "group": "hizmet",
     "status": "connected",
-    "note": "Yeni adresteki tarihli kurum haberleri bağlandı. Anlık su kesintileri henüz bağlı değil."
+    "note": "Yeni adresteki tarihli kurum haberleri bağlandı. Anlık su kesintileri henüz bağlı değil.",
+    "reader_id": "izsu"
   },
   {
     "id": "eshot-duyuru",
@@ -149,7 +153,8 @@
     "url": "https://www.eshot.gov.tr/tr/HaberArsivi/92/2",
     "group": "hizmet",
     "status": "connected",
-    "note": "Tarihi açıklanan haber/duyurular için okuyucu bağlı. Tarihsiz güzergâh değişiklikleri yayıma alınmaz."
+    "note": "Tarihi açıklanan haber/duyurular için okuyucu bağlı. Tarihsiz güzergâh değişiklikleri yayıma alınmaz.",
+    "reader_id": "eshot"
   },
   {
     "id": "gdz-kesinti",

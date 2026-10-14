@@ -122,3 +122,10 @@ def test_alternative_reader_never_erases_undated_page_or_certificate_limitation(
            'group': 'kamu', 'status': 'access_failed', 'note': 'Sertifika hatası'}
     result = public_catalog([undated, tls], [SOURCES['instagram-sehayder']], [health(at, 'ok')], at)
     assert result == [undated, tls]
+
+
+def test_every_reviewed_connected_catalog_entry_has_an_explicit_reader_binding():
+    entries = json.loads(Path('config/source_catalog.json').read_text(encoding='utf-8'))
+    for entry in entries:
+        if entry['status'] == 'connected':
+            assert entry.get('reader_id', entry['id']) in SOURCES
