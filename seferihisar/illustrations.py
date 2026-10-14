@@ -41,11 +41,11 @@ EVENT_SCENES = {
     'theatre': 'An unoccupied theatre stage seen from a few empty audience seats, open fabric curtains and warm spotlights with realistic velvet texture. The stage and curtains are the focal point. No theatre masks.',
     'concert': 'An unoccupied concert stage with a microphone, an acoustic guitar and warm stage lights, photographed with realistic instrument textures. No named performer or band.',
     'cinema': 'An unoccupied cinema with rows of empty seats facing a blank illuminated screen and a small film reel. The screen is the focal point; no film still or poster.',
-    'festival': 'A generic outdoor festival setting with small unlettered stalls, hanging string lights and festive ribbons, photographed in natural light. No identifiable crowd.',
+    'festival': 'A photographic close view of festive fabric ribbons and hanging string lights above plain empty outdoor tables in a generic outdoor festival setting. Natural light and realistic fabric textures. No stalls, shopfronts, signage, people or identifiable venue.',
     'culture': 'An arts workspace with brushes, a blank canvas and a closed unlettered book, photographed with natural material textures. Do not invent specific exhibition artwork.',
     'family': 'A family activity table with colourful building blocks, a kite and craft materials, photographed in natural light. No people.',
     'sport': 'An empty running track with a ball and simple sports equipment, photographed in natural light. Do not portray a specific team or match.',
-    'market': 'A generic fair with simple unlettered stalls and baskets of produce, photographed in natural light.',
+    'market': 'A photographic close view of baskets of fresh produce on a plain empty outdoor table at a generic local market. Natural light and realistic produce and wicker textures. No packaging, labels, stalls, shopfronts, signage, people or identifiable venue.',
     'food': 'A welcoming table with simple dishes and baskets of produce, photographed with natural food textures. Do not invent a named dish or menu.',
     'education': 'A learning workspace with an open blank notebook, pencils and a desk lamp, photographed in natural light. No lettering on any surface.',
 }
@@ -59,6 +59,7 @@ NEWS_SCENES = {
     'tourism': 'A generic natural coastal view with realistic sea and vegetation. No recognizable landmark or invented attraction.',
 }
 SCENE_VERSION = 'editorial-photo-v5'
+SIGNLESS_SCENE_VERSION = 'editorial-photo-signless-v6'
 UNCLASSIFIED_NEWS_SCENE = ('A photographic close view of ordinary objects associated with the quoted title. '
                            'Keep it neutral if the subject is unclear; never substitute a landmark or invent an incident.')
 SCENE_RULES = ('This is a generic visual about the subject, not a reconstruction of the event. '
@@ -127,10 +128,18 @@ def illustration_prompt(item: dict) -> str:
     return prompt + 'Category: ' + json.dumps(item.get('category', '')[:50], ensure_ascii=False)
 
 
+def scene_version(item: dict) -> str:
+    # Only the two revised briefs need new images. Other verified photographs
+    # retain their exact v5 keys and do not spend another generation request.
+    if scene_brief(item) in (EVENT_SCENES['festival'], EVENT_SCENES['market']):
+        return SIGNLESS_SCENE_VERSION
+    return SCENE_VERSION
+
+
 def image_key(item: dict) -> str:
-    # Refresh prepared scenes once after correcting photo-texture OCR rejection.
+    # Refresh only prepared scenes whose selected brief has changed.
     # Published posts keep their stored illustration_keys without regeneration.
-    return digest(MODEL + ':' + SCENE_VERSION + ':' + item['id'] + ':' + str(item['revision']) + ':' + topic(item))
+    return digest(MODEL + ':' + scene_version(item) + ':' + item['id'] + ':' + str(item['revision']) + ':' + topic(item))
 
 
 def clean_image(raw: bytes) -> bytes:
@@ -262,7 +271,7 @@ class Illustrator:
             return None
         # v5 changes only a few custom scenes. Reuse an already-checked v4
         # photo for an unchanged fixed brief, without spending another request.
-        unchanged = (SCENE_VERSION == 'editorial-photo-v5' and
+        unchanged = (scene_version(item) == 'editorial-photo-v5' and
                      scene_brief(item) in (*EVENT_SCENES.values(), *NEWS_SCENES.values()))
         if old is None and unchanged:
             if self._frozen_key(key):
@@ -324,6 +333,9 @@ class Illustrator:
         return False
 
     def _reuse_v4(self, item: dict, key: str) -> Path | None:
+        # Revised festival/market briefs must not alias an old stall scene.
+        if scene_version(item) != 'editorial-photo-v5':
+            return None
         # The legacy digest binds the exact model, item ID, revision and topic;
         # the row must also belong to that item. No legacy row is rewritten.
         legacy_key = digest(MODEL + ':editorial-photo-v4:' + item['id'] + ':' + str(item['revision']) + ':' + topic(item))
@@ -457,5 +469,4 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Free cloud illustration preview; no publication')
     parser.add_argument('--preview', type=Path, required=True)
     preview(parser.parse_args().preview)
-
 
