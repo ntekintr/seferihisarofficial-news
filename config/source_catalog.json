@@ -246,5 +246,69 @@
     "group": "oda_dernek",
     "status": "connected",
     "note": "RSS haber akışı okunuyor. Eski kayıtlar yeni haber sayılmaz; son testte güncel kabul edilen kayıt yok."
+  },
+  {
+    "id": "instagram-gundem",
+    "name": "Seferihisar Gündem Instagram",
+    "url": "https://www.instagram.com/shgundem/",
+    "group": "yerel_basın",
+    "status": "reader_pending",
+    "note": "Kurumun kendi sitesindeki profil bağlantısı doğrulandı. Meta API okuma kontrolü eklendi; son erişim sonucu kaynak sağlığında gösterilir. Yalnızca açık profesyonel hesaplar ve açıklamadaki doğrulanabilir bilgiler okunabilir."
+  },
+  {
+    "id": "instagram-life",
+    "name": "SeferihisarLife Instagram",
+    "url": "https://www.instagram.com/seferihisar.life/",
+    "group": "yerel_basın",
+    "status": "reader_pending",
+    "note": "Kurumun kendi sitesindeki profil bağlantısı doğrulandı. Meta API okuma kontrolü eklendi; son erişim sonucu kaynak sağlığında gösterilir. Yalnızca açık profesyonel hesaplar ve açıklamadaki doğrulanabilir bilgiler okunabilir."
+  },
+  {
+    "id": "instagram-urla",
+    "name": "Urla Belediyesi Instagram",
+    "url": "https://www.instagram.com/urlabelediyesi/",
+    "group": "kamu",
+    "status": "reader_pending",
+    "note": "Kurumun kendi sitesindeki profil bağlantısı doğrulandı. Meta API okuma kontrolü eklendi; son erişim sonucu kaynak sağlığında gösterilir. Yalnızca açık profesyonel hesaplar ve açıklamadaki doğrulanabilir bilgiler okunabilir."
+  },
+  {
+    "id": "instagram-guzelbahce",
+    "name": "Güzelbahçe Belediyesi Instagram",
+    "url": "https://www.instagram.com/guzelbahcebld/",
+    "group": "kamu",
+    "status": "reader_pending",
+    "note": "Kurumun kendi sitesindeki profil bağlantısı doğrulandı. Meta API okuma kontrolü eklendi; son erişim sonucu kaynak sağlığında gösterilir. Yalnızca açık profesyonel hesaplar ve açıklamadaki doğrulanabilir bilgiler okunabilir."
+  },
+  {
+    "id": "instagram-kulturekoloji",
+    "name": "KültürEkoloji Instagram",
+    "url": "https://www.instagram.com/kultur.ekoloji/",
+    "group": "oda_dernek",
+    "status": "reader_pending",
+    "note": "Kurumun kendi sitesindeki profil bağlantısı doğrulandı. Meta API okuma kontrolü eklendi; son erişim sonucu kaynak sağlığında gösterilir. Yalnızca açık profesyonel hesaplar ve açıklamadaki doğrulanabilir bilgiler okunabilir."
+  },
+  {
+    "id": "instagram-sehayder",
+    "name": "SEHAYDER Instagram",
+    "url": "https://www.instagram.com/sehayder/",
+    "group": "oda_dernek",
+    "status": "reader_pending",
+    "note": "Kurumun kendi sitesindeki profil bağlantısı doğrulandı. Meta API okuma kontrolü eklendi; son erişim sonucu kaynak sağlığında gösterilir. Yalnızca açık profesyonel hesaplar ve açıklamadaki doğrulanabilir bilgiler okunabilir."
+  },
+  {
+    "id": "instagram-gdz",
+    "name": "GDZ Elektrik Instagram",
+    "url": "https://www.instagram.com/gdzelektrik/",
+    "group": "hizmet",
+    "status": "reader_pending",
+    "note": "Kurumun kendi sitesindeki profil bağlantısı doğrulandı. Meta API okuma kontrolü eklendi; son erişim sonucu kaynak sağlığında gösterilir. Yalnızca açık profesyonel hesaplar ve açıklamadaki doğrulanabilir bilgiler okunabilir."
+  },
+  {
+    "id": "instagram-afad",
+    "name": "AFAD Instagram",
+    "url": "https://www.instagram.com/afadbaskanlik/",
+    "group": "kamu",
+    "status": "reader_pending",
+    "note": "Kurumun kendi sitesindeki profil bağlantısı doğrulandı. Meta API okuma kontrolü eklendi; son erişim sonucu kaynak sağlığında gösterilir. Yalnızca açık profesyonel hesaplar ve açıklamadaki doğrulanabilir bilgiler okunabilir."
   }
 ]
