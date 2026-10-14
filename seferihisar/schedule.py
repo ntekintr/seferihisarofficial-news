@@ -6,7 +6,7 @@ from copy import deepcopy
 from datetime import datetime, time, timedelta
 
 from .domain import TZ, digest, parse_date
-from .editor import caption, caption_with_hashtags, digest_hashtags, event_date_label, event_title, headline, news_body
+from .editor import caption, caption_with_hashtags, digest_hashtags, event_date_label, event_title, headline, news_body, plain_source_text
 from .media_caption import generated_image_caption
 from .store import Store
 
@@ -139,9 +139,9 @@ def card_location(item: dict) -> str | None:
 
 def slide_body(item: dict) -> str:
     if item["kind"] == "news":
-        return news_body(item)[:650] + "\n\nKaynak: " + item["source_name"]
+        return news_body(item)[:650]
     if item['category']=='outage':
-        return event_date_label(item)+'\n\nEtkilenen bölge: '+(item.get('location') or 'Açıklanmadı')+'\n\nMahalle ve sokak ayrıntıları için resmî duyuruyu kontrol edin.\n\nKaynak: '+item['source_name']
+        return event_date_label(item)+'\n\nEtkilenen bölge: '+(item.get('location') or 'Açıklanmadı')+'\n\nMahalle ve sokak ayrıntıları için resmî duyuruyu kontrol edin.'
     details = [event_date_label(item)]
     if location := card_location(item):
         details.append(location)
@@ -154,7 +154,6 @@ def slide_body(item: dict) -> str:
         details.append("Ücret: " + item["price"] + (" " + currency if currency else ""))
     elif item.get("free") is False:
         details.append("Ücretli")
-    details.append("Kaynak: " + item["source_name"])
     return "\n\n".join(details)
 
 
@@ -189,7 +188,7 @@ def prepare_digest(store: Store, at: datetime, kind: str, days: int):
     selected = events[:9]  # Meta carousel cover + 9 slides; do not imply a complete calendar.
     description = f"{at.strftime('%d.%m.%Y')} itibarıyla önümüzdeki {days} gün için doğrulanmış etkinliklerden seçki."
     slides = [{"title": title, "body": description}] + [{"title": event_title(e), "body": slide_body(e), "category": e["category"]} for e in selected]
-    content = "\n\n".join([title, description] + [event_title(e) + " · " + event_date_label(e, include_time=False) + "\nKaynak: " + e["url"] for e in selected])
+    content = "\n\n".join([title, description] + [event_title(e) + " · " + event_date_label(e, include_time=False) + "\nKaynak: " + plain_source_text(e["source_name"]) + "\n" + e["url"] for e in selected])
     post = {"id": key, "kind": kind, "revision": 1, "due_at": next_slot(at, event=True).isoformat(),
             "title": title, "caption": caption_with_hashtags(content, digest_hashtags(selected)), "category": "event", "slides": slides,
             "source_urls": [e["url"] for e in selected], "created_at": at.isoformat(), "formats": ["carousel", "story"]}

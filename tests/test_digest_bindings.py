@@ -29,7 +29,7 @@ def test_unclaimed_calendar_refresh_preserves_same_slide_bindings(store, event, 
             assert post["illustration_keys"] == {"1": "a" * 24}
             assert post["source_urls"] == original[post["kind"]]["source_urls"]
             assert post["due_at"] == original[post["kind"]]["due_at"]
-            assert AI_NOTICE in post["caption"]
+            assert AI_NOTICE not in post["caption"]
 
 
 def test_changed_event_order_drops_calendar_bindings(store, event, at):

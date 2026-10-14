@@ -46,7 +46,7 @@ def meta_adapter():
 
 
 @pytest.mark.parametrize('kind', ['news', 'event', 'weekly'])
-def test_generated_disclosure_survives_research_to_disabled_publisher_and_final_prepare(
+def test_source_only_caption_survives_research_to_disabled_publisher_and_final_prepare(
         store, event, at, tmp_path, monkeypatch, generated_scene, kind):
     research_at = at.replace(hour=15)
     if kind == 'news':
@@ -57,9 +57,16 @@ def test_generated_disclosure_survives_research_to_disabled_publisher_and_final_
     export(store, tmp_path / 'research', source_config(), research_at)
     post = next(p for p in store.posts() if p['kind'] == {'event': 'reminder_3d'}.get(kind, kind))
     expected_keys = post['illustration_keys']
-    assert expected_keys and GENERATED_IMAGE_NOTE in post['caption']
+    assert expected_keys and GENERATED_IMAGE_NOTE not in post['caption']
+    assert event['source_name'] in post['caption'] and event['url'] in post['caption']
     assert len(post['caption']) <= 2200
     assert generated_scene.call_count == 1
+
+    # An older research version may already have queued the retired note.
+    legacy = json.loads(store.rows('SELECT payload FROM posts WHERE id=?', (post['id'],))[0]['payload'])
+    legacy['caption'] += '\n\n' + GENERATED_IMAGE_NOTE
+    with store.db:
+        store.db.execute('UPDATE posts SET payload=? WHERE id=?', (json.dumps(legacy), post['id']))
 
     # The production publisher has no artwork credentials/enable flag. It
     # creates its manifest locally but sends deployed research media URLs.
@@ -71,7 +78,7 @@ def test_generated_disclosure_survives_research_to_disabled_publisher_and_final_
     assets = export(store, tmp_path / 'publisher', source_config(), publish_at)
     retained = next(p for p in store.posts() if p['id'] == post['id'])
     assert retained['illustration_keys'] == expected_keys
-    assert retained['caption'].count(GENERATED_IMAGE_NOTE) == 1
+    assert GENERATED_IMAGE_NOTE not in retained['caption']
     public = json.loads((tmp_path / 'publisher/data.json').read_text(encoding='utf-8'))
     assert next(p for p in public['posts'] if p['id'] == post['id'])['caption'] == retained['caption']
 
@@ -81,7 +88,7 @@ def test_generated_disclosure_survives_research_to_disabled_publisher_and_final_
     urls, published_caption, story = api.container.call_args.args
     assert urls == ['https://example.org/' + path for path in assets[post['id']]['feed']]
     assert story is False
-    assert published_caption.count(GENERATED_IMAGE_NOTE) == 1
+    assert GENERATED_IMAGE_NOTE not in published_caption
     assert published_caption == retained['caption']
     assert len(published_caption) <= 2200
     assert generated_scene.call_count == 1
@@ -94,8 +101,10 @@ def test_claimed_caption_and_bindings_are_not_rewritten_by_prepare_or_export(
     prepare(store, at)
     export(store, tmp_path / 'initial', source_config(), at)
     post = next(p for p in store.posts() if p['kind'] == 'announcement')
+    payload = json.loads(store.rows('SELECT payload FROM posts WHERE id=?', (post['id'],))[0]['payload'])
+    payload['caption'] += '\n\n' + GENERATED_IMAGE_NOTE
     with store.db:
-        store.db.execute('UPDATE posts SET status=? WHERE id=?', (status, post['id']))
+        store.db.execute('UPDATE posts SET payload=?,status=? WHERE id=?', (json.dumps(payload), status, post['id']))
     original_payload = store.rows('SELECT payload FROM posts WHERE id=?', (post['id'],))[0]['payload']
     assert GENERATED_IMAGE_NOTE in json.loads(original_payload)['caption']
     later = at + timedelta(minutes=15)
@@ -110,7 +119,7 @@ def test_rejected_generated_scene_falls_back_without_an_ai_disclosure(
     store.upsert(event, at.isoformat())
     prepare(store, at)
     export(store, tmp_path / 'initial', source_config(), at)
-    assert all(GENERATED_IMAGE_NOTE in p['caption'] for p in store.posts())
+    assert all(GENERATED_IMAGE_NOTE not in p['caption'] for p in store.posts())
     monkeypatch.setattr('seferihisar.illustrations.validate_text_free_illustration',
                         Mock(side_effect=IllustrationTextRejected('Illustration lettering rejected')))
     export(store, tmp_path / 'fallback', source_config(), at + timedelta(minutes=15))
@@ -120,18 +129,20 @@ def test_rejected_generated_scene_falls_back_without_an_ai_disclosure(
     assert generated_scene.call_count == 1
 
 
-def test_disclosure_is_idempotent_and_reserves_complete_source_and_tags_under_limit():
+@pytest.mark.parametrize('generated', [False, True])
+def test_legacy_note_removal_reserves_complete_source_and_tags_under_limit(generated):
     source = 'Kaynak: İzmir Art\nhttps://www.izmir.art/etkinlik/123#program'
     tags = ['#urla', '#tiyatro', '#tiyatrooyunu', '#seferihisarofficial']
     original = caption_with_hashtags('Uzun duyuru açıklaması ' * 300, tags, footer=source)
-    disclosed = generated_image_caption(original, True)
-    assert len(disclosed) <= 2200
-    assert disclosed.count(GENERATED_IMAGE_NOTE) == 1
-    assert source in disclosed
-    assert disclosed.endswith(' '.join(tags))
-    assert generated_image_caption(disclosed, True) == disclosed
-    removed = generated_image_caption(disclosed, False)
-    assert GENERATED_IMAGE_NOTE not in removed
-    assert source in removed and removed.endswith(' '.join(tags))
-    assert generated_image_caption(original, False) == original
+    legacy = original.replace('\n\nKaynak:', '\n\n' + GENERATED_IMAGE_NOTE + '\n\nKaynak:')
+    cleaned = generated_image_caption(legacy, generated)
+    assert len(cleaned) <= 2200
+    assert GENERATED_IMAGE_NOTE not in cleaned
+    assert source in cleaned and cleaned.endswith(' '.join(tags))
+    assert generated_image_caption(cleaned, generated) == cleaned
+    assert generated_image_caption(original, generated) == original
 
+
+def test_news_about_ai_keeps_its_facts():
+    caption = 'Yapay zekâ eğitimleri başladı.\n\nKaynak: Yerel Haber\nhttps://example.org/haber'
+    assert generated_image_caption(caption, True) == caption

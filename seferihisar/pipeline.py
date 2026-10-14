@@ -176,7 +176,7 @@ def _export(store: Store, public_dir: Path, sources: list[dict], at: datetime, d
             if post["status"] == "prepared":
                 # Research records actual assignments. The publisher renders
                 # locally with generation disabled, but uses deployed Pages
-                # assets and must retain their persisted image disclosure.
+                # assets. Clean legacy caption notes only before a claim.
                 generated = bool(illustrations) if illustrator.enabled else bool(post.get("illustration_keys"))
                 post["caption"] = generated_image_caption(post["caption"], generated)
                 rows = store.rows("SELECT payload FROM posts WHERE id=? AND status='prepared'", (post["id"],))

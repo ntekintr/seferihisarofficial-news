@@ -78,6 +78,18 @@ def test_repeated_short_abbreviations_and_numbered_facts_are_preserved(course_no
     assert news_body(course_notice) == course_notice['description']
 
 
+def test_matching_rss_syndication_credit_is_only_in_caption_footer(course_notice):
+    course_notice.update(source_id='other', title='Yeni kurslar', source_name='Yerel Gazete',
+                         description='Yeni kurslar için kayıtlar sürüyor. Yeni kurslar yazısı ilk önce Yerel Gazete üzerinde ortaya çıktı.')
+    assert news_body(course_notice) == 'Yeni kurslar için kayıtlar sürüyor.'
+    assert 'Yerel Gazete' not in slide_body(course_notice)
+    content = caption(course_notice, headline(course_notice, 'news'))
+    assert 'Kaynak: Yerel Gazete\n' + course_notice['url'] in content
+    assert 'üzerinde ortaya çıktı' not in content
+    course_notice['description'] = 'Yerel Gazete, açılacak kursları araştırdı.'
+    assert news_body(course_notice) == course_notice['description']
+
+
 def test_course_caption_and_card_use_same_news_wording_with_source_attribution(course_notice):
     title = headline(course_notice, 'news')
     content = caption(course_notice, title)
@@ -88,7 +100,8 @@ def test_course_caption_and_card_use_same_news_wording_with_source_attribution(c
     assert 'Kaynak duyurusuna göre: ' in content
     assert 'Kaynak duyurusundan: “' not in content
     assert course_notice['url'] in content
-    assert 'Kaynak: ' + course_notice['source_name'] in body
+    assert 'Kaynak: ' not in body
+    assert 'Kaynak: ' + course_notice['source_name'] in content
     assert course_notice['title'] not in content and 'tıklayınız' not in content
 
 
@@ -112,7 +125,7 @@ def test_only_unclaimed_news_wording_refreshes_and_keeps_source_identity_and_ima
     assert refreshed['due_at'] == at.isoformat() and refreshed['created_at'] == at.isoformat()
     assert refreshed['status'] == status
     assert refreshed['illustration_keys'] == {'0': 'f' * 24}
-    assert 'Görsel: yapay zekâyla hazırlanmış temsili görsel.' in refreshed['caption']
+    assert 'Görsel: yapay zekâyla hazırlanmış temsili görsel.' not in refreshed['caption']
     assert 'El sanatları kurslarına kayıtlar sürüyor' in refreshed['title']
     assert refreshed['slides'][0]['body'] == slide_body(item)
     assert store.rows('SELECT * FROM items')[0] == source_row

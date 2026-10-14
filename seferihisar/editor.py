@@ -112,6 +112,12 @@ def news_title(item: dict) -> str:
 def news_body(item: dict) -> str:
     """Keep source facts, removing exact repeated sentences from news cards."""
     text = " ".join(item.get("description", "").split())
+    # Some RSS publishers append a syndication credit to the excerpt. Keep
+    # the explicit caption attribution instead of painting this duplicate.
+    if item.get('source_name'):
+        credit = (re.escape(' '.join(item['title'].split())) + r'\s+yazısı ilk önce\s+'
+                  + re.escape(item['source_name']) + r'\s+üzerinde ortaya çıktı\.?\s*$')
+        text = re.sub(credit, '', text, flags=re.I).strip()
     sentences, seen = [], set()
     for sentence in re.split(r"(?<=[.!?])\s+", text):
         # Short fragments can be repeated abbreviations or distinct numbered
