@@ -297,6 +297,8 @@ def ticket_items(body, base, source):
             location = location[0] if len(location)==1 else None
         if not isinstance(location,dict):
             continue
+        if source.get('expected_venue') and normalized(text(location.get('name'))) != normalized(source['expected_venue']):
+            continue
         address = location.get('address')
         if not isinstance(address,dict):
             continue

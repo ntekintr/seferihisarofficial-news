@@ -85,7 +85,8 @@
     "trusted": true,
     "access": "robots",
     "display_url": "https://www.gdzelektrik.com.tr/bilgi-merkezi/planli-bakim-ve-iyilestirme-calismalari",
-    "max_pages": 4
+    "max_pages": 4,
+    "transient_retries": 1
   },
   {
     "id": "afad",
@@ -649,5 +650,27 @@
     "access": "api",
     "instagram_username": "teoskultursanat",
     "verified_profile_link": "https://www.teoskultursanat.com/hakkimizda/iletisim/"
+  },
+  {
+    "id": "sehayder",
+    "name": "SEHAYDER — resmî duyuru akışı",
+    "url": "https://www.sehayder.com/feed/",
+    "kind": "rss",
+    "enabled": true,
+    "trusted": true,
+    "access": "robots"
+  },
+  {
+    "id": "bubilet-bademler",
+    "name": "Bademler Sanat Köyü — Bubilet etkinlikleri",
+    "url": "https://www.bubilet.com.tr/mekan/bademler-sanat-koyu",
+    "kind": "ticketing",
+    "enabled": true,
+    "trusted": true,
+    "access": "robots",
+    "max_pages": 8,
+    "link_selector": "a[href*=\"/izmir/etkinlik/\"]",
+    "local_links_only": false,
+    "expected_venue": "Bademler Sanat Köyü"
   }
 ]

@@ -144,6 +144,8 @@ class Fetcher:
             response = exc.response
             status = response.status_code if response is not None else None
             retryable = isinstance(exc, (requests.Timeout, requests.ConnectionError)) or status in (429, 500, 502, 503, 504)
+            if isinstance(exc, requests.exceptions.SSLError):
+                retryable = False
             delay = 2
             if status == 429:
                 value = response.headers.get('Retry-After', '')
@@ -545,6 +547,16 @@ def collect_municipal_calendar(source: dict, fetcher: Fetcher):
 
 def feed_items(xml: str, base: str, source: dict) -> list[dict]:
     root = ET.fromstring(xml)
+    if root.tag == 'rss':
+        valid = root.find('channel') is not None
+    elif root.tag in ('feed', '{http://www.w3.org/2005/Atom}feed'):
+        valid = True
+    else:
+        valid = (root.tag == '{http://www.w3.org/1999/02/22-rdf-syntax-ns#}RDF'
+                 and root.find('{http://purl.org/rss/1.0/}channel') is not None)
+    if not valid:
+        # A well-formed HTML protection page is not an empty news feed.
+        raise ET.ParseError('Expected RSS or Atom document')
     results = []
     for entry in root.iter():
         if entry.tag.split("}")[-1] not in ("item", "entry"):

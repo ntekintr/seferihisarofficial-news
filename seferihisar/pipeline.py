@@ -205,9 +205,9 @@ def _export(store: Store, public_dir: Path, sources: list[dict], at: datetime, d
                 "runs": [{**r, "errors": json.loads(r["errors"])} for r in store.rows("SELECT * FROM runs ORDER BY id DESC LIMIT 20")]}
     catalogue_path = Path(__file__).resolve().parents[1] / 'config/source_catalog.json'
     if catalogue_path.exists():
+        from .source_catalog import public_catalog
         catalogue = json.loads(catalogue_path.read_text(encoding='utf-8'))
-        snapshot['source_catalog'] = [{k: entry.get(k) for k in ('id', 'name', 'url', 'group', 'status', 'note')} for entry in catalogue
-                                      if public_url(entry.get('url', '')) and not contains_secret(entry)]
+        snapshot['source_catalog'] = public_catalog(catalogue, sources, snapshot['source_health'], at)
     assert_no_secrets(snapshot)
     (public_dir / "data.json").write_text(json.dumps(snapshot, ensure_ascii=False, indent=2), encoding="utf-8")
     (public_dir / ".nojekyll").touch()
