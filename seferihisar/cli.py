@@ -16,6 +16,7 @@ def main():
     parser.add_argument("--sources", type=Path, default=Path("config/sources.json"))
     parser.add_argument("--at", help="ISO8601 time, Europe/Istanbul if no offset")
     parser.add_argument("--fixture", type=Path)
+    parser.add_argument("--instagram-manifest", type=Path)
     parser.add_argument("--site-url", default="")
     parser.add_argument("--story", action="store_true")
     parser.add_argument("--automatic", action="store_true", help="Two daily feed/story pairs in configured Turkish time windows")
@@ -31,7 +32,7 @@ def main():
         at = parse_date("2026-10-10T10:00:00+03:00") if not args.at else at
         result = run(args.db, args.public, args.sources, at, fixture)
     elif args.command == "run":
-        result = run(args.db, args.public, args.sources, at, args.fixture)
+        result = run(args.db, args.public, args.sources, at, args.fixture, args.instagram_manifest)
     else:
         from .instagram import publish_one, publish_automatic
         from .store import Store

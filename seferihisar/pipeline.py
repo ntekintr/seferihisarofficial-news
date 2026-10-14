@@ -39,7 +39,7 @@ def source_error_code(exc: Exception) -> str:
     return 'collection_failed'
 
 
-def run(db_path: Path, public_dir: Path, sources_path: Path, at: datetime | None = None, fixture: Path | None = None) -> dict:
+def run(db_path: Path, public_dir: Path, sources_path: Path, at: datetime | None = None, fixture: Path | None = None, instagram_manifest: Path | None = None) -> dict:
     at = at or now()
     sources = json.loads(sources_path.read_text())
     source_map = {s["id"]: s for s in sources}
@@ -55,10 +55,23 @@ def run(db_path: Path, public_dir: Path, sources_path: Path, at: datetime | None
         if fixture:
             incoming = json.loads(fixture.read_text())
         else:
+            from .instagram_sources import consume
+            instagram_items, instagram_health = consume(instagram_manifest, sources, at)
+            incoming.extend(instagram_items)
+            for row in instagram_health:
+                dates = [parse_date(i.get('published_at')) for i in instagram_items if i['source_id'] == row['source_id'] and i.get('published_at')]
+                health[row['source_id']] = {'checked_at':row['checked_at'], 'status':row['status'],
+                                          'parsed':row['parsed'], 'accepted':0,
+                                          'error_count':int(bool(row['code'])),
+                                          'latest_published_at':max(dates).isoformat() if dates else None}
+                if row['code']:
+                    errors.append({'source_id':row['source_id'], 'code':row['code']})
             fetcher = Fetcher(sources)
             tracked = [e for e in store.items("event") if parse_date(e["start"]).date() >= at.date() - timedelta(days=1)]
             for source in sources:
                 if not source.get("enabled") or source.get("access") not in ("robots", "api", "licensed"):
+                    continue
+                if source.get('kind') == 'instagram_api':
                     continue
                 try:
                     found, discovered, detail_errors = collect_source(source, fetcher, tracked)

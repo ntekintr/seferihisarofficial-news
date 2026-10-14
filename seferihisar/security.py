@@ -17,7 +17,7 @@ SECRET_PATTERN = re.compile(
     r"AIza[\w-]{35}|(?:gh[pousr]_[A-Za-z0-9]{20,})|github_pat_[A-Za-z0-9_]{20,}|EAA[A-Za-z0-9]{50,}|"
     r"-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----|"
     r"(?:access[_-]?token|api[_-]?key|password|secret|authorization)\s*[=:]\s*[\"']?[^\s\"'&,;<>]{8,}", re.I)
-SECRET_VARIABLES = ("GEMINI_API_KEY", "CLOUDFLARE_API_TOKEN", "INSTAGRAM_ACCESS_TOKEN", "FACEBOOK_PAGE_ACCESS_TOKEN", "INSTAGRAM_USER_ID", "GITHUB_TOKEN", "GH_TOKEN", "STATE_WRITE_TOKEN")
+SECRET_VARIABLES = ("GEMINI_API_KEY", "CLOUDFLARE_API_TOKEN", "INSTAGRAM_ACCESS_TOKEN", "FACEBOOK_PAGE_ACCESS_TOKEN", "INSTAGRAM_USER_ID", "IG_SOURCE_ACCESS_TOKEN", "IG_SOURCE_USER_ID", "GITHUB_TOKEN", "GH_TOKEN", "STATE_WRITE_TOKEN")
 
 
 def contains_secret(value) -> bool:

@@ -3,12 +3,13 @@ from pathlib import Path
 import yaml
 
 
-def test_scheduled_run_never_has_instagram_credentials_or_publish_command():
+def test_research_never_has_instagram_credentials_or_publish_command():
     workflow=yaml.load(Path('.github/workflows/automation.yml').read_text(),Loader=yaml.BaseLoader)
     assert workflow['on']['schedule'][0]['cron']=='7,22,37,52 * * * *'
     assert workflow['concurrency']['cancel-in-progress']=='false'
     text=Path('.github/workflows/automation.yml').read_text()
-    assert 'INSTAGRAM_ACCESS_TOKEN' not in text
+    research=str(workflow['jobs']['research'])
+    assert 'INSTAGRAM_ACCESS_TOKEN' not in research and 'IG_SOURCE_ACCESS_TOKEN' not in research
     assert 'FACEBOOK_PAGE_ACCESS_TOKEN' not in text
     assert 'cli publish' not in text
     assert 'state_git restore' in text and 'state_git persist' in text
@@ -42,12 +43,27 @@ def test_permissions_are_scoped_to_the_jobs_that_need_them():
     assert jobs['research']['steps'][0]['with']['persist-credentials']=='false'
     assert 'GEMINI_API_KEY' not in jobs['research']['env']
     secret_steps=[s for s in jobs['research']['steps'] if 'GEMINI_API_KEY' in s.get('env',{})]
-    assert len(secret_steps)==1 and secret_steps[0]['run']=='python -m seferihisar.cli run'
+    assert len(secret_steps)==1 and secret_steps[0]['run'].startswith('python -m seferihisar.cli run ')
     image_steps=[s for s in jobs['research']['steps'] if 'CLOUDFLARE_API_TOKEN' in s.get('env',{})]
-    assert len(image_steps)==1 and image_steps[0]['run']=='python -m seferihisar.cli run'
+    assert len(image_steps)==1 and image_steps[0]['run'].startswith('python -m seferihisar.cli run ')
     assert image_steps[0]['env']['ILLUSTRATIONS_ENABLED']=='true'
     assert 'CLOUDFLARE_API_TOKEN' not in jobs['research']['env']
     assert 'env' not in jobs['persist'] and 'env' not in jobs['deploy']
+
+
+def test_public_instagram_reader_is_isolated_from_research_and_publication():
+    workflow=yaml.load(Path('.github/workflows/automation.yml').read_text(),Loader=yaml.BaseLoader)
+    job=workflow['jobs']['instagram_sources']
+    assert job['if']=="github.ref == 'refs/heads/main'"
+    assert job.get('permissions',workflow['permissions'])=={'contents':'read'}
+    secret_steps=[s for s in job['steps'] if 'IG_SOURCE_ACCESS_TOKEN' in s.get('env',{})]
+    assert len(secret_steps)==1 and secret_steps[0]['run']=='python -m seferihisar.instagram_sources'
+    assert not any(s.get('run','').find('state_git')>=0 or 'cli publish' in s.get('run','') for s in job['steps'])
+    assert 'FACEBOOK_PAGE_ACCESS_TOKEN' not in str(job) and 'CLOUDFLARE_API_TOKEN' not in str(job)
+    uploads=[s for s in job['steps'] if s.get('uses','').startswith('actions/upload')]
+    assert len(uploads)==1 and uploads[0]['with']['path']=='work/instagram-sources/public.json'
+    assert workflow['jobs']['research']['needs']=='instagram_sources'
+    assert 'always()' in workflow['jobs']['research']['if']
 
 
 def test_external_actions_are_pinned_and_uploads_are_validated():

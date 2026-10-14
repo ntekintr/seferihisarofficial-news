@@ -414,6 +414,93 @@
     "access": "robots",
     "max_pages": 6,
     "follow_feed_details": false
+  },
+  {
+    "id": "instagram-gundem",
+    "name": "Seferihisar Gündem Instagram",
+    "url": "https://www.instagram.com/shgundem/",
+    "kind": "instagram_api",
+    "enabled": true,
+    "trusted": true,
+    "access": "api",
+    "instagram_username": "shgundem",
+    "verified_profile_link": "https://www.seferihisargundem.com/"
+  },
+  {
+    "id": "instagram-life",
+    "name": "SeferihisarLife Instagram",
+    "url": "https://www.instagram.com/seferihisar.life/",
+    "kind": "instagram_api",
+    "enabled": true,
+    "trusted": true,
+    "access": "api",
+    "instagram_username": "seferihisar.life",
+    "verified_profile_link": "https://seferihisarlife.com/"
+  },
+  {
+    "id": "instagram-urla",
+    "name": "Urla Belediyesi Instagram",
+    "url": "https://www.instagram.com/urlabelediyesi/",
+    "kind": "instagram_api",
+    "enabled": true,
+    "trusted": true,
+    "access": "api",
+    "instagram_username": "urlabelediyesi",
+    "verified_profile_link": "https://www.urla.bel.tr/"
+  },
+  {
+    "id": "instagram-guzelbahce",
+    "name": "Güzelbahçe Belediyesi Instagram",
+    "url": "https://www.instagram.com/guzelbahcebld/",
+    "kind": "instagram_api",
+    "enabled": true,
+    "trusted": true,
+    "access": "api",
+    "instagram_username": "guzelbahcebld",
+    "verified_profile_link": "https://www.guzelbahce.bel.tr/"
+  },
+  {
+    "id": "instagram-kulturekoloji",
+    "name": "KültürEkoloji Instagram",
+    "url": "https://www.instagram.com/kultur.ekoloji/",
+    "kind": "instagram_api",
+    "enabled": true,
+    "trusted": true,
+    "access": "api",
+    "instagram_username": "kultur.ekoloji",
+    "verified_profile_link": "https://www.kulturekoloji.org/"
+  },
+  {
+    "id": "instagram-sehayder",
+    "name": "SEHAYDER Instagram",
+    "url": "https://www.instagram.com/sehayder/",
+    "kind": "instagram_api",
+    "enabled": true,
+    "trusted": true,
+    "access": "api",
+    "instagram_username": "sehayder",
+    "verified_profile_link": "https://www.sehayder.com/"
+  },
+  {
+    "id": "instagram-gdz",
+    "name": "GDZ Elektrik Instagram",
+    "url": "https://www.instagram.com/gdzelektrik/",
+    "kind": "instagram_api",
+    "enabled": true,
+    "trusted": true,
+    "access": "api",
+    "instagram_username": "gdzelektrik",
+    "verified_profile_link": "https://www.gdzelektrik.com.tr/"
+  },
+  {
+    "id": "instagram-afad",
+    "name": "AFAD Instagram",
+    "url": "https://www.instagram.com/afadbaskanlik/",
+    "kind": "instagram_api",
+    "enabled": true,
+    "trusted": true,
+    "access": "api",
+    "instagram_username": "afadbaskanlik",
+    "verified_profile_link": "https://www.afad.gov.tr/"
   }
 ]
-
