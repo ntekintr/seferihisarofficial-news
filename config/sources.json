@@ -356,7 +356,8 @@
     "link_selector": "a.news-card-horizontal[href]",
     "article_selector": ".icerik",
     "title_selector": "h2.page-title",
-    "published_date_selector": ".dateandtag .card-date"
+    "published_date_selector": ".dateandtag .card-date",
+    "transient_retries": 1
   },
   {
     "id": "menderes-kaymakamlik",
@@ -370,7 +371,8 @@
     "link_selector": "a.news-card-horizontal[href]",
     "article_selector": ".icerik",
     "title_selector": "h2.page-title",
-    "published_date_selector": ".dateandtag .card-date"
+    "published_date_selector": ".dateandtag .card-date",
+    "transient_retries": 1
   },
   {
     "id": "seferihisar-duyurular",

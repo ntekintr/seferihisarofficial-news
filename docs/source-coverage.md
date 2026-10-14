@@ -61,3 +61,5 @@ Hizmet uyarılarında `valid_until`, hem doğrulamada hem paylaşım öncesi gü
 | Urla'da Yaşam | Açık news.json başka gazetelerin ve ulusal haberlerin derlemesi. Aynı haber ikinci bağımsız doğrulama sayılmaz; asıl gazetenin doğrulanmış okuyucusu kullanılır. |
 
 Bu sınırlar katalogda somut nedenleriyle kayıtlıdır; belirsiz `reader_pending` kayıtları bırakılmadı. Kaynak kapsamının dış erişim isteyen kısmı, bu koşullar çözülmeden tamamlandı diye sunulmaz.
+
+İlk genişletilmiş bulut taraması 14 Ekim 06:30–06:36 Türkiye saatinde tamamlandı: yeni 11 web okuyucusu hatasız; toplam web sağlığı 26 `ok`, 9 `empty`, 2 bağlantı hatası. Boş sonuç, o turda kapsamda içerik bulunmadığı anlamına gelir. Urla ve Menderes kaymakamlıklarının bağlantı/DNS hatası için mevcut sınırlı tekrar mekanizması açıldı: alan adı başına turda yalnızca bir ek deneme. 403, robots engeli ve uzun hız sınırlaması aşılmaz. Sonraki canlı sağlık sonucu bu ilk ölçümün yerine geçer.
