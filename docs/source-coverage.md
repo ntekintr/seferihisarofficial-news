@@ -53,7 +53,8 @@ Hizmet uyarılarında `valid_until`, hem doğrulamada hem paylaşım öncesi gü
 
 | Kaynak | Sonuç |
 |---|---|
-| Instagram hesapları | Bulut Business Discovery kontrolü ek okuma izni istedi. Meta ekranında `instagram_manage_insights` uygulamaya eklenmemiş. Kullanıcı onayı ve bu izni içeren bağlantı tamamlanana kadar sağlıklı görünmez. |
+| Instagram hesapları | 14 Ekim ek okuma izni tamamlandı. Mevcut üretim bağlantısı, 14:47 bulut kontrolünde yedi hesabı okudu: dördünde 14 uygun kayıt, üçünde uygun kayıt yok. @shgundem, gazetenin kendi sitesinden tekrar doğrulanan adres olmasına rağmen Business Discovery'de 110/2207013 hedef hesap hatası veriyor. Bu hata ek izin isteme veya diğer hesapları durdurma nedeni değildir; hesabın türü/kapanması hakkında kesin çıkarım yapılmaz. Gazetenin web haber akışı aynı bulut turunda sağlıklı ve iki güncel kayıt içeriyor. |
+| Ege Telgraf | 14 Ekim 14:48 araştırmasında RSS okunmuş, ayrıntı sayfası HTTP 403 vermiş. Aynı üretim okuyucusu 15:24 yerel kontrolde RSS ve ayrıntıyı hatasız okudu; bu, bulut erişiminin düzeldiğini kanıtlamaz. Yayıncı robots dosyasındaki alternatif RSS adresi de incelendi; tam haber gövdesi sağlamadı. 180 karakterlik özet, başarısız ayrıntı doğrulamasının yerine geçirilmedi. 403 tekrar denenmez veya aşılmaz; güncel bulut sağlık sonucu esas alınır. |
 | GDZ kesintileri | Site uygulamasındaki açık JSON adresleri incelendi; istekler veri yerine koruma sayfası döndürdü. Koruma aşılmadı. Instagram okuma bağlantısı alternatif olabilir; henüz çalışıyor sayılmaz. |
 | Güzelbahçe Kaymakamlığı | Hem www hem çıplak alan adı TLS/sertifika hatası verdi. Sertifika denetimi kapatılmadı. Belediye ve yerel basın kanalları zaten var. |
 | Bademler Sanat Köyü | 25 Aralık 20:00 duyurusunda yıl yok; gerçek tarihli etkinlik beslemesi doğrulanmadı. Yıl tahmin edilerek paylaşılmaz. |

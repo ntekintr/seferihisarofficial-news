@@ -78,6 +78,10 @@ def read_account(source: dict, token: str, owner_id: str, version: str, session)
                         200:'instagram_permission_required', 4:'instagram_rate_limited',
                         17:'instagram_rate_limited', 32:'instagram_rate_limited',
                         613:'instagram_rate_limited', 100:'instagram_source_unavailable'}.get(code, 'instagram_read_failed')
+                # Business Discovery's target-account error is not a global
+                # permission failure. Keep reading the remaining approved accounts.
+                if code == 110 and error.get('error_subcode') == 2207013:
+                    kind = 'instagram_source_unavailable'
                 raise SourceReadError(kind)
             if response.status_code != 200:
                 raise SourceReadError('instagram_read_failed')
