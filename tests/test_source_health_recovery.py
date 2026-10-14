@@ -12,7 +12,7 @@ import requests
 from seferihisar.collect import Fetcher, collect_source, feed_items
 from seferihisar.pipeline import export
 from seferihisar.source_catalog import public_catalog
-from seferihisar.source_readers import ticket_items
+from seferihisar.source_readers import ticket_items, collect_tickets
 
 SOURCES = {s['id']: s for s in json.loads(Path('config/sources.json').read_text(encoding='utf-8'))}
 
@@ -143,3 +143,16 @@ def test_export_uses_completion_time_for_health_of_late_crawl_sources(store, at,
     data = json.loads((public / 'data.json').read_text(encoding='utf-8'))
     entry = next(e for e in data['source_catalog'] if e['id'] == 'sehayder')
     assert entry['status'] == 'connected'
+
+
+def test_bademler_repeat_crawl_groups_session_fetches_and_keeps_other_event_in_budget():
+    source = {**SOURCES['bubilet-bademler'], 'max_pages': 2}
+    yoga = 'https://www.bubilet.com.tr/izmir/etkinlik/nina-bafikir-ile-mindful-yoga'
+    concert = 'https://www.bubilet.com.tr/izmir/etkinlik/basbasa-band-konseri'
+    known = [{'source_id': source['id'], 'url': yoga + '/seans/' + str(300000+i)} for i in range(6)]
+    known += [{'source_id': source['id'], 'url': concert + '/seans/300007'}]
+    fetcher = Mock()
+    fetcher.get.side_effect = lambda url: ('<a href="'+yoga+'">Yoga</a><a href="'+concert+'">Konser</a>' if url==source['url'] else 'session metadata', url)
+    collect_tickets(source, fetcher, known, reader=Mock(return_value=[]))
+    assert [call.args[0] for call in fetcher.get.call_args_list] == [source['url'], yoga, concert]
+    assert known[0]['url'].endswith('/seans/300000')
