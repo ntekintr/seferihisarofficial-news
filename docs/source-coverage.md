@@ -16,6 +16,7 @@ Kurumların kendi web sitelerindeki profil bağlantıları kontrol edildi:
 | SEHAYDER | @sehayder | https://www.sehayder.com/ |
 | GDZ Elektrik | @gdzelektrik | https://www.gdzelektrik.com.tr/ |
 | AFAD | @afadbaskanlik | https://www.afad.gov.tr/ |
+| Teos Kültür Sanat | @teoskultursanat | https://www.teoskultursanat.com/hakkimizda/iletisim/ |
 
 Profil bağlantısının doğrulanması API erişiminin başarılı olduğu anlamına gelmez. Son gerçek erişim sonucu paneldeki kaynak sağlığında gösterilir. Kişisel/kapalı hesaplar ve erişim izni olmayan hesaplar çalışır sayılmaz. Mevcut Meta anahtarıyla Business Discovery okuması denenir; eksik izin, süresi dolmuş anahtar, hız sınırı ve hesap erişim hatası ayrı kayıt edilir.
 
@@ -74,5 +75,7 @@ API koleksiyonunun il/ilçe/başarı/seviye/sayı alanları doğrulanır. HTML k
 Yayıncının vermediği haber yayın tarihi üretilmez. Kesinti, başlangıç/bitişi bilinen hizmet aralığı olarak saklanır; `valid_until` bitişi korur. Başlangıç/bitiş değişse de kesinti kimliği korunur. Bir duyuru veya açık güncelleme hazırlanır; etkinlik hatırlatmaları ve haftalık/aylık konser seçkilerine eklenmez. Metinde saat aralığı ve etkilenen mahalle/sokaklar vardır, bilet/ücret veya etkinlik türü yoktur. Panel yerel duyurularda gösterir. Günlük yayın sınırları ve önceki yayın kayıtları korunur.
 
 Valilik okuyucusu yalnız kendi başlığı, tam yayın tarihi ve `.icerik` gövdesini kullanır; Bornova duyurusu bir yan menüdeki Seferihisar adına dayanarak alınmaz. Yalnız görseldeki bilgileri tahmin etmez. Hava/kesinti uyarıları bu genel okuyucudan yayınlanmaz; ayrı MGM/GDZ kuralları uygulanır.
+
+İlk gerçek bulut turu 14 Ekim 16:41–16:50'de tamamlandı. GDZ aynı Urla planını hatasız aldı; Teos RSS ve Instagram kanalı hatasız okundu, uygun güncel kayıt yok. Valilikte iki ayrıntı bağlantısı bağlantı hatası verdi. Bu geçici hatalar için mevcut alan adı başına turda en fazla bir ek deneme mekanizması açıldı; 403 veya robots engeli tekrar edilmez ve sınırsız deneme yapılmaz. Gerçek son sağlık ölçümü bu tarihli başlangıç sonucunun yerine geçer.
 
 Bademler'in 25 Aralık 20:00 duyurusunda yıl hâlâ yok. Gerçek fakat boş RSS ve resmî iletişim sayfası incelendi; sayfanın yayın yılı etkinlik yılına çevrilmedi. Bu doğrudan etkinlik kapsamı açık kalır.
