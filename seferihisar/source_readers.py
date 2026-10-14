@@ -364,7 +364,20 @@ def collect_tickets(source, fetcher, known_events=(), reader=ticket_items):
                 if not any(link.startswith(prefix) for prefix in source.get('reviewed_local_prefixes',[])):
                     continue
             links.append(link)
-    tracked = [i['url'] for i in known_events if i['source_id']==source['id']]
+    tracked = []
+    for item in known_events:
+        if item['source_id'] != source['id']:
+            continue
+        link = item['url']
+        parts = urlsplit(link)
+        if (source.get('recheck_parent_sessions') is True
+                and parts.hostname == urlsplit(source['url']).hostname
+                and re.fullmatch(r'/izmir/etkinlik/[^/]+/seans/\d+', parts.path)):
+            # The reviewed parent page contains the complete per-session
+            # metadata. One multi-session event must not consume the venue's
+            # whole detail budget and starve its other concerts/workshops.
+            link = parts._replace(path=parts.path.rsplit('/seans/', 1)[0], query='', fragment='').geturl()
+        tracked.append(link)
     links.sort(key=lambda link: not any(link.startswith(prefix)
                                        for prefix in source.get('reviewed_local_prefixes',[])))
     found,errors = [],[]

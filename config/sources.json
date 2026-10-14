@@ -671,6 +671,7 @@
     "max_pages": 8,
     "link_selector": "a[href*=\"/izmir/etkinlik/\"]",
     "local_links_only": false,
-    "expected_venue": "Bademler Sanat Köyü"
+    "expected_venue": "Bademler Sanat Köyü",
+    "recheck_parent_sessions": true
   }
 ]
