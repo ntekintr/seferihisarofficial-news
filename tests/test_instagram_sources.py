@@ -152,3 +152,33 @@ def test_global_permission_error_stops_further_calls(ig_source,at,monkeypatch):
         result=reader.manifest([ig_source,other],at,Session({}))
     assert read.call_count==1 and len(result['health'])==2 and not result['items']
     assert {r['code'] for r in result['health']}=={'instagram_permission_required'}
+
+
+@pytest.mark.parametrize('caption',[
+ 'Seferihisar elektrik kesintisi duyurusu. Tarih: 10.10.2026 Saat: 08:00–09:00',
+ 'Seferihisar elektrik kesintisi duyurusu. Tarih: 10 Ekim Saat: 10:00–13:00',
+ 'Seferihisar fırtına uyarısı. Tarih: 10 Ekim 2026. Uyarının bitişi açıklanmadı.',
+ 'Seferihisar elektrik kesintisi duyurusu. Tarih: 10 Ekim 2026. Saat: 23:00–02:00',
+ 'Seferihisar elektrik kesintisi duyurusu. 10 Ekim 2026 ve 11 Ekim 2026. Saat: 10:00–13:00',
+])
+def test_expired_yearless_or_ambiguous_service_caption_is_not_published(ig_source,at,caption):
+    data=account(at);data['media']['data'][0]['caption']=caption
+    assert not reader.caption_items(data,ig_source,at)
+
+
+def test_explicit_service_end_is_preserved_in_public_manifest(ig_source,at):
+    data=account(at);data['media']['data'][0]['caption']='Seferihisar elektrik kesintisi duyurusu\nTarih: 10 Ekim 2026\nSaat: 10:00–13:00\nPlanlı bakım çalışması.'
+    item=reader.caption_items(data,ig_source,at)[0]
+    assert item['valid_until']=='2026-10-10T13:00:00+03:00' and item['kind']=='news'
+    manifest={'schema_version':1,'generated_at':at.isoformat(),'items':[item],
+              'health':[{'source_id':ig_source['id'],'checked_at':at.isoformat(),'status':'ok','code':None,'parsed':1}]}
+    reader.validate_manifest(manifest,[ig_source],at)
+
+
+def test_old_official_instagram_earthquake_update_expires_even_if_api_read_is_fresh(ig_source,at):
+    source={**ig_source,'id':'instagram-afad'}
+    data=account(at);data['media']['data'][0].update(caption='AFAD kaydı: Seferihisar yakınlarında deprem. Resmî açıklama yayımlandı.',timestamp=(at-timedelta(hours=4)).isoformat())
+    assert not reader.caption_items(data,source,at)
+    data['media']['data'][0]['timestamp']=(at-timedelta(hours=1)).isoformat()
+    item=reader.caption_items(data,source,at)[0]
+    assert item['valid_until']==(at+timedelta(hours=2)).isoformat()
