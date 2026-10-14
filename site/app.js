@@ -1,16 +1,18 @@
 'use strict';
 const categories = {news:'Yerel Haberler',municipality:'Belediye',concert:'Konserler',festival:'Festivaller',theatre:'Tiyatro',cinema:'Sinema',culture:'Kültür & Sanat',event:'Etkinlikler',family:'Aile & Çocuk',sport:'Spor',market:'Pazar & Fuar',food:'Gastronomi',tourism:'Turizm',transport:'Ulaşım',outage:'Kesintiler',weather:'Hava Durumu',education:'Eğitim',health:'Sağlık',public:'Kamu Duyuruları'};
 const errorLabels={source_connection_failed:'Bağlantı / DNS hatası',source_timeout:'Yanıt süresi aşıldı',source_tls_failed:'Sertifika / güvenli bağlantı hatası',source_parse_failed:'Kaynak veri biçimi okunamadı',source_robots_denied:'Kaynak taramaya izin vermiyor'};
+Object.assign(errorLabels,{source_dns_failed:'Kaynağın internet adresi çözümlenemedi (DNS)',source_tls_name_mismatch:'Kaynağın sertifikası alan adıyla eşleşmiyor'});
 Object.assign(errorLabels,{instagram_permission_required:'Meta ek okuma izni gerekli',instagram_credentials_missing:'Instagram kaynak okuma bağlantısı eksik',instagram_token_expired:'Meta bağlantısının süresi dolmuş',instagram_rate_limited:'Instagram okuma hız sınırına ulaşıldı',instagram_source_unavailable:'Bu Instagram hesabı API üzerinden okunamıyor',instagram_read_failed:'Instagram okuma kontrolü başarısız',instagram_manifest_missing:'Bu turda Instagram okuma sonucu alınamadı',instagram_manifest_invalid:'Instagram okuma sonucu doğrulanamadı'});
 const detailErrorLabels={timeout:'Ayrıntı sayfasının yanıt süresi aşıldı',tls_failed:'Ayrıntı sayfasında güvenli bağlantı hatası',connection_failed:'Ayrıntı sayfasına bağlanılamadı',robots_denied:'Kaynak ayrıntı sayfasının taranmasına izin vermiyor',response_too_large:'Ayrıntı sayfası okuma boyutu sınırını aştı',redirect_limit:'Ayrıntı sayfasında yönlendirme sınırı aşıldı',check_failed:'Ayrıntı sayfası doğrulanamadı'};
+Object.assign(detailErrorLabels,{dns_failed:'Ayrıntı sayfasının internet adresi çözümlenemedi (DNS)',tls_name_mismatch:'Ayrıntı sayfasının sertifikası alan adıyla eşleşmiyor',parse_failed:'Ayrıntı sayfasındaki veri biçimi okunamadı'});
 function errorLabel(code){
  const fallback='Erişim veya ayrıştırma kontrolü gerekli';
  if(typeof code!=='string')return fallback;
  if(Object.hasOwn(errorLabels,code))return errorLabels[code];
- const detail=/^(?:calendar_)?detail_([a-z_]+)$/.exec(code);
- if(detail&&Object.hasOwn(detailErrorLabels,detail[1]))return detailErrorLabels[detail[1]];
- const http=/^(source|detail|calendar_detail)_http_([1-5]\d{2})$/.exec(code);
- if(http){const page=http[1]==='source'?'Kaynak':'Ayrıntı sayfası';return page+' HTTP '+http[2]+' yanıtı verdi';}
+ const detail=/^(detail|calendar_detail|listing)_([a-z_]+)$/.exec(code);
+ if(detail&&Object.hasOwn(detailErrorLabels,detail[2])){const text=detailErrorLabels[detail[2]];return detail[1]==='listing'?text.replace('Ayrıntı sayfası','Liste sayfası').replace('ayrıntı sayfası','liste sayfası'):text;}
+ const http=/^(source|detail|calendar_detail|listing)_http_([1-5]\d{2})$/.exec(code);
+ if(http){const page=http[1]==='source'?'Kaynak':http[1]==='listing'?'Liste sayfası':'Ayrıntı sayfası';return page+' HTTP '+http[2]+' yanıtı verdi';}
  return fallback;
 }
 function isService(item){return item?.kind==='event'&&item.category==='outage';}

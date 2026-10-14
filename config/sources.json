@@ -25,7 +25,8 @@
     "link_selector": "a.news-card-horizontal[href]",
     "article_selector": ".icerik",
     "title_selector": "h2.page-title",
-    "published_date_selector": ".dateandtag .card-date"
+    "published_date_selector": ".dateandtag .card-date",
+    "transient_retries": 1
   },
   {
     "id": "izmir-belediye",
@@ -277,7 +278,8 @@
       "https://menderes.bel.tr/wp-json/wp/v2/haberler?per_page=12&_fields=id,date_gmt,link,title,content,status",
       "https://menderes.bel.tr/wp-json/wp/v2/duyurular?per_page=12&_fields=id,date_gmt,link,title,content,status"
     ],
-    "display_url": "https://menderes.bel.tr/"
+    "display_url": "https://menderes.bel.tr/",
+    "transient_retries": 1
   },
   {
     "id": "seferihisar-life",

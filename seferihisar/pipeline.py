@@ -9,7 +9,7 @@ import requests
 from datetime import datetime, timedelta
 from pathlib import Path
 
-from .collect import Fetcher, collect_source
+from .collect import Fetcher, collect_source, network_error_kind
 from .domain import now, parse_date
 from .editor import ai_priority, verify
 from .render import render_post
@@ -23,7 +23,7 @@ from .security import ITEM_FIELDS, PUBLIC_ITEM_FIELDS, assert_no_secrets, contai
 def source_error_code(exc: Exception) -> str:
     """Useful diagnostics without copying untrusted exception text or request data."""
     if isinstance(exc, requests.exceptions.SSLError):
-        return 'source_tls_failed'
+        return 'source_tls_name_mismatch' if network_error_kind(exc) == 'tls_name_mismatch' else 'source_tls_failed'
     if isinstance(exc, requests.Timeout):
         return 'source_timeout'
     if isinstance(exc, requests.HTTPError) and exc.response is not None:
@@ -31,7 +31,7 @@ def source_error_code(exc: Exception) -> str:
         if type(code) is int and 100 <= code <= 599:
             return 'source_http_' + str(code)
     if isinstance(exc, requests.ConnectionError):
-        return 'source_connection_failed'
+        return 'source_dns_failed' if network_error_kind(exc) == 'dns_failed' else 'source_connection_failed'
     if isinstance(exc, (ET.ParseError, json.JSONDecodeError)):
         return 'source_parse_failed'
     if isinstance(exc, ValueError) and str(exc) == 'robots.txt disallows this path':
