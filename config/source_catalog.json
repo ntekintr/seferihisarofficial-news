@@ -29,7 +29,7 @@
     "url": "https://bademlersanatkoyu.com/etkinlikler-ve-workshoplar/",
     "group": "etkinlik",
     "status": "date_missing",
-    "note": "Etkinlik sayfasındaki duyurularda yıl yok; örneğin 25 Aralık 20:00. RSS de tarihli etkinlik listesi sağlamıyor. Yıl tahmin edilmedi, otomatik yayına bağlanmadı."
+    "note": "14 Ekim yeniden kontrol edildi: etkinlikte 25 Aralık 20:00 yazıyor, yıl yok; resmî RSS gerçek fakat boş. Rezervasyon/iletişim sayfalarında doğrulanabilir tarihli alternatif bulunmadı. Sayfanın yayın tarihi etkinlik yılı yerine kullanılmadı; otomatik etkinlik yayınına bağlı değil."
   },
   {
     "id": "teosfest",
@@ -117,7 +117,7 @@
     "url": "https://guzelbahce.gov.tr/",
     "group": "kamu",
     "status": "access_failed",
-    "note": "Hem www hem alan adı güvenli bağlantı/sertifika hatası verdi. Sertifika denetimi kapatılmadı. Güzelbahçe Belediyesi ve yerel basın kaynakları aktiftir."
+    "note": "14 Ekim güvenli bağlantı/sertifika hatası sürüyor. Sertifika denetimi kapatılmadı. Tamamlayıcı resmî İzmir Valiliği bölge duyuruları eklendi; Kaymakamlığın doğrudan akışı çalışır sayılmıyor."
   },
   {
     "id": "menderes-kaymakamlik",
@@ -156,8 +156,8 @@
     "name": "GDZ Elektrik",
     "url": "https://www.gdzelektrik.com.tr/",
     "group": "hizmet",
-    "status": "access_failed",
-    "note": "Resmî planlı kesinti sayfası ve uygulaması incelendi. Açık JSON istekleri site koruması yanıtı veriyor; engel aşılmadı. GDZ Instagram bağlantısı için Meta okuma izni bekleniyor."
+    "status": "connected",
+    "note": "Resmî planlı kesinti servisi 14 Ekim 16:09 sonrası gerçek JSON döndürdü. Seferihisar, Urla, Güzelbahçe ve açıkça doğrulanmış Özdere mahalleleri sınırlı okunur. Kesinti kimliği ve tam başlangıç/bitiş korunur; eski, arşivlenmiş, iptal edilmiş ve bitişi bilinmeyen anlık kesintiler yeni duyuru sayılmaz. Son bulut erişimi kaynak sağlığında ayrıca gösterilir. GDZ Instagram kanalı da okunuyor."
   },
   {
     "id": "biletino",
@@ -220,8 +220,8 @@
     "name": "Teos Kültür Sanat Derneği",
     "url": "https://www.teoskultursanat.com/",
     "group": "oda_dernek",
-    "status": "access_failed",
-    "note": "Web adresi incelendi; RSS isteği gerçek besleme yerine site koruması sayfası döndürüyor. Koruma aşılmadı. Tam tarihli bağımsız akış doğrulanmadı."
+    "status": "connected",
+    "note": "14 Ekim 16:02 yerel kontrolde RSS gerçek XML besleme döndürdü; kayıt yok. Resmî iletişim sayfasından @teoskultursanat doğrulandı ve ayrı API okuyucusu bağlandı. 2017–2020 yıllıkları güncel etkinlik sayılmaz; gerçek bulut erişimi kaynak sağlığında gösterilir."
   },
   {
     "id": "sehayder",
@@ -310,5 +310,21 @@
     "group": "kamu",
     "status": "access_failed",
     "note": "Profil kurumun kendi sitesinden doğrulandı. 14 Ekim bulut okuması Meta ek okuma izni istedi; instagram_manage_insights bağlantısı tamamlanana kadar içerik alınamaz."
+  },
+  {
+    "id": "izmir-valilik",
+    "name": "İzmir Valiliği — bölge duyuruları",
+    "url": "https://www.izmir.gov.tr/duyurular",
+    "group": "kamu",
+    "status": "connected",
+    "note": "Resmî duyuru gövdesi, kendi başlığı ve tam yayın tarihi okunur. İlçe kapsamı içerikten doğrulanır; Bornova duyurusu veya yalnız afişteki bilgiler genellenmez. Meteoroloji duyuruları ayrı MGM okuyucusuyla doğrulanır."
+  },
+  {
+    "id": "instagram-teos",
+    "name": "Teos Kültür Sanat Instagram",
+    "url": "https://www.instagram.com/teoskultursanat/",
+    "group": "oda_dernek",
+    "status": "connected",
+    "note": "Profil derneğin resmî iletişim sayfasından doğrulandı. Yalnızca mevcut izinlerle API üzerinden açık açıklamalar okunur; gerçek erişim ve uygun kayıt sonucu kaynak sağlığında ayrıca ölçülür."
   }
 ]

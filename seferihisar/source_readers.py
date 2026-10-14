@@ -7,14 +7,133 @@ import re
 from datetime import datetime, timedelta
 from urllib.parse import urljoin, urlsplit
 
+import requests
 from bs4 import BeautifulSoup
 
 from .collect import MONTHS, detail_error_code, objects, page_url, publication_date, structured, text
-from .domain import TZ, canonical, category, digest, local, normalized, parse_date
+from .domain import TZ, canonical, category, digest, local, normalized, now, parse_date
 from .security import contains_secret, public_url
 
 EVENT_CATEGORIES = {'concert','festival','theatre','cinema','family','sport','market','culture','event','food','education'}
 UUID = re.compile(r'[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}')
+
+
+def official_notice_items(body, base, source):
+    """Reviewed governorate body/date fields; image-only warnings stay with MGM."""
+    soup = BeautifulSoup(body, 'html.parser')
+    heading, article = soup.select_one('h2.page-title'), soup.select_one('.icerik')
+    stamp = publication_date(soup, source)
+    if heading is None or article is None or stamp is None:
+        return []
+    for node in article.select('script,style,nav,footer'):
+        node.decompose()
+    title, description = text(heading), text(article)[:3000]
+    topic = category(title + ' ' + description)
+    if not description or not local(title + ' ' + description) or topic in ('weather','outage'):
+        return []
+    return [news(source,base,title,description,stamp,topic)]
+
+
+def _gdz_name(value):
+    return re.sub(r'\s+', ' ', value.replace('İ','i').casefold()).strip() if isinstance(value,str) else ''
+
+
+def gdz_planned_items(body, base, source, district, at, known_events=()):
+    """Verified service intervals, not invented article publication timestamps."""
+    data = json.loads(body)
+    if (not isinstance(data,dict) or data.get('success') is not True
+            or data.get('level')!='district_outages' or _gdz_name(data.get('city'))!='izmir'
+            or _gdz_name(data.get('district'))!=_gdz_name(district)
+            or not isinstance(data.get('data'),list) or len(data['data'])>500
+            or type(data.get('count')) is not int or data['count']!=len(data['data'])):
+        raise ValueError('Expected reviewed GDZ district collection')
+    display = source['display_url']
+    results = []
+    for row in data['data']:
+        if not isinstance(row,dict) or contains_secret(row):
+            continue
+        identifier = row.get('Kesinti_ID')
+        if (not isinstance(identifier,str) or not re.fullmatch(r'\d{1,12}',identifier)
+                or _gdz_name(row.get('Sehir'))!='izmir'
+                or _gdz_name(row.get('Ilce'))!=_gdz_name(district)):
+            continue
+        state = row.get('Durum')
+        if state not in ('Planlandı','Başladı','Planlı Kesinti İptal Edildi','Arşivlendi'):
+            continue
+        # This route also returns archived/cancelled records and may contain
+        # incidental outages. Only explicit full planned intervals are usable.
+        stamps = [row.get('Planlanan_Baslangic_Zamani'),row.get('Planlanan_Sona_Erme_Zamani')]
+        if not all(isinstance(v,str) and re.fullmatch(r'20\d{2}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(?:\.\d{1,6})?',v) for v in stamps):
+            continue
+        identity = canonical(display)+'#'+identifier
+        known = any(e.get('source_id')==source['id'] and e.get('identity')==identity for e in known_events)
+        start,end = [parse_date(v) for v in stamps]
+        if not start or not end or end<=start or start>at+timedelta(days=7):
+            continue
+        if state=='Arşivlendi':
+            # A previously tracked interval explicitly completed early must
+            # become stale immediately, without creating a new archive alert.
+            actual = row.get('Kesinti_Sona_Erme_Zamani')
+            actual_end = parse_date(actual) if isinstance(actual,str) and re.fullmatch(r'20\d{2}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(?:\.\d{1,6})?',actual) else None
+            if not known:
+                continue
+            if not actual_end or not start<actual_end<=at:
+                raise ValueError('Existing GDZ interval has no verified completion time')
+            end = actual_end
+        elif end<=at:
+            continue
+        if row.get('type') not in (None,'planned'):
+            continue
+        cancelled = state=='Planlı Kesinti İptal Edildi'
+        if cancelled and not known:
+            continue  # Do not import the provider's cancellation archive as new alerts.
+        neighborhoods = row.get('Mahalle')
+        if not isinstance(neighborhoods,list) or not neighborhoods or not all(isinstance(n,str) and 1<=len(n)<=100 for n in neighborhoods):
+            continue
+        place = {'SEFERİHİSAR':'Seferihisar','URLA':'Urla','GÜZELBAHÇE':'Güzelbahçe','MENDERES':'Özdere'}.get(district)
+        if not place:
+            continue
+        selected = neighborhoods
+        if district=='MENDERES':
+            # Municipality confirms Çukuraltı and Orta as Özdere neighborhoods.
+            # Bare Cumhuriyet is ambiguous (also Görece/Gümüldür); do not infer it.
+            selected=[n for n in neighborhoods if _gdz_name(n) in ('çukuraltı','orta','özdere çukuraltı','özdere orta','özdere cumhuriyet')]
+        if not selected:
+            continue
+        details = []
+        pairs = row.get('MahalleSokak')
+        if isinstance(pairs,list):
+            for pair in pairs:
+                if not isinstance(pair,dict) or pair.get('Mahalle') not in selected:
+                    continue
+                streets=pair.get('Sokak')
+                if isinstance(streets,list) and all(isinstance(v,str) and len(v)<=100 for v in streets):
+                    details.append(pair['Mahalle']+': '+', '.join(streets))
+        scope = '; '.join(details)[:1800] or ', '.join(selected)
+        reason = row.get('Kesinti_Nedeni')
+        reason = reason[:300] if isinstance(reason,str) else None
+        title = place+('’de' if place in ('Güzelbahçe','Özdere') else '’da')+' planlı elektrik kesintisi'+(' iptal edildi' if cancelled else '')
+        description = ('GDZ Elektrik kaydına göre '+('planlı kesinti iptal edildi. ' if cancelled else 'planlı çalışma. ')
+                       +'Başlangıç: '+start.strftime('%d.%m.%Y %H:%M')+'. Bitiş: '+end.strftime('%d.%m.%Y %H:%M')
+                       +'. Etkilenen mahalleler: '+', '.join(selected)+'. Sokak ayrıntıları: '+scope+'.'+(' Neden: '+reason+'.' if reason else ''))
+        item = event(source,display,title,description,start,end,place+' · '+', '.join(selected),'outage',valid_until=end.isoformat())
+        item.update(identity=identity,status='cancelled' if cancelled else 'scheduled',organizer='GDZ Elektrik')
+        results.append(item)
+    return results
+
+
+def collect_gdz_planned(source,fetcher,known_events):
+    from urllib.parse import urlencode
+    found,errors = [],[]
+    at = now()
+    for district in ('SEFERİHİSAR','URLA','GÜZELBAHÇE','MENDERES'):
+        url = source['url']+'?'+urlencode({'city':'İZMİR','district':district,'action':'outages'})
+        try:
+            body,base=fetcher.get(url)
+            found.extend(gdz_planned_items(body,base,source,district,at,known_events))
+        except (ValueError,OSError,requests.RequestException) as exc:
+            errors.append({'source_id':source['id'],'code':detail_error_code(exc)})
+    return found,[],errors
 
 
 def news(source, url, title, description, published, topic, **extra):

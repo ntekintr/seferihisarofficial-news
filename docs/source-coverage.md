@@ -27,7 +27,7 @@ Bu okuma işi başarısız olursa web kaynakları çalışmaya devam eder. Insta
 
 ## Web kaynakları
 
-26 mevcut web kaynağı korundu. AFAD, MGM, Biletix ve Biletinial açıldı; yedi yeni okuyucu eklendi. Toplam **37 etkin web kaynağı** vardır. Sekiz Instagram hesabı ayrı Meta izin kontrolüne bağlıdır; bu hesaplar çalışır web kaynağı sayısına dahil edilmez. GDZ kesinti okuyucusu site koruması nedeniyle kapalıdır.
+26 mevcut web kaynağı korundu. AFAD, MGM, Biletix ve Biletinial açıldı; yedi yeni okuyucu eklendi. İkinci kontrol sonrası GDZ'nin resmî planlı kesinti servisi açıldı, İzmir Valiliği duyuruları ve Teos'un gerçek RSS beslemesi eklendi. Toplam **40 etkin web kaynağı** vardır. Teos Instagram dahil dokuz Instagram hesabı ayrı API kontrolüne bağlıdır; bunlar web sayısına dahil edilmez. Etkin yapılandırma, her kaynağın o turda içerik verdiği veya bütün kapsamın tamamlandığı anlamına gelmez.
 
 | Yeni bağlanan okuyucu | Canlı kontrol / sınır |
 |---|---|
@@ -55,12 +55,24 @@ Hizmet uyarılarında `valid_until`, hem doğrulamada hem paylaşım öncesi gü
 |---|---|
 | Instagram hesapları | 14 Ekim ek okuma izni tamamlandı. Mevcut üretim bağlantısı, 14:47 bulut kontrolünde yedi hesabı okudu: dördünde 14 uygun kayıt, üçünde uygun kayıt yok. @shgundem, gazetenin kendi sitesinden tekrar doğrulanan adres olmasına rağmen Business Discovery'de 110/2207013 hedef hesap hatası veriyor. Bu hata ek izin isteme veya diğer hesapları durdurma nedeni değildir; hesabın türü/kapanması hakkında kesin çıkarım yapılmaz. Gazetenin web haber akışı aynı bulut turunda sağlıklı ve iki güncel kayıt içeriyor. |
 | Ege Telgraf | 14 Ekim 14:48 araştırmasında RSS okunmuş, ayrıntı sayfası HTTP 403 vermiş. Aynı üretim okuyucusu 15:24 yerel kontrolde RSS ve ayrıntıyı hatasız okudu; bu, bulut erişiminin düzeldiğini kanıtlamaz. Yayıncı robots dosyasındaki alternatif RSS adresi de incelendi; tam haber gövdesi sağlamadı. 180 karakterlik özet, başarısız ayrıntı doğrulamasının yerine geçirilmedi. 403 tekrar denenmez veya aşılmaz; güncel bulut sağlık sonucu esas alınır. |
-| GDZ kesintileri | Site uygulamasındaki açık JSON adresleri incelendi; istekler veri yerine koruma sayfası döndürdü. Koruma aşılmadı. Instagram okuma bağlantısı alternatif olabilir; henüz çalışıyor sayılmaz. |
-| Güzelbahçe Kaymakamlığı | Hem www hem çıplak alan adı TLS/sertifika hatası verdi. Sertifika denetimi kapatılmadı. Belediye ve yerel basın kanalları zaten var. |
+| GDZ kesintileri | 14 Ekim 16:09 sonrası resmî uygulamanın kullandığı planlı kesinti servisi gerçek JSON döndürdü. Kimlik ve tam başlangıç/bitişle sınırlı okuyucu açıldı. Urla'nın 15 Ekim 09:30–17:30 planı doğrulandı; önceki günlerin iptal/arşiv kayıtları elendi. Bulut erişimi her turda yeniden ölçülür. GDZ Instagram kanalı da okunuyor; bütün anlık kesintilerin alındığı iddia edilmez. |
+| Güzelbahçe Kaymakamlığı | 14 Ekim yeniden kontrolde TLS/sertifika hatası sürüyor. Sertifika denetimi kapatılmadı. İzmir Valiliği bölge duyuruları tamamlayıcı resmî kaynak olarak bağlandı; Kaymakamlığın doğrudan akışı çalışır sayılmıyor. |
 | Bademler Sanat Köyü | 25 Aralık 20:00 duyurusunda yıl yok; gerçek tarihli etkinlik beslemesi doğrulanmadı. Yıl tahmin edilerek paylaşılmaz. |
-| Teos Kültür Sanat ve SEHAYDER web beslemeleri | RSS yerine site koruması yanıtı var. Ana sayfayı açabilmek, güncel beslemeyi okuyabilmek demek değildir. SEHAYDER Instagram okuması da Meta iznine bağlıdır. |
+| Teos Kültür Sanat ve SEHAYDER web beslemeleri | Teos 14 Ekim 16:02 kontrolde gerçek, boş RSS döndürdü; haber okuyucusu bağlandı. Resmî iletişim sayfasından @teoskultursanat doğrulandı ve mevcut izinlerle API listesine eklendi; gerçek erişim kaynak sağlığında ölçülür. 2017–2020 yıllıkları güncel etkinlik sayılmaz. SEHAYDER web beslemesi ayrı erişim engeli olarak açık; Instagram kanalı mevcut izinlerle okunuyor. |
 | Urla'da Yaşam | Açık news.json başka gazetelerin ve ulusal haberlerin derlemesi. Aynı haber ikinci bağımsız doğrulama sayılmaz; asıl gazetenin doğrulanmış okuyucusu kullanılır. |
 
 Bu sınırlar katalogda somut nedenleriyle kayıtlıdır; belirsiz `reader_pending` kayıtları bırakılmadı. Kaynak kapsamının dış erişim isteyen kısmı, bu koşullar çözülmeden tamamlandı diye sunulmaz.
 
 İlk genişletilmiş bulut taraması 14 Ekim 06:30–06:36 Türkiye saatinde tamamlandı: yeni 11 web okuyucusu hatasız; toplam web sağlığı 26 `ok`, 9 `empty`, 2 bağlantı hatası. Boş sonuç, o turda kapsamda içerik bulunmadığı anlamına gelir. Urla ve Menderes kaymakamlıklarının bağlantı/DNS hatası için mevcut sınırlı tekrar mekanizması açıldı: alan adı başına turda yalnızca bir ek deneme. 403, robots engeli ve uzun hız sınırlaması aşılmaz. Sonraki canlı sağlık sonucu bu ilk ölçümün yerine geçer.
+
+## İkinci adım: resmî alternatifler ve kesinti geçerliliği
+
+GDZ'de her turda yalnızca dört ilçe koleksiyonu okunur: Seferihisar, Urla, Güzelbahçe ve Menderes. Menderes'in tamamı Özdere sayılmaz. [Belediyenin mahalle listesi](https://menderes.bel.tr/mahalle-muhtarlari/) ile doğrulanan Çukuraltı/Orta ve açık Özdere etiketleri kabul edilir; yalın Cumhuriyet adı Görece/Gümüldür ile karışabildiği için çıkarım yapılmaz. Menderes Orhanlı Yolu gibi sokak adları Seferihisar'da kesinti olduğuna kanıt değildir. Sokaklar yalnız seçilen mahallenin kendi listesinden alınır.
+
+API koleksiyonunun il/ilçe/başarı/seviye/sayı alanları doğrulanır. HTML koruma yanıtı veya bozuk koleksiyon sağlıklı boş sonuç sayılmaz. Eski, bitmiş, arşivlenmiş, bitişi olmayan ve anlık kesinti kayıtları elenir. En fazla yedi gün ilerideki açık planlar alınır. İptal güncellemesi yalnız önceki doğrulanmış kesinti kimliğiyle eşleşiyorsa işlenir; kaybolma iptal sayılmaz.
+
+Yayıncının vermediği haber yayın tarihi üretilmez. Kesinti, başlangıç/bitişi bilinen hizmet aralığı olarak saklanır; `valid_until` bitişi korur. Başlangıç/bitiş değişse de kesinti kimliği korunur. Bir duyuru veya açık güncelleme hazırlanır; etkinlik hatırlatmaları ve haftalık/aylık konser seçkilerine eklenmez. Metinde saat aralığı ve etkilenen mahalle/sokaklar vardır, bilet/ücret veya etkinlik türü yoktur. Panel yerel duyurularda gösterir. Günlük yayın sınırları ve önceki yayın kayıtları korunur.
+
+Valilik okuyucusu yalnız kendi başlığı, tam yayın tarihi ve `.icerik` gövdesini kullanır; Bornova duyurusu bir yan menüdeki Seferihisar adına dayanarak alınmaz. Yalnız görseldeki bilgileri tahmin etmez. Hava/kesinti uyarıları bu genel okuyucudan yayınlanmaz; ayrı MGM/GDZ kuralları uygulanır.
+
+Bademler'in 25 Aralık 20:00 duyurusunda yıl hâlâ yok. Gerçek fakat boş RSS ve resmî iletişim sayfası incelendi; sayfanın yayın yılı etkinlik yılına çevrilmedi. Bu doğrudan etkinlik kapsamı açık kalır.

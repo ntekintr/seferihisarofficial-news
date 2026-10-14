@@ -78,12 +78,14 @@
   },
   {
     "id": "gdz",
-    "name": "GDZ Elektrik",
-    "url": "https://www.gdzelektrik.com.tr/",
-    "kind": "html",
-    "enabled": false,
+    "name": "GDZ Elektrik — resmî planlı kesintiler",
+    "url": "https://www.gdzelektrik.com.tr/api/test-outages",
+    "kind": "gdz_planned",
+    "enabled": true,
     "trusted": true,
-    "access": "review_required"
+    "access": "robots",
+    "display_url": "https://www.gdzelektrik.com.tr/bilgi-merkezi/planli-bakim-ve-iyilestirme-calismalari",
+    "max_pages": 4
   },
   {
     "id": "afad",
@@ -610,5 +612,41 @@
     "access": "robots",
     "program_title": "Barbaros Oyuk Festivali",
     "program_location": "Barbaros, Urla"
+  },
+  {
+    "id": "izmir-valilik",
+    "name": "İzmir Valiliği — bölge duyuruları",
+    "url": "https://www.izmir.gov.tr/duyurular",
+    "kind": "official_notice",
+    "enabled": true,
+    "trusted": true,
+    "access": "robots",
+    "max_pages": 8,
+    "link_selector": "a.announce-text[href]",
+    "article_selector": ".icerik",
+    "title_selector": "h2.page-title",
+    "published_date_selector": ".dateandtag .card-date",
+    "body_text_fallback": true
+  },
+  {
+    "id": "teos-kultur-sanat",
+    "name": "Teos Kültür Sanat — resmî haber akışı",
+    "url": "https://www.teoskultursanat.com/feed/",
+    "kind": "rss",
+    "enabled": true,
+    "trusted": true,
+    "access": "robots",
+    "max_pages": 4
+  },
+  {
+    "id": "instagram-teos",
+    "name": "Teos Kültür Sanat Instagram",
+    "url": "https://www.instagram.com/teoskultursanat/",
+    "kind": "instagram_api",
+    "enabled": true,
+    "trusted": true,
+    "access": "api",
+    "instagram_username": "teoskultursanat",
+    "verified_profile_link": "https://www.teoskultursanat.com/hakkimizda/iletisim/"
   }
 ]
