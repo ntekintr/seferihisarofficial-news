@@ -6,7 +6,7 @@ from copy import deepcopy
 from datetime import datetime, time, timedelta
 
 from .domain import TZ, digest, parse_date
-from .editor import caption, caption_with_hashtags, digest_hashtags, event_date_label, event_title, headline, news_body, plain_source_text
+from .editor import caption, caption_with_hashtags, digest_hashtags, event_date_label, event_title, excerpt, headline, news_body, plain_source_text
 from .media_caption import generated_image_caption
 from .store import Store
 
@@ -130,6 +130,9 @@ def queue_item(store: Store, item: dict, kind: str, due: datetime, at: datetime)
 def card_location(item: dict) -> str | None:
     """Use the named venue; leave its explicit street address in the caption."""
     location = item.get("location")
+    if (item.get('source_id') == 'bubilet-bademler' and location
+            and location.startswith('Bademler Sanat Köyü ')):
+        return 'Bademler Sanat Köyü'
     if location and " · " in location:
         venue, address = location.split(" · ", 1)
         if venue.strip() and re.search(r"\b(?:mahalle\w*|mah\.?|cadde\w*|cad\.?|sokak\w*|sok\.?|adres)\b|\bno\s*[:.]", address, re.I):
@@ -139,7 +142,9 @@ def card_location(item: dict) -> str | None:
 
 def slide_body(item: dict) -> str:
     if item["kind"] == "news":
-        return news_body(item)[:650]
+        body = news_body(item)
+        endings = [match.end() for match in re.finditer(r'[.!?](?=\s|$)', body[:360]) if match.end() >= 100]
+        return body[:endings[-1]] if len(body) > 360 and endings else excerpt(body, 360)
     if item['category']=='outage':
         return event_date_label(item)+'\n\nEtkilenen bölge: '+(item.get('location') or 'Açıklanmadı')+'\n\nMahalle ve sokak ayrıntıları için resmî duyuruyu kontrol edin.'
     details = [event_date_label(item)]

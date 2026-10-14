@@ -8,7 +8,7 @@ from datetime import datetime
 from PIL import Image, ImageDraw, ImageFont, ImageOps
 
 from .domain import CATEGORIES
-from .editor import event_type_label
+from .editor import event_type_label, news_type_label
 
 NAVY, IVORY, ORANGE, TURQUOISE = '#06244a', '#f4efe4', '#f58220', '#20b8c9'
 ASSETS = Path(__file__).with_name('assets')
@@ -84,6 +84,13 @@ def text_block(draw, text, box, sizes, bold=False, color=IVORY):
 def readable_date_line(value: str) -> str:
     months = ('Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
               'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık')
+    if match := re.match(r'^(\d{2}\.\d{2}\.\d{4}) – (\d{2}\.\d{2}\.\d{4})(.*)$', value):
+        try:
+            first, last = (datetime.strptime(match[i], '%d.%m.%Y') for i in (1, 2))
+            if first < last and (first.year, first.month) == (last.year, last.month):
+                return f'{first.day}–{last.day} {months[first.month - 1]} {first.year}' + match[3]
+        except ValueError:
+            pass
     def date(match):
         try:
             day = datetime.strptime(match[0], '%d.%m.%Y')
@@ -125,6 +132,29 @@ def graphic_body(body: str, title: str = '') -> str:
     return content
 
 
+def graphic_title(title: str, category: str, event_details: bool = False):
+    """Keep the event name prominent; put its reminder/update in the badge."""
+    display = title
+    for prefix in (CATEGORIES.get(category, '') + ': ', news_type_label(category, title) + ': '):
+        if prefix.strip() != ':' and display.startswith(prefix):
+            display = display[len(prefix):]
+            break
+    notice = ''
+    if event_details:
+        states = {'Etkinlik bilgisi güncellendi: ':'GÜNCELLENDİ', 'İptal duyurusu: ':'İPTAL',
+                  'Bugün yakınınızda: ':'BUGÜN', 'Bölge takviminde: ':''}
+        for prefix, value in states.items():
+            if display.startswith(prefix):
+                display, notice = display[len(prefix):], value
+                break
+        if match := re.match(r'([1-3]) gün kaldı: ', display):
+            notice, display = match[1] + ' GÜN KALDI', display[match.end():]
+        suffix = ' — ' + event_type_label(category, display)
+        if display.endswith(suffix):
+            display = display[:-len(suffix)]
+    return display, notice
+
+
 def card(title: str, body: str, category: str, target: Path, story: bool = False,
          index: str = '', illustration: Path | None = None, preview: bool = False,
          event_details: bool = False):
@@ -155,23 +185,18 @@ def card(title: str, body: str, category: str, target: Path, story: bool = False
         # A missing/rejected photo produces typography, never invented scenery.
         # Keep the same branded layout without a vector scene or category icon.
         draw.rectangle((0, header_bottom, width, hero_bottom), fill='#0b355a')
-        text_block(draw, upper_tr(event_type_label(category) if event_details else CATEGORIES.get(category, 'Yerel gündem')),
+        text_block(draw, upper_tr(event_type_label(category, title) if event_details else news_type_label(category, title)),
                    (margin, header_bottom + 100, right, hero_bottom - 60), (58, 48, 40), True)
     draw.rectangle((0, hero_bottom, width, hero_bottom + 10), fill=TURQUOISE)
 
     category_top = hero_bottom + 35
-    label = 'TASARIM ÖRNEĞİ' if preview else upper_tr(event_type_label(category) if event_details else CATEGORIES.get(category, 'Yerel gündem'))
+    display_title, notice = graphic_title(title, category, event_details)
+    label = 'TASARIM ÖRNEĞİ' if preview else upper_tr(event_type_label(category, display_title) if event_details else news_type_label(category, display_title))
+    if notice and not preview:
+        label += ' • ' + notice
     label_width = min(right - margin, int(draw.textlength(label, font=font(30, True))) + 38)
     draw.rounded_rectangle((margin, category_top, margin + label_width, category_top + 48), 9, fill=ORANGE)
     draw.text((margin + 19, category_top + 9), label, font=font(30, True), fill=NAVY, anchor='lt')
-    prefix = CATEGORIES.get(category, '') + ': '
-    display_title = title[len(prefix):] if prefix.strip() != ':' and title.startswith(prefix) else title
-    if event_details:
-        if display_title.startswith('Bölge takviminde: '):
-            display_title = display_title[len('Bölge takviminde: '):]
-        suffix = ' — ' + event_type_label(category)
-        if display_title.endswith(suffix):
-            display_title = display_title[:-len(suffix)]
     title_top = category_top + 70
     title_end = text_block(draw, upper_tr(display_title), (margin, title_top, right, title_top + 276),
                            (68, 60, 52, 46, 40), True)
@@ -184,7 +209,8 @@ def card(title: str, body: str, category: str, target: Path, story: bool = False
         date_line, _, rest = content.partition('\n')
         date_end = text_block(draw, readable_date_line(date_line), (margin, title_end + 28, right, min(brand_top - 24, title_end + 136)),
                               (42, 38, 34, 30), True, color=ORANGE)
-        text_block(draw, rest.strip(), (margin, date_end + 28, right, brand_top - 24), (34, 32, 30, 28), color='#d8e7eb')
+        compact = re.sub(r'\n\s*\n', '\n', rest.strip())
+        text_block(draw, compact, (margin, date_end + 28, right, brand_top - 24), (34, 32, 30, 28), color='#d8e7eb')
     else:
         text_block(draw, content, (margin, title_end + 20, right, brand_top - 24), (30, 28, 26), color='#d8e7eb')
     draw.line((margin, brand_top - 8, right, brand_top - 8), fill=TURQUOISE, width=2)
