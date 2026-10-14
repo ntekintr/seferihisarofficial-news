@@ -9,7 +9,7 @@ from pathlib import Path
 from urllib.parse import parse_qsl, unquote, urlsplit
 
 ITEM_FIELDS = {"kind", "title", "description", "url", "source_id", "source_name", "category", "sources", "published_at",
-               "identity", "start", "end", "time_known", "location", "organizer", "free", "price", "currency", "ticket_url", "status", "previous_start"}
+               "identity", "start", "end", "time_known", "location", "organizer", "free", "price", "currency", "ticket_url", "status", "previous_start", "valid_until"}
 PUBLIC_ITEM_FIELDS = ITEM_FIELDS - {"identity"}
 POST_FIELDS = {"id", "item_id", "revision", "kind", "due_at", "title", "caption", "category", "source_urls", "slides", "created_at", "formats",
                "publish_format", "parent_post_id", "story_asset", "story_index", "published_at", "status", "container_id", "media_id", "illustration_keys"}

@@ -87,39 +87,50 @@
   },
   {
     "id": "afad",
-    "name": "AFAD",
-    "url": "https://www.afad.gov.tr/",
-    "kind": "html",
-    "enabled": false,
+    "name": "AFAD — son depremler",
+    "url": "https://deprem.afad.gov.tr/last-earthquakes.html",
+    "kind": "afad_earthquakes",
+    "enabled": true,
     "trusted": true,
-    "access": "review_required"
+    "access": "robots"
   },
   {
     "id": "mgm",
-    "name": "Meteoroloji Genel Müdürlüğü",
-    "url": "https://www.mgm.gov.tr/",
-    "kind": "html",
-    "enabled": false,
+    "name": "Meteoroloji Genel Müdürlüğü — resmî uyarılar",
+    "url": "https://www.mgm.gov.tr/mobile/tahmin-uyari-liste.aspx",
+    "kind": "mgm_warnings",
+    "enabled": true,
     "trusted": true,
-    "access": "review_required"
+    "access": "robots"
   },
   {
     "id": "biletix",
     "name": "Biletix",
-    "url": "https://www.biletix.com/",
-    "kind": "html",
-    "enabled": false,
-    "trusted": false,
-    "access": "review_required"
+    "url": "https://www.biletix.com/anasayfa/TURKIYE/tr",
+    "kind": "ticketing",
+    "enabled": true,
+    "trusted": true,
+    "access": "robots",
+    "max_pages": 4,
+    "link_selector": "a[href*=\"/etkinlik/\"]",
+    "local_links_only": true
   },
   {
     "id": "biletinial",
     "name": "Biletinial",
-    "url": "https://biletinial.com/",
-    "kind": "html",
-    "enabled": false,
-    "trusted": false,
-    "access": "review_required"
+    "url": "https://biletinial.com/tr-tr/List/GetMoreItems?region=tr-tr&cityUrl=izmir&organizerUrl=tiyatro&page=1",
+    "display_url": "https://biletinial.com/tr-tr/tiyatro",
+    "kind": "ticketing",
+    "enabled": true,
+    "trusted": true,
+    "access": "robots",
+    "max_pages": 6,
+    "listing_format": "biletinial_json",
+    "listing_urls": [
+      "https://biletinial.com/tr-tr/List/GetMoreItems?region=tr-tr&cityUrl=izmir&organizerUrl=tiyatro&page=1",
+      "https://biletinial.com/tr-tr/List/GetMoreItems?region=tr-tr&cityUrl=izmir&organizerUrl=muzik&page=1",
+      "https://biletinial.com/tr-tr/List/GetMoreItems?region=tr-tr&cityUrl=izmir&organizerUrl=etkinlik&page=1"
+    ]
   },
   {
     "id": "seferihisar-yeni-haber",
@@ -502,5 +513,100 @@
     "access": "api",
     "instagram_username": "afadbaskanlik",
     "verified_profile_link": "https://www.afad.gov.tr/"
+  },
+  {
+    "id": "bubilet",
+    "name": "Bubilet — İzmir etkinlikleri",
+    "url": "https://www.bubilet.com.tr/izmir",
+    "kind": "ticketing",
+    "enabled": true,
+    "trusted": true,
+    "access": "robots",
+    "max_pages": 4,
+    "link_selector": "a[href*=\"/izmir/etkinlik/\"]",
+    "local_links_only": true,
+    "reviewed_local_prefixes": [
+      "https://www.bubilet.com.tr/izmir/etkinlik/urladam-"
+    ]
+  },
+  {
+    "id": "biletino",
+    "name": "Biletino — İzmir etkinlikleri",
+    "url": "https://biletino.com/tr/city/izmir/",
+    "kind": "ticketing",
+    "enabled": true,
+    "trusted": true,
+    "access": "robots",
+    "max_pages": 4,
+    "link_selector": "a[href*=\"/tr/e-\"]",
+    "local_links_only": true
+  },
+  {
+    "id": "rotary2440",
+    "name": "Rotary 2440 — yerel etkinlikler",
+    "url": "https://rotary2440.org/",
+    "kind": "rotary",
+    "enabled": true,
+    "trusted": true,
+    "access": "robots",
+    "max_pages": 4,
+    "link_selector": "a[href*=\"/etkinlikler/\"]",
+    "local_links_only": true,
+    "reviewed_local_prefixes": [
+      "https://rotary2440.org/etkinlikler/ilker-ozdemir-konseri-polio-ve-kiz-cocuklari-yararina"
+    ]
+  },
+  {
+    "id": "seferihisar-hastane",
+    "name": "Seferihisar Necat Hepkon Devlet Hastanesi",
+    "url": "https://seferihisardh.saglik.gov.tr/",
+    "kind": "hospital",
+    "enabled": true,
+    "trusted": true,
+    "access": "robots",
+    "max_pages": 4,
+    "link_selector": "#tab_987804 a[href], #tab_919006 a[href]",
+    "detail_url_pattern": "/TR-\\d+/[^/]+\\.html$",
+    "published_date_selector": ".update-date",
+    "published_date_format": "turkish"
+  },
+  {
+    "id": "izmir-kultur",
+    "name": "İzmir Kültür Sanat — belediye seans takvimi",
+    "url": "https://kultursanatapi.izmir.bel.tr/api/session/list",
+    "display_url": "https://kultursanat.izmir.bel.tr/",
+    "content_origin": "https://kultursanat.izmir.bel.tr",
+    "kind": "izmir_culture",
+    "enabled": true,
+    "trusted": true,
+    "access": "robots",
+    "allow_missing_robots": true,
+    "listing_urls": [
+      "https://kultursanatapi.izmir.bel.tr/api/session/list",
+      "https://kultursanatapi.izmir.bel.tr/api/event/list",
+      "https://kultursanatapi.izmir.bel.tr/api/venue/list"
+    ]
+  },
+  {
+    "id": "urla-ot",
+    "name": "Urla Ot Bayramı — festival programı",
+    "url": "https://www.urlaotbayrami.com/",
+    "kind": "dated_program",
+    "enabled": true,
+    "trusted": true,
+    "access": "robots",
+    "program_title": "Urla Ot Bayramı",
+    "program_location": "Urla"
+  },
+  {
+    "id": "barbaros-oyuk",
+    "name": "Barbaros Oyuk Festivali — festival programı",
+    "url": "https://barbarosoyukfestivali.com.tr/program",
+    "kind": "dated_program",
+    "enabled": true,
+    "trusted": true,
+    "access": "robots",
+    "program_title": "Barbaros Oyuk Festivali",
+    "program_location": "Barbaros, Urla"
   }
 ]

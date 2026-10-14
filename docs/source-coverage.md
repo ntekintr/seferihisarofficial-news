@@ -25,6 +25,39 @@ Paylaşımın yayın tarihi etkinliğin tarihi olarak kullanılmaz. Davetlerde t
 
 Bu okuma işi başarısız olursa web kaynakları çalışmaya devam eder. Instagram kaynağı sağlıklı görünmez ve eski içeriği yeni doğrulanmış gibi yayınlanmaz. Günlük yayın sınırları, yayın kimlikleri ve daha önce paylaşılmış içeriklerin kaydı korunur.
 
-## Diğer kaynakların tamamlanması
+## Web kaynakları
 
-Belediye, kaymakamlık, eğitim, kamu hizmeti, yerel basın ve etkinlik takvimi okuyucuları korunur. Hastane, dernekler, festival programları ve bilet platformları ayrı canlı okuma kontrolünden geçirilmektedir. Açılabilen ana sayfa tek başına çalışan okuyucu kanıtı değildir. Yıl, yer veya seans belirtilmemiş kayıtlar otomatik olarak tamamlanmaz. HTTPS sertifikası, robots.txt veya izin engeli olan kaynaklarda bu engel açıkça kaydedilir.
+26 mevcut web kaynağı korundu. AFAD, MGM, Biletix ve Biletinial açıldı; yedi yeni okuyucu eklendi. Toplam **37 etkin web kaynağı** vardır. Sekiz Instagram hesabı ayrı Meta izin kontrolüne bağlıdır; bu hesaplar çalışır web kaynağı sayısına dahil edilmez. GDZ kesinti okuyucusu site koruması nedeniyle kapalıdır.
+
+| Yeni bağlanan okuyucu | Canlı kontrol / sınır |
+|---|---|
+| AFAD | Son depremler tablosundaki Türkiye zamanı, koordinat, büyüklük ve gerçek ayrıntı adresi okunur. İlçe kapsamındaki veya merkezden 60 km içindeki 4 ve üzeri kayıtlar; 3 saat geçerlilik. Mikro depremler, hasar ve hissedilme çıkarımları yoktur. |
+| MGM | Resmî mobil liste ile masaüstü ayrıntı bağlantıları; iki farklı tarihli sayfa biçimi. Açık ilçeler veya İzmir geneli ve tam bitiş tarihi şarttır. Kuzey İzmir uyarısı Seferihisar'a genellenmez. |
+| Biletinial | İzmir tiyatro, müzik ve etkinlik listelerinden yerel salonlar; asıl gösteri sayfasının seansları. Mekân listesindeki hatalı 23:00 yerine gösteri sayfasındaki 20:00 doğrulandı. Konak'taki diğer seans dışarıda kaldı. |
+| Bubilet | İzmir listesi; UrlaDAM Octoberfest 16 ve 17 Ekim 2026 saat 19:00, gerçek iki ayrı seans adresi. Liste başlığından yer tahmin edilmez. |
+| Biletix | Güncel resmî etkinlik kartları ve ayrıntı şeması. Kontroldeki Konak/Kültürpark gösterileri bu ilçe kapsamına alınmadı. Bütün İzmir kapsama eklenmez. |
+| Biletino | Resmî İzmir listesi ve ayrıntı şeması. Bir sanatçının biyografisindeki yer adı, konserin yeri sayılmaz. |
+| Rotary 2440 | Yerel mekânı doğrulanan etkinlikler. Güzelbahçe'deki 24 Ekim 2026 20:30 konseri doğrulandı. Sitenin hatalı UTC şeması yerine görünür Tarih/Saat alanları Türkiye saatiyle kullanılır; bitiş saati tahmin edilmez. |
+| Seferihisar Devlet Hastanesi | Kurumun kendi başlığı, gövdesi ve tam tarihli alanı; eski ve hassas metinler mevcut kurallarla dışarıda tutulur. Yalnızca afişteki bilgiler tahmin edilmez. |
+| İzmir Kültür Sanat | Kurumun kendi uygulamasının açık event/session/venue koleksiyonları birleştirilir. Gerçek mekân adresi, seans kimliği ve tam başlangıç/bitiş zamanları gerekir. Kontrolde kapsamda güncel seans bulunmaması hata değildir. |
+| Urla Ot Bayramı | Tam yıl içeren 26–29 Mart 2026 program günleri okunur; geçtiği için yeni etkinlik gibi paylaşılmaz. |
+| Barbaros Oyuk Festivali | Programdaki 21, 22 ve 23 Ağustos 2026 tarihleri okunur; yeni sezon tarihi tahmin edilmez. |
+
+Biletix/Bubilet/Biletino listeleri ve Biletinial'ın her kategori için ilk İzmir sayfası sınırlı okunur. Her kaynakta en fazla 4–6 yerel ayrıntı sayfası kontrol edilir. İzmir Art ve belediye takvimleri ek etkinlik kanallarıdır; hiçbir bilet platformundaki bütün etkinliklerin eksiksiz alındığı iddia edilmez. Seansın gerçek mekânı yerel olmalıdır; turne adı veya başka ilçedeki gösteri bu kanıtın yerine geçmez.
+
+Gerçek seans adresi/kimliği varsa tarih değişiminde kimlik korunur. Kimlik vermeyen bilet sayfasında tarih ve mekân ayrı seans kaydı oluşturur; eski kayıt yeni kontrolde görülmezse güncel sayılmaz. Kaybolan seans otomatik olarak iptal edilmiş ilan edilmez. Program yılları farklı edisyonlarda ayrı kimlikte tutulur.
+
+Hizmet uyarılarında `valid_until`, hem doğrulamada hem paylaşım öncesi güncellik kontrolünde uygulanır. Bitişinden sonra tekrar okunması, uyarıyı yeni ve paylaşılabilir yapmaz. Daha önce paylaşılmış veya sonucu belirsiz gönderi kimlikleri ve içeriği değiştirilmez.
+
+## Açık kalan dış erişim sınırları
+
+| Kaynak | Sonuç |
+|---|---|
+| Instagram hesapları | Bulut Business Discovery kontrolü ek okuma izni istedi. Meta ekranında `instagram_manage_insights` uygulamaya eklenmemiş. Kullanıcı onayı ve bu izni içeren bağlantı tamamlanana kadar sağlıklı görünmez. |
+| GDZ kesintileri | Site uygulamasındaki açık JSON adresleri incelendi; istekler veri yerine koruma sayfası döndürdü. Koruma aşılmadı. Instagram okuma bağlantısı alternatif olabilir; henüz çalışıyor sayılmaz. |
+| Güzelbahçe Kaymakamlığı | Hem www hem çıplak alan adı TLS/sertifika hatası verdi. Sertifika denetimi kapatılmadı. Belediye ve yerel basın kanalları zaten var. |
+| Bademler Sanat Köyü | 25 Aralık 20:00 duyurusunda yıl yok; gerçek tarihli etkinlik beslemesi doğrulanmadı. Yıl tahmin edilerek paylaşılmaz. |
+| Teos Kültür Sanat ve SEHAYDER web beslemeleri | RSS yerine site koruması yanıtı var. Ana sayfayı açabilmek, güncel beslemeyi okuyabilmek demek değildir. SEHAYDER Instagram okuması da Meta iznine bağlıdır. |
+| Urla'da Yaşam | Açık news.json başka gazetelerin ve ulusal haberlerin derlemesi. Aynı haber ikinci bağımsız doğrulama sayılmaz; asıl gazetenin doğrulanmış okuyucusu kullanılır. |
+
+Bu sınırlar katalogda somut nedenleriyle kayıtlıdır; belirsiz `reader_pending` kayıtları bırakılmadı. Kaynak kapsamının dış erişim isteyen kısmı, bu koşullar çözülmeden tamamlandı diye sunulmaz.

@@ -100,7 +100,7 @@ def test_checked_rss_and_event_sources_are_connected():
     assert sources['izmir-art']['kind']=='izmir_art' and not sources['izmir-art']['follow_feed_details']
     for sid in ('seferihisar-life','urla-ada-haber','seferihisar-esnaf','seferihisar-mem','teosfest'):
         assert sources[sid]['enabled'] and sources[sid]['kind']=='rss'
-    assert not sources['gdz']['enabled'] and not sources['biletix']['enabled']
+    assert not sources['gdz']['enabled'] and sources['biletix']['enabled']
 
 
 def test_dns_failure_remains_closed_and_uses_only_one_reviewed_retry(monkeypatch,source):
