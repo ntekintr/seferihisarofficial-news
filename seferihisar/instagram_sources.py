@@ -17,7 +17,7 @@ import requests
 from bs4 import BeautifulSoup
 
 from .collect import MONTHS, labelled_event, safe_url
-from .domain import canonical, category, local, now, parse_date
+from .domain import TZ, canonical, category, local, now, parse_date
 from .editor import verify
 from .security import ITEM_FIELDS, assert_no_secrets, contains_secret
 
@@ -123,6 +123,13 @@ def caption_items(account: dict, source: dict, at: datetime) -> list[dict]:
                 'url':url, 'identity':canonical(url), 'source_id':source['id'],
                 'source_name':source['name'], 'category':category(prose),
                 'published_at':published.isoformat(), 'sources':[url]}
+        if item['category'] in ('outage','weather'):
+            expiry = service_expiry(prose)
+            if not expiry:
+                continue
+            item['valid_until'] = expiry.isoformat()
+        if source['id']=='instagram-afad' and re.search(r'(?i)\bdeprem\w*',prose):
+            item['valid_until'] = (published+timedelta(hours=3)).isoformat()
         # For event invitations the post timestamp is not the event date.
         invitation = re.search(r'(?i)\b(?:bilet|rezervasyon|bekliyoruz|katılın|başlayacak|gerçekleşecek)\b|\bsaat\s*:', prose)
         if invitation and item['category'] in ('concert','theatre','festival','cinema','culture','family','event','market','education','sport','food'):
@@ -138,6 +145,24 @@ def caption_items(account: dict, source: dict, at: datetime) -> list[dict]:
         if verify(item, source, at) is None:
             items.append(item)
     return items
+
+
+def service_expiry(prose: str) -> datetime | None:
+    """Only an explicit full-year day and same-day clock range; no year inference."""
+    numeric = re.findall(r'(?<!\d)(\d{1,2})[./](\d{1,2})[./](20\d{2})(?!\d)',prose)
+    named = re.findall(r'(?<!\d)(\d{1,2})\s+('+'|'.join(MONTHS)+r')\s+(20\d{2})(?!\d)',prose,re.I)
+    dates = {(int(y),int(m),int(d)) for d,m,y in numeric}
+    dates.update((int(y),MONTHS[m.casefold()],int(d)) for d,m,y in named)
+    hours = set(re.findall(r'(?<![\d.])(\d{1,2})[:.](\d{2})\s*[-–]\s*(\d{1,2})[:.](\d{2})(?![\d.])',prose))
+    if len(dates)!=1 or len(hours)!=1:
+        return None
+    y,m,d = next(iter(dates));first_h,first_m,last_h,last_m = map(int,next(iter(hours)))
+    try:
+        start = datetime(y,m,d,first_h,first_m,tzinfo=TZ)
+        end = datetime(y,m,d,last_h,last_m,tzinfo=TZ)
+    except ValueError:
+        return None
+    return end if end>start else None
 
 
 def instagram_sources(sources):

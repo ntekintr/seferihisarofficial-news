@@ -21,7 +21,7 @@ Profil bağlantısının doğrulanması API erişiminin başarılı olduğu anla
 
 Araştırmadan ayrı, yalnızca okuma yapan işte sabit Graph API adresine GET isteği gönderilir. Her hesapta en fazla 12 açıklama alınır. Görsel/video indirilmez; sonraki sayfa adresleri takip edilmez; API yanıtları, erişim anahtarları ve hesap kimlikleri dışarı aktarılmaz. Yalnızca doğrulanmış açık içerikler ve kontrollü sağlık sonuçları aynı çalışmanın dosyasına yazılır. Dosya boyutu, kaynaklar, alanlar, tarihler, Instagram gönderi adresleri ve gizli bilgi sınırı tekrar doğrulanır.
 
-Paylaşımın yayın tarihi etkinliğin tarihi olarak kullanılmaz. Davetlerde tam yıl, etkinlik tarihi ve belirtilmişse saat aranır. Tarih tahmin edilmez. Yalnızca bir etiketin bölge adı içermesi, içeriğin bölgede olduğuna kanıt sayılmaz. Hassas haberler mevcut insan incelemesi kuralıyla dışarıda tutulur.
+Paylaşımın yayın tarihi etkinliğin tarihi olarak kullanılmaz. Davetlerde tam yıl, etkinlik tarihi ve belirtilmişse saat aranır. Tarih tahmin edilmez. Kesinti ve hava uyarısı açıklamalarında tam yıl içeren tek tarih ve aynı gündeki açık saat aralığı gerekir; bitişi belirsiz veya geçmiş duyuru alınmaz. AFAD Instagram deprem güncellemeleri, resmî paylaşım zamanından üç saat sonra güncel sayılmaz. Yalnızca bir etiketin bölge adı içermesi, içeriğin bölgede olduğuna kanıt sayılmaz. Hassas haberler mevcut insan incelemesi kuralıyla dışarıda tutulur.
 
 Bu okuma işi başarısız olursa web kaynakları çalışmaya devam eder. Instagram kaynağı sağlıklı görünmez ve eski içeriği yeni doğrulanmış gibi yayınlanmaz. Günlük yayın sınırları, yayın kimlikleri ve daha önce paylaşılmış içeriklerin kaydı korunur.
 
