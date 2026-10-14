@@ -10,6 +10,7 @@ import codecs
 import json
 import re
 import socket
+import ssl
 import time
 import xml.etree.ElementTree as ET
 from datetime import datetime, timedelta
@@ -20,12 +21,35 @@ from urllib.robotparser import RobotFileParser
 
 import requests
 from bs4 import BeautifulSoup, NavigableString, Comment
+from urllib3.exceptions import NameResolutionError
 
 from .domain import TZ, canonical, category, digest, local, normalized, now, parse_date
 
 AGENT = "SeferihisarOfficial/0.1 (+https://github.com/ntekintr/seferihisarofficial-news)"
 MAX_BYTES = 2_000_000
 MONTHS = {name: index for index, name in enumerate(("ocak", "şubat", "mart", "nisan", "mayıs", "haziran", "temmuz", "ağustos", "eylül", "ekim", "kasım", "aralık"), 1)}
+
+
+class PublicDNSLookupError(requests.ConnectionError):
+    """A controlled DNS failure, without the resolver's potentially private text."""
+
+
+def network_error_kind(exc: Exception) -> str | None:
+    """Inspect typed Requests/urllib3 causes, never match or export error text."""
+    pending, seen = [exc], set()
+    while pending and len(seen) < 24:
+        error = pending.pop()
+        if id(error) in seen:
+            continue
+        seen.add(id(error))
+        if isinstance(error, (PublicDNSLookupError, NameResolutionError, socket.gaierror)):
+            return 'dns_failed'
+        if isinstance(error, ssl.SSLCertVerificationError) and getattr(error, 'verify_code', None) == 62:
+            return 'tls_name_mismatch'
+        for nested in (error.__cause__, error.__context__, getattr(error, 'reason', None), *error.args):
+            if isinstance(nested, BaseException):
+                pending.append(nested)
+    return None
 
 
 def decode_document(body: bytes, content_type: str = '') -> str:
@@ -90,7 +114,7 @@ def safe_url(url: str, allowed_hosts: set[str]) -> str:
     try:
         addresses = socket.getaddrinfo(host, 443, type=socket.SOCK_STREAM)
     except socket.gaierror:
-        raise requests.ConnectionError('Public source DNS lookup failed') from None
+        raise PublicDNSLookupError('Public source DNS lookup failed') from None
     if not addresses or any(not ipaddress.ip_address(address[4][0]).is_global for address in addresses):
         raise ValueError("Private or reserved network destination rejected")
     # Fetch the publisher's actual path. Removing a trailing slash here makes
@@ -481,7 +505,7 @@ def detail_error_code(exc: Exception, *, calendar: bool = False) -> str:
     """Classify failed detail reads without retaining request or exception text."""
     code = 'detail_check_failed'
     if isinstance(exc, requests.exceptions.SSLError):
-        code = 'detail_tls_failed'
+        code = 'detail_tls_name_mismatch' if network_error_kind(exc) == 'tls_name_mismatch' else 'detail_tls_failed'
     elif isinstance(exc, requests.Timeout):
         code = 'detail_timeout'
     elif isinstance(exc, requests.HTTPError) and exc.response is not None:
@@ -489,7 +513,9 @@ def detail_error_code(exc: Exception, *, calendar: bool = False) -> str:
         if type(status) is int and 100 <= status <= 599:
             code = 'detail_http_' + str(status)
     elif isinstance(exc, requests.ConnectionError):
-        code = 'detail_connection_failed'
+        code = 'detail_dns_failed' if network_error_kind(exc) == 'dns_failed' else 'detail_connection_failed'
+    elif isinstance(exc, (ET.ParseError, json.JSONDecodeError)):
+        code = 'detail_parse_failed'
     elif isinstance(exc, ValueError):
         # Only Fetcher's own exact, fixed messages have a diagnostic meaning.
         code = {
@@ -613,6 +639,37 @@ def discover(html: str, base: str) -> list[dict]:
     return found[:30]
 
 
+def source_listing(source: dict, fetcher: Fetcher, listing: str):
+    """Read one reviewed list atomically; another list can survive its failure."""
+    items, candidates, links, seen = [], [], [], set()
+    body, base = fetcher.get(listing)
+    if source["kind"] in ("rss", "wp_rest", "izmir_art"):
+        reader = {'rss':feed_items, 'wp_rest':wordpress_items, 'izmir_art':izmir_art_items}[source['kind']]
+        found = reader(body, base, source)
+        items.extend(found)
+        if source.get("follow_feed_details", True):
+            links.extend(item["url"] for item in found[:8])
+    else:
+        if source['kind'] not in ('hospital', 'rotary', 'official_notice'):
+            items.extend(structured(body, base, source))
+        candidates.extend(discover(body, base))
+        soup = BeautifulSoup(body, "html.parser")
+        for anchor in soup.select(source.get("link_selector", "article a[href], a[href*='haber'], a[href*='etkinlik']")):
+            if not anchor.get("href"):
+                continue
+            link = page_url(urljoin(base, anchor["href"]))
+            pattern = source.get("detail_url_pattern")
+            if pattern and not re.search(pattern, urlsplit(link).path):
+                continue
+            if source.get("local_links_only") and not local(text(anchor) + " " + link.replace("-", " ")):
+                continue
+            identity = canonical(link)
+            if urlsplit(link).hostname == urlsplit(base).hostname and identity != canonical(base) and identity not in seen:
+                links.append(link)
+                seen.add(identity)
+    return items, candidates, links
+
+
 def collect_source(source: dict, fetcher: Fetcher, known_events: list[dict]) -> tuple[list[dict], list[dict], list[dict]]:
     from . import source_readers
     if source['kind']=='gdz_planned':
@@ -634,41 +691,25 @@ def collect_source(source: dict, fetcher: Fetcher, known_events: list[dict]) -> 
                      'official_notice':source_readers.official_notice_items}.get(source['kind'],structured)
     if source['kind'] == 'municipal_calendar':
         return collect_municipal_calendar(source, fetcher)
-    items, candidates, links = [], [], []
+    items, candidates, links, errors = [], [], [], []
     # A bounded set of district listings shares one source identity and page budget.
-    listings = source.get("listing_urls") or [source["url"]]
+    listings = (source.get("listing_urls") or [source["url"]])[:6]
+    if any(urlsplit(listing).hostname != urlsplit(source['url']).hostname for listing in listings):
+        raise ValueError("Listing must belong to the configured source")
     listing_links = []
-    for listing in listings[:6]:
-        links = []
-        seen = set()
-        if urlsplit(listing).hostname != urlsplit(source["url"]).hostname:
-            raise ValueError("Listing must belong to the configured source")
-        body, base = fetcher.get(listing)
-        if source["kind"] in ("rss", "wp_rest", "izmir_art"):
-            reader = {'rss':feed_items, 'wp_rest':wordpress_items, 'izmir_art':izmir_art_items}[source['kind']]
-            found = reader(body, base, source)
+    first_failure = None
+    for listing in listings:
+        try:
+            found, discovered, links = source_listing(source, fetcher, listing)
             items.extend(found)
-            if source.get("follow_feed_details", True):
-                links.extend(item["url"] for item in found[:8])
-        else:
-            if source['kind'] not in ('hospital','rotary','official_notice'):
-                items.extend(structured(body, base, source))
-            candidates.extend(discover(body, base))
-            soup = BeautifulSoup(body, "html.parser")
-            for anchor in soup.select(source.get("link_selector", "article a[href], a[href*='haber'], a[href*='etkinlik']")):
-                if not anchor.get("href"):
-                    continue
-                link = page_url(urljoin(base, anchor["href"]))
-                pattern = source.get("detail_url_pattern")
-                if pattern and not re.search(pattern, urlsplit(link).path):
-                    continue
-                if source.get("local_links_only") and not local(text(anchor) + " " + link.replace("-", " ")):
-                    continue
-                identity = canonical(link)
-                if urlsplit(link).hostname == urlsplit(base).hostname and identity != canonical(base) and identity not in seen:
-                    links.append(link)
-                    seen.add(identity)
-        listing_links.append(links)
+            candidates.extend(discovered)
+            listing_links.append(links)
+        except (requests.RequestException, ValueError, OSError, ET.ParseError) as exc:
+            first_failure = first_failure or exc
+            errors.append({'source_id': source['id'], 'code': detail_error_code(exc).replace('detail_', 'listing_', 1)})
+    if not listing_links and first_failure is not None:
+        # Preserve whole-source failure semantics when no list was readable.
+        raise first_failure
     # Round robin prevents a busy first district from starving nearby districts.
     links = [link for group in zip_longest(*listing_links) for link in group if link]
     # Revisit already announced future events, even when they leave the listing page.
@@ -677,7 +718,6 @@ def collect_source(source: dict, fetcher: Fetcher, known_events: list[dict]) -> 
     for link in tracked + links:
         unique_links.setdefault(canonical(link), link)
     links = list(unique_links.values())[:source.get("max_pages", 12)]
-    errors = []
     for link in links:
         try:
             page, final = fetcher.get(link)

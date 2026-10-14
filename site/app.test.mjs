@@ -40,6 +40,16 @@ test('existing whole-source error labels remain available',()=>{
  assert.equal(label('source_robots_denied'),'Kaynak taramaya izin vermiyor');
 });
 
+test('DNS, hostname mismatch and partial-list errors have explicit safe labels',()=>{
+ assert.match(label('source_dns_failed'),/DNS/);
+ assert.match(label('source_tls_name_mismatch'),/alan adıyla eşleşmiyor/);
+ assert.match(label('detail_dns_failed'),/DNS/);
+ assert.equal(label('listing_http_503'),'Liste sayfası HTTP 503 yanıtı verdi');
+ assert.equal(label('listing_parse_failed'),'Liste sayfasındaki veri biçimi okunamadı');
+ assert.match(label('listing_tls_name_mismatch'),/^Liste sayfası/);
+ assert.equal(label('listing_http_503 access_token=PRIVATE_VALUE'),'Erişim veya ayrıştırma kontrolü gerekli');
+});
+
 test('Instagram source permissions and missing runs are distinguishable',()=>{
  assert.equal(label('instagram_permission_required'),'Meta ek okuma izni gerekli');
  assert.equal(label('instagram_manifest_missing'),'Bu turda Instagram okuma sonucu alınamadı');

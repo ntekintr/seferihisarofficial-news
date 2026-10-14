@@ -35,5 +35,13 @@ def public_catalog(entries, sources, health, at):
             else:
                 row.update(status='access_failed', note='Son kontrolde okunamadı. Ayrıntılar sistem durumu bölümündedir. '
                            + (entry.get('note') or ''))
+        if row['status'] != 'connected':
+            for sid in entry.get('fallback_reader_ids', []):
+                fallback, check = readers.get(sid), checks.get(sid)
+                stamp = parse_date(check.get('checked_at')) if check else None
+                if (fallback and fallback.get('enabled') and stamp
+                        and at - timedelta(hours=1) <= stamp <= at + timedelta(minutes=5)
+                        and check['status'] in ('ok', 'empty')):
+                    row['note'] = (row.get('note') or '') + f" Tamamlayıcı kaynak {fallback['name']} son kontrolde okunabildi."
         result.append(row)
     return result
