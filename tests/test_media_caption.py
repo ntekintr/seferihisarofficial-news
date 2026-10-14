@@ -11,7 +11,7 @@ from PIL import Image
 from seferihisar.editor import caption_with_hashtags
 from seferihisar.illustrations import clean_image
 from seferihisar.image_safety import IllustrationTextRejected, validate_jpeg
-from seferihisar.instagram import publish_one
+from seferihisar.instagram import publish_one, prepare_story_jobs
 from seferihisar.media_caption import GENERATED_IMAGE_NOTE, generated_image_caption
 from seferihisar.pipeline import export
 from seferihisar.schedule import prepare
@@ -146,3 +146,19 @@ def test_legacy_note_removal_reserves_complete_source_and_tags_under_limit(gener
 def test_news_about_ai_keeps_its_facts():
     caption = 'Yapay zekâ eğitimleri başladı.\n\nKaynak: Yerel Haber\nhttps://example.org/haber'
     assert generated_image_caption(caption, True) == caption
+
+
+def test_future_story_cleans_legacy_parent_note_without_rewriting_published_feed(store, event, at):
+    store.upsert(event, at.isoformat())
+    prepare(store, at)
+    post = next(p for p in store.posts() if p['kind'] == 'announcement')
+    payload = json.loads(store.rows('SELECT payload FROM posts WHERE id=?', (post['id'],))[0]['payload'])
+    payload['caption'] += '\n\n' + GENERATED_IMAGE_NOTE
+    with store.db:
+        store.db.execute("UPDATE posts SET payload=?,status='published' WHERE id=?", (json.dumps(payload), post['id']))
+    before = store.rows('SELECT * FROM posts WHERE id=?', (post['id'],))[0]
+    prepare_story_jobs(store, {post['id']: {'story': [f"media/{post['id']}/story-1.jpg"]}})
+    child = next(p for p in store.posts() if p.get('parent_post_id') == post['id'])
+    assert GENERATED_IMAGE_NOTE not in child['caption']
+    assert event['source_name'] in child['caption'] and event['url'] in child['caption']
+    assert store.rows('SELECT * FROM posts WHERE id=?', (post['id'],))[0] == before

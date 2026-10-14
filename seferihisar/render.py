@@ -106,7 +106,7 @@ def footer_band(image: Image.Image):
     image.paste(TURQUOISE, (0, top, width, height), mask)
 
 
-def graphic_body(body: str) -> str:
+def graphic_body(body: str, title: str = '') -> str:
     """Discard legacy source footers, including their standalone URL lines."""
     lines, attribution = [], False
     for line in body.splitlines():
@@ -118,7 +118,11 @@ def graphic_body(body: str) -> str:
             continue
         attribution = False
         lines.append(line)
-    return '\n'.join(lines).strip()
+    content = '\n'.join(lines).strip()
+    if title:
+        credit = re.escape(title) + r'\s+yazısı ilk önce\s+[^\n]+?\s+üzerinde ortaya çıktı\.?\s*$'
+        content = re.sub(credit, '', content, flags=re.I).strip()
+    return content
 
 
 def card(title: str, body: str, category: str, target: Path, story: bool = False,
@@ -174,7 +178,7 @@ def card(title: str, body: str, category: str, target: Path, story: bool = False
 
     # Legacy queued slide bodies may contain attribution. It belongs only in
     # the caption; never paint it or a fallback source label on the graphic.
-    content = graphic_body(body)
+    content = graphic_body(body, display_title)
     brand_top = bottom - 70
     if event_details:
         date_line, _, rest = content.partition('\n')

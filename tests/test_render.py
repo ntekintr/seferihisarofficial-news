@@ -89,3 +89,13 @@ def test_every_feed_story_and_carousel_frame_omits_source_attribution(tmp_path, 
 def test_legacy_source_filter_keeps_following_content():
     assert render.graphic_body('Bilgi\n\n Kaynak: Kurum\nhttps://example.org/1\n\nDevam eden haber') == 'Bilgi\n\nDevam eden haber'
 
+
+def test_legacy_graphic_omits_matching_rss_credit_without_changing_news_facts(tmp_path, monkeypatch):
+    observed = record_text(monkeypatch)
+    render.card('Belediye: Yeni proje',
+                'Belediye projeyi onayladı. Yeni proje yazısı ilk önce YerelGazete üzerinde ortaya çıktı.\n\nKaynak: YerelGazete',
+                'municipality', tmp_path / 'legacy.jpg')
+    text = '\n'.join(value for value, _ in observed)
+    assert 'Belediye projeyi onayladı.' in text
+    assert 'YerelGazete' not in text and 'ortaya çıktı' not in text
+

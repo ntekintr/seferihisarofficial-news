@@ -14,6 +14,7 @@ from urllib.parse import urljoin, urlsplit
 import requests
 
 from .domain import digest, parse_date
+from .media_caption import generated_image_caption
 from .store import Store
 
 
@@ -195,6 +196,9 @@ def prepare_story_jobs(store: Store, assets: dict[str, dict]):
             child = {**parent, "id": digest(parent["id"] + f":story:{index}"), "publish_format": "story",
                      "parent_post_id": parent["id"], "story_asset": path, "story_index": index,
                      "title": parent["title"] + f" · Story {index+1}"}
+            # A future story can inherit an already-published feed caption.
+            # Clean its own unclaimed copy without rewriting the parent claim.
+            child['caption'] = generated_image_caption(child['caption'], bool(child.get('illustration_keys')))
             child.pop("published_at", None)
             store.queue(child)
             with store.db:
