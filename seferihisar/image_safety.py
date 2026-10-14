@@ -7,6 +7,13 @@ MAX_CACHED_IMAGES = 80
 MAX_OCR_FINDINGS = 32
 MAX_OCR_TEXT = 160
 
+# Visual review confirmed invented stall lettering in this exact cleaned JPEG,
+# although OCR missed it. Block those bytes permanently before OCR; this does
+# not imply that OCR finds every lettering defect in other generated photos.
+REVIEWED_LETTERING_SHA256 = frozenset({
+    '5cc335d268a834ecdd538a7e8e68f9be979640e164132e33906acd52e407dada',
+})
+
 
 class IllustrationTextRejected(ValueError):
     """Rejected lettering, with bounded evidence for a private review artifact.
@@ -132,9 +139,12 @@ def validate_text_free_illustration(data: bytes):
     Missing programs, missing language data and malformed output fail closed.
     Bounded evidence stays on the exception for a separate review artifact.
     """
+    import hashlib
     import re
     import shutil
     validate_jpeg(data)
+    if hashlib.sha256(data).hexdigest() in REVIEWED_LETTERING_SHA256:
+        raise IllustrationTextRejected()
     binary = shutil.which('tesseract')
     if not binary:
         raise IllustrationCheckUnavailable('Illustration text check unavailable')
@@ -232,4 +242,3 @@ def validate_jpeg(data: bytes):
             raise ValueError('Unexpected illustration metadata')
         position = end
     raise ValueError('Missing illustration scan')
-
