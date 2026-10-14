@@ -626,7 +626,8 @@
     "article_selector": ".icerik",
     "title_selector": "h2.page-title",
     "published_date_selector": ".dateandtag .card-date",
-    "body_text_fallback": true
+    "body_text_fallback": true,
+    "transient_retries": 1
   },
   {
     "id": "teos-kultur-sanat",
