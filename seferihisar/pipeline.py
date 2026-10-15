@@ -17,6 +17,7 @@ from .illustrations import Illustrator
 from .media_caption import generated_image_caption
 from .schedule import prepare
 from .store import Store
+from .timeliness import with_validity
 from .security import ITEM_FIELDS, PUBLIC_ITEM_FIELDS, assert_no_secrets, contains_secret, public_url, validate_public
 
 
@@ -99,6 +100,7 @@ def run(db_path: Path, public_dir: Path, sources_path: Path, at: datetime | None
                          "kind": candidate["kind"], "enabled": False, "trusted": False, "access": "review_required"}
             with store.db:
                 store.db.execute("INSERT OR IGNORE INTO candidates VALUES (?,?)", (candidate["id"], json.dumps(candidate)))
+        incoming = [with_validity(item) for item in incoming]
         for item in incoming:
             source = source_map.get(item.get("source_id"), {})
             reason = verify(item, source, at)

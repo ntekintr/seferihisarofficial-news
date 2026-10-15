@@ -78,13 +78,6 @@ def current_post(store, post, at):
         return False
     if post.get('item_id') and refs[0]['revision'] != post['revision']:
         return False
-    for item in refs:
-        if item['kind'] == 'news' and at - parse_date(item['published_at']) > timedelta(days=2):
-            return False
-        if item['kind'] == 'event' and item['status'] not in ('cancelled', 'postponed'):
-            end = parse_date(item['end'])
-            if end.date() < at.date() or (item.get('time_known') and end < at):
-                return False
     return True
 
 
