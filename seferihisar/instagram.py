@@ -68,7 +68,7 @@ class Instagram:
         return value
 
 
-def publish_one(store: Store, at: datetime, site_url: str, assets: dict[str, dict], story: bool = False, adapter=None, checkpoint=None, *, target_id: str | None = None, paired_story: bool = False, exclude_event_ids: set[str] | None = None) -> dict:
+def publish_one(store: Store, at: datetime, site_url: str, assets: dict[str, dict], story: bool = False, adapter=None, checkpoint=None, *, target_id: str | None = None, paired_story: bool = False, exclude_event_ids: set[str] | None = None, editorial: bool = False) -> dict:
     api = adapter or Instagram()
     if not api.enabled():
         return {"status": "disabled"}
@@ -89,6 +89,9 @@ def publish_one(store: Store, at: datetime, site_url: str, assets: dict[str, dic
                     or p['kind'] not in ('announcement', 'reminder_3d', 'reminder_day')]
     if target_id:
         prepared = [p for p in prepared if p['id'] == target_id]
+    if editorial and not story:
+        from .selection import prioritize
+        prepared = prioritize(store, prepared, at)
     post = prepared[0] if prepared else None
     recent = store.rows("SELECT payload FROM posts WHERE status IN ('publishing','published','uncertain')")
     import json
@@ -170,7 +173,7 @@ def publish_automatic(store: Store, at: datetime, site_url: str, assets: dict[st
         if len(today) >= 2:
             return {'status':'daily_limit'}
         covered = {p['item_id'] for p in today if p.get('item_id')}
-        feed = publish_one(store, at, site_url, assets, adapter=api, checkpoint=checkpoint, exclude_event_ids=covered)
+        feed = publish_one(store, at, site_url, assets, adapter=api, checkpoint=checkpoint, exclude_event_ids=covered, editorial=True)
         if feed['status'] != 'published':
             return {'status':feed['status']}
         parent = next(p for p in store.posts() if p['id'] == feed['post_id'])

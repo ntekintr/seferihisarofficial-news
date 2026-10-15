@@ -17,6 +17,10 @@ from seferihisar.pipeline import export
 def test_manifest_keeps_oldest_due_media_after_large_history(
         store, event, at, tmp_path, monkeypatch, history):
     at = at.replace(hour=15, minute=5)
+    # These synthetic jobs are news. An event fixture would legitimately add
+    # new event reminders at publish-time, outside this manifest regression.
+    event = {k: event[k] for k in ('title', 'description', 'url', 'sources', 'source_id', 'source_name')}
+    event.update(kind='news', category='public', published_at=at.isoformat())
     item_id, _ = store.upsert(event, at.isoformat())
     source_config = json.loads(Path('config/sources.json').read_text())
     monkeypatch.delenv('ILLUSTRATIONS_ENABLED', raising=False)
