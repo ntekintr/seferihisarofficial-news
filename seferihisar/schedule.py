@@ -37,7 +37,7 @@ def next_slot(at: datetime, event: bool = False) -> datetime:
     return datetime.combine(at.date() + timedelta(days=1), slots[0], TZ)
 
 
-def prepare(store: Store, at: datetime):
+def prepare(store: Store, at: datetime, *, refresh_digests: bool = True):
     failed = blocked_sources(store)
     current = {i["id"]: i for i in store.items()}
     by_url = {url: i for i in current.values() for url in i.get("sources", []) + [i["url"]]}
@@ -92,8 +92,12 @@ def prepare(store: Store, at: datetime):
             expired |= post["kind"] in ("reminder_3d", "reminder_day") and parse_date(post["created_at"]).date() != at.date()
             if expired:
                 store.db.execute("UPDATE posts SET status='expired' WHERE id=?", (post["id"],))
-    prepare_digest(store, at, "weekly", 7)
-    prepare_digest(store, at, "monthly", 30)
+    # Dispatch revalidates the original references. Replacing an expired slide
+    # here would approve different content under an already-deployed image URL.
+    # Only normal research rebuilds editions together with their Pages media.
+    if refresh_digests:
+        prepare_digest(store, at, "weekly", 7)
+        prepare_digest(store, at, "monthly", 30)
 
 
 def queue_item(store: Store, item: dict, kind: str, due: datetime, at: datetime):

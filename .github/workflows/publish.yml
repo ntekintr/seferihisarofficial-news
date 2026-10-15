@@ -54,7 +54,7 @@ jobs:
           from seferihisar.schedule import prepare
           from seferihisar.pipeline import export
           store = Store('state/platform.sqlite')
-          prepare(store, now())
+          prepare(store, now(), refresh_digests=False)
           export(store, Path('dist'), json.loads(Path('config/sources.json').read_text()), now())
           store.close()
           PY
