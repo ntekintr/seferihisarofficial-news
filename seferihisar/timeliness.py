@@ -5,6 +5,7 @@ import re
 from datetime import datetime, timedelta
 
 from .domain import TZ, normalized, parse_date
+from .quality import news_quality_reason
 
 
 def undated_event_invitation(item: dict) -> bool:
@@ -95,6 +96,8 @@ def service_validity_reason(item: dict, at: datetime) -> str | None:
 
 def publication_reason(item: dict, at: datetime) -> str | None:
     """Recheck stored items for every destination, including legacy queues."""
+    if reason := news_quality_reason(item):
+        return reason
     if reason := service_validity_reason(item, at):
         return reason
     if item.get('kind') == 'news':
