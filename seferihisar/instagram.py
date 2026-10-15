@@ -74,13 +74,13 @@ def publish_one(store: Store, at: datetime, site_url: str, assets: dict[str, dic
         return {"status": "disabled"}
     # An explicit manual publish must enforce the same source freshness rule.
     from .schedule import prepare
-    prepare(store, at)
+    prepare(store, at, refresh_digests=False)
     parsed = urlsplit(site_url)
     if parsed.scheme != "https" or parsed.username or parsed.password or parsed.query or parsed.fragment:
         raise ValueError("A public HTTPS media base URL is required")
     if story:
         prepare_story_jobs(store, assets)
-        prepare(store, at)  # Newly created frames also need fresh source evidence.
+        prepare(store, at, refresh_digests=False)  # Newly created frames also need fresh source evidence.
     prepared = sorted((p for p in store.posts() if p["status"] == "prepared" and parse_date(p["due_at"]) <= at and (p.get("publish_format") == "story") == story), key=lambda p: p["due_at"])
     # Automatic announcements/reminders must not consume both daily feed slots
     # for the same event. Explicit corrections and cancellation notices remain eligible.
@@ -160,7 +160,7 @@ def publish_automatic(store: Store, at: datetime, site_url: str, assets: dict[st
     slot = next((s for s in reversed(slots) if s <= at < s + timedelta(hours=1)), None)
     if slot is None:
         return {'status':'outside_window'}
-    prepare(store, at)
+    prepare(store, at, refresh_digests=False)
     claims = [p for p in store.posts() if not p.get('publish_format') and p['status'] in ('published','publishing','uncertain') and p.get('published_at')]
     in_slot = [p for p in claims if slot <= parse_date(p['published_at']).astimezone(TZ) < slot + timedelta(hours=1)]
     if in_slot:

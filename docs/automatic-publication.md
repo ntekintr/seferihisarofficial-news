@@ -27,6 +27,10 @@ Etkinlik tarihi çözümlenemeyen açık davet/bilet metinleri de sıradan haber
 tarihine dayanarak kuyruğa alınmaz; gerçekleşmiş etkinliklerin haberleri bu davet
 kuralından ayrı değerlendirilir.
 
+Yayın aşaması takvim seçkisini yeniden kurmaz: seçkideki tek bir etkinliğin süresi
+dolmuşsa mevcut görselde yer alabileceği için seçkinin tamamı bekler. Sonraki normal
+araştırma güncel seçkiyi ve görsellerini birlikte hazırlayıp Pages'e dağıtır.
+
 Otomatik gönderi seçimi, zamanı gelmiş ve kaynak kontrolünden geçmiş kayıtları
 kuyruğa giriş yaşından önce okuyucuya güncel faydasına göre sıralar:
 

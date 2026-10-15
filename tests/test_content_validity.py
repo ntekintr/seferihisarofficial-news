@@ -1,6 +1,8 @@
 import json
+from copy import deepcopy
 from datetime import timedelta
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
@@ -8,9 +10,10 @@ import pytest
 from seferihisar.domain import digest
 from seferihisar.editor import verify
 from seferihisar.facebook import publish_recent
-from seferihisar.instagram import prepare_story_jobs, publish_one
+from seferihisar.instagram import prepare_story_jobs, publish_automatic, publish_one
 from seferihisar.pipeline import run
 from seferihisar.schedule import prepare, source_current
+from seferihisar.store import Store
 from seferihisar.timeliness import publication_reason, service_expiry, with_validity
 
 
@@ -188,3 +191,60 @@ def test_facebook_holds_both_deliveries_without_changing_instagram_claims(store,
     api.publish.assert_not_called()
     assert store.rows('SELECT * FROM facebook_deliveries') == []
     assert store.rows('SELECT * FROM posts ORDER BY id') == before
+
+
+@pytest.mark.parametrize('entrypoint', ['feed', 'story', 'automatic', 'workflow_export'])
+def test_expired_digest_slide_cannot_be_replaced_under_already_deployed_images(tmp_path, event, at, monkeypatch, entrypoint):
+    """Rebuilding refs during dispatch could approve the old deployed card."""
+    import yaml
+    workflow = yaml.safe_load(Path('.github/workflows/publish.yml').read_text(encoding='utf-8'))
+    before = at.replace(hour=14, minute=59)
+    dispatch = before + timedelta(minutes=2)
+    store = Store(tmp_path / 'state/platform.sqlite')
+    event.update(start=before.replace(hour=14).isoformat(),
+                 end=before.replace(hour=15, minute=0).isoformat())
+    later = deepcopy(event)
+    later.update(identity=event['identity'] + '-later', url=event['url'] + '-later',
+                 sources=[event['url'] + '-later'], title='Seferihisar sonraki konser',
+                 start=(before + timedelta(days=2)).isoformat(),
+                 end=(before + timedelta(days=2, hours=2)).isoformat())
+    store.upsert(event, before.isoformat())
+    store.upsert(later, before.isoformat())
+    prepare(store, before)
+    weekly = next(p for p in store.posts() if p['kind'] == 'weekly')
+    assert len(weekly['slides']) == 3
+    assets = {weekly['id']: {fmt: [f"media/{weekly['id']}/{fmt}-{n}.jpg" for n in (1, 2, 3)]
+                             for fmt in ('feed', 'story')}}
+    with store.db:
+        store.db.execute("UPDATE posts SET status='superseded' WHERE id!=?", (weekly['id'],))
+    api = Mock()
+    api.enabled.return_value = True
+    api.session.head.return_value = SimpleNamespace(status_code=200, headers={'Content-Type': 'image/jpeg'})
+    api.container.return_value = 'synthetic-container'
+    api.call.return_value = {'id': 'synthetic-media'}
+    if entrypoint == 'workflow_export':
+        step = next(s for s in workflow['jobs']['publish']['steps']
+                    if s.get('name') == 'Export existing verified state without a new crawl')
+        script = '\n'.join(step['run'].splitlines()[1:-1])
+        store.close()
+        monkeypatch.chdir(tmp_path)
+        Path('config').mkdir()
+        Path('config/sources.json').write_text('[]', encoding='utf-8')
+        monkeypatch.setattr('seferihisar.domain.now', lambda: dispatch)
+        monkeypatch.setattr('seferihisar.pipeline.export', lambda *args, **kwargs: {})
+        exec(compile(script, '<publication-workflow>', 'exec'), {})
+        store = Store(tmp_path / 'state/platform.sqlite')
+    else:
+        if entrypoint == 'story':
+            prepare_story_jobs(store, assets)
+        publish = publish_automatic if entrypoint == 'automatic' else publish_one
+        kwargs = {'story': True} if entrypoint == 'story' else {}
+        publish(store, dispatch, 'https://example.org/', assets, adapter=api, **kwargs)
+    try:
+        current = next(p for p in store.posts() if p['id'] == weekly['id'])
+        assert current['status'] == 'blocked_source'
+        assert current['source_urls'] == weekly['source_urls']
+        assert current['slides'] == weekly['slides']
+        api.container.assert_not_called()
+    finally:
+        store.close()
