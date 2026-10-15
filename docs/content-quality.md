@@ -35,3 +35,13 @@ Yerel önizlemeler kanonik veritabanının ayrı kopyasında, mevcut önbellek
 görselleriyle üretilir. Bu işlem Meta veya görsel üretim servisine istek
 göndermez. Yeni yoga fotoğrafı hazır değilse önizleme de bunu metin kartı
 olarak gösterir; fotoğraf üretilmiş gibi sunulmaz.
+## Güncel topluluk duyuruları
+
+Haber başlığı yalnız telefon, sayı, noktalama veya emojiden oluşuyorsa otomatik
+yayın bekletilir. Bu kontrol eski kuyruk kayıtları için de geçerlidir; sayısal
+tiyatro oyunu adları etkinlik olarak korunur.
+
+SEHAYDER Instagram kaynağında başlığı "ailesi/sahibi bulundu" veya
+"sahiplendirildi/yuvalandırıldı" olarak güncellenmiş duyurular, altlarında kalan
+eski yardım ve iletişim çağrısıyla yeniden yayımlanmaz. Bu dar kural diğer haber
+kaynaklarının sonuç haberlerini otomatik olarak dışlamaz.

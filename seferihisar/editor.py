@@ -10,6 +10,7 @@ import requests
 from .domain import CATEGORIES, SENSITIVE, canonical, local, normalized, parse_date
 from .security import contains_secret, public_url
 from .timeliness import service_validity_reason, undated_event_invitation
+from .quality import news_quality_reason
 
 
 def verify(item: dict, source: dict, at: datetime) -> str | None:
@@ -35,6 +36,8 @@ def verify(item: dict, source: dict, at: datetime) -> str | None:
     if SENSITIVE.search(item["title"] + " " + item.get("description", "")):
         return "human_review_required"
     if item["kind"] == "news":
+        if reason := news_quality_reason(item):
+            return reason
         published = parse_date(item.get("published_at"))
         if not published or published > at + timedelta(minutes=5) or published < at - timedelta(days=7):
             return "outdated_or_missing_date"
