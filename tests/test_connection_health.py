@@ -68,7 +68,12 @@ def test_daily_preflight_is_main_only_read_only_and_keeps_a_safe_report():
     workflow=yaml.load(text,Loader=yaml.BaseLoader)
     assert workflow['on']['schedule'][0]['cron']=='10 5 * * *'
     assert workflow['permissions']=={'contents':'read'}
-    assert workflow['jobs']['connection']['if']=="github.ref == 'refs/heads/main'"
+    condition=workflow['jobs']['connection']['if']
+    assert "github.ref == 'refs/heads/main'" in condition
+    assert "github.event.workflow_run.conclusion == 'success'" in condition
+    assert 'github.event.workflow_run.head_repository.full_name == github.repository' in condition
+    assert "contains(github.event.workflow_run.created_at, 'T05:')" in condition
+    assert workflow['on']['workflow_run']=={'workflows':['Research and prepare Seferihisar content'],'types':['completed'],'branches':['main']}
     assert 'state_git persist' not in text and 'cli publish' not in text
     assert 'connection_health' in text
     artifact=workflow['jobs']['connection']['steps'][-1]

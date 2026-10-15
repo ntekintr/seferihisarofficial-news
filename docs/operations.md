@@ -23,7 +23,12 @@ ve çözümlenmesi gereken iddia komutu başarısız bitirir. Yayın workflow'un
 yeniden gönderme eklenmez; yayın pencereleri ve günlük iki gönderi sınırı değişmez.
 
 Mevcut bağlantı testi Türkiye saati **08:10** için günlük GitHub zamanlaması
-aldı. Modül/workflow değişikliği ana dala geldiğinde de bir kez çalışır. Var olan
+aldı. Modül/workflow değişikliği ana dala geldiğinde de bir kez çalışır.
+08:10 cron'u kaçırılırsa, Türkiye saati 08:00–08:59 arasında başlatılmış
+başarılı ana dal araştırmaları da yedek bağlantı testi tetikler. Bu saat
+dışındaki araştırmalar Meta testini çalıştırmaz. Kaynak araştırmasının mevcut
+Cloudflare yedeği böylece sabah bağlantı kontrolünü de destekler; kesin dakika
+garantisi yine verilmez. Var olan
 Instagram anahtarıyla hesap kimliği ve yayın kotası, Facebook etkinse var olan
 Sayfa anahtarıyla Sayfa/Instagram eşleşmesi yalnız GET ile kontrol edilir.
 İzin verilmez, anahtar oluşturulmaz/uzatılmaz, hiçbir paylaşım yapılmaz.
