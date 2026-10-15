@@ -91,13 +91,13 @@ def test_past_events_not_announced(store, event, at):
     assert not store.posts()
 
 
-def test_unknown_time_can_have_event_day_reminder(store, event, at):
+def test_unknown_time_is_held_on_event_day(store, event, at):
     event["start"] = at.replace(hour=0).isoformat()
     event["end"] = event["start"]
     event["time_known"] = False
     store.upsert(event, at.isoformat())
     prepare(store, at)
-    assert any(p["kind"] == "reminder_day" and p["status"] == "prepared" for p in store.posts())
+    assert not any(p['status'] == 'prepared' for p in store.posts())
 
 
 def test_multiday_unknown_time_reaches_item_and_digest_cards_and_captions(store, event, at):
@@ -124,10 +124,10 @@ def test_multiday_date_label_keeps_month_and_year_boundaries_and_start_time(even
 
 @pytest.mark.parametrize('end,time_known,included', [
     ('2026-10-17T00:00:00+03:00', False, True),
-    ('2026-10-16T00:00:00+03:00', False, True),
+    ('2026-10-16T00:00:00+03:00', False, False),
     ('2026-10-15T00:00:00+03:00', False, False),
     ('2026-10-16T21:00:00+03:00', True, True),
-    ('2026-10-16T12:00:00+03:00', True, True),
+    ('2026-10-16T12:00:00+03:00', True, False),
     ('2026-10-16T11:59:00+03:00', True, False),
 ])
 def test_digest_keeps_ongoing_festival_until_verified_end(store, event, end, time_known, included):

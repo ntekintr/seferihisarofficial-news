@@ -8,6 +8,25 @@ Başlangıç sınırı **günde en fazla iki gönderi/carousel**, her gönderi i
 
 Yayın öncesinde kaynak bir saat içinde tekrar görülmüş olmalı; hatalı kaynak, eski haber, doğrulanmamış/hassas içerik ve yayımlanmamış görsel dışarıda kalır. Gönderi ve story için kalıcı yayın iddiası Meta çağrısından önce kaydedilir. Runner yeniden başlarsa tamamlanmış gönderi tekrarlanmaz. Belirsiz gönderi/story kendiliğinden yeniden gönderilmez; insan kontrolü gerekir. Eksik story görseli sonradan doğrulanırsa, aynı pencerede yalnız eksik story tamamlanabilir.
 
+Haberin kaynak yayın tarihi 48 saati geçtiğinde yeni paylaşım yapılmaz; kaynağın
+yeniden taranması bu süreyi yenilemez. Hava/kesinti haberleri ve açık meteorolojik
+uyarı metinleri ayrıca doğrulanmış `valid_until` ister. Genel web metninde yalnız
+tek bir açık yıl/gün ve aynı günün tek saat aralığı çözümlenir; eksik yıl, göreli
+tarih, birden fazla tarih/aralık veya ters saatler tahmin edilmez. MGM gibi özel
+okuyucuların doğruladığı çok günlük aralıklar korunur. Süre doğrulanamazsa içerik
+bekletilir; geçerliyse bile bitiş anından itibaren yeni paylaşım engellenir.
+
+Etkinliklerde iptal/erteleme dahil eski seansın bitişi geçerlidir. Saat biliniyorsa
+bitiş anında, yalnız gün biliniyorsa son günün başlangıcında yeni otomatik paylaşım
+durur. Böylece saat belirtilmeyen tek günlük etkinlik önceden duyurulabilir, fakat
+etkinlik günü hâlâ devam ettiği varsayılmaz; çok günlük program da saat bilinmeyen
+son gününde yayımlanmaz. Kaynak saati doğrularsa henüz bitmemiş içerik yeniden
+uygun olabilir. Bu kontrol bekleyen gönderi/story, takvim seçkileri ve Facebook
+teslimleri için ortaktır; tamamlanmış/devam eden/belirsiz kayıtlar yeniden yazılmaz.
+Etkinlik tarihi çözümlenemeyen açık davet/bilet metinleri de sıradan haberin yayın
+tarihine dayanarak kuyruğa alınmaz; gerçekleşmiş etkinliklerin haberleri bu davet
+kuralından ayrı değerlendirilir.
+
 Otomatik gönderi seçimi, zamanı gelmiş ve kaynak kontrolünden geçmiş kayıtları
 kuyruğa giriş yaşından önce okuyucuya güncel faydasına göre sıralar:
 

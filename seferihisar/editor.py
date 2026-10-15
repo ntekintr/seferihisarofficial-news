@@ -9,6 +9,7 @@ import requests
 
 from .domain import CATEGORIES, SENSITIVE, canonical, local, normalized, parse_date
 from .security import contains_secret, public_url
+from .timeliness import service_validity_reason, undated_event_invitation
 
 
 def verify(item: dict, source: dict, at: datetime) -> str | None:
@@ -39,12 +40,10 @@ def verify(item: dict, source: dict, at: datetime) -> str | None:
             return "outdated_or_missing_date"
         if not item.get("description"):
             return "insufficient_information"
-        if 'valid_until' in item:
-            expiry = parse_date(item['valid_until'])
-            if not expiry or expiry <= published:
-                return 'invalid_service_validity'
-            if expiry <= at:
-                return 'expired_service_notice'
+        if reason := service_validity_reason(item, at):
+            return reason
+        if undated_event_invitation(item):
+            return 'missing_event_date'
     else:
         start, end = parse_date(item.get("start")), parse_date(item.get("end"))
         if not start or not end or end < start:

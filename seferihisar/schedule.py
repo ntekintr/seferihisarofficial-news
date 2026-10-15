@@ -9,6 +9,7 @@ from .domain import TZ, digest, parse_date
 from .editor import caption, caption_with_hashtags, digest_hashtags, event_date_label, event_title, excerpt, headline, news_body, plain_source_text
 from .media_caption import generated_image_caption
 from .store import Store
+from .timeliness import publication_reason
 
 SLOTS = (time(8, 30), time(12, 30), time(15), time(18, 30), time(21))
 SOURCE_MAX_AGE = timedelta(hours=1)
@@ -22,10 +23,8 @@ def blocked_sources(store: Store) -> set[str]:
 
 def source_current(item: dict, at: datetime, failed: set[str]) -> bool:
     seen = parse_date(item.get("last_seen"))
-    if 'valid_until' in item:
-        expiry = parse_date(item['valid_until'])
-        if not expiry or expiry <= at:
-            return False
+    if publication_reason(item, at):
+        return False
     return item["source_id"] not in failed and seen is not None and at - SOURCE_MAX_AGE <= seen <= at + timedelta(minutes=5)
 
 
@@ -89,8 +88,7 @@ def prepare(store: Store, at: datetime):
                 if post["kind"] in ("weekly", "monthly") and parse_date(post["due_at"]) < at - timedelta(days=2):
                     store.db.execute("UPDATE posts SET status='expired' WHERE id=?", (post["id"],))
                 continue
-            expired = item["kind"] == "news" and at - parse_date(item["published_at"]) > timedelta(days=2)
-            expired |= item["kind"] == "event" and item["status"] not in ("cancelled", "postponed") and (parse_date(item["end"]).date() < at.date() or (item.get("time_known") and parse_date(item["end"]) < at))
+            expired = publication_reason(item, at) in ('expired_news', 'expired_event', 'expired_service_notice')
             expired |= post["kind"] in ("reminder_3d", "reminder_day") and parse_date(post["created_at"]).date() != at.date()
             if expired:
                 store.db.execute("UPDATE posts SET status='expired' WHERE id=?", (post["id"],))
@@ -177,7 +175,7 @@ def prepare_digest(store: Store, at: datetime, kind: str, days: int):
                 and e['category']!='outage'
                 and parse_date(e["start"]).date() <= at.date() + timedelta(days=days)
                 and parse_date(e["end"]).date() >= at.date()
-                and (not e.get("time_known") or parse_date(e["end"]) >= at)
+                and (not e.get("time_known") or parse_date(e["end"]) > at)
                 and (parse_date(e["start"]).date() >= at.date()
                      or parse_date(e["end"]).date() - parse_date(e["start"]).date() <= timedelta(days=6))]
     events = sorted((e for e in upcoming if source_current(e, at, failed)), key=lambda e: e["start"])

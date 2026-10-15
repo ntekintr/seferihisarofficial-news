@@ -37,6 +37,8 @@ def seed(store, at, cases):
                 'source_id': f'example-{index}', 'source_name': 'Yerel kaynak'}
         if item['kind'] == 'news':
             item['published_at'] = (at - timedelta(hours=case.get('age', 1))).isoformat()
+            if item['category'] in ('outage', 'weather'):
+                item['valid_until'] = (at + timedelta(hours=4)).isoformat()
         else:
             start = at + timedelta(hours=case.get('starts', 48))
             item.update(start=start.isoformat(), end=(start + timedelta(hours=2)).isoformat(),
