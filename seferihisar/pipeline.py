@@ -164,13 +164,18 @@ def _export(store: Store, public_dir: Path, sources: list[dict], at: datetime, d
     safe_items = [i for i in store.items() if verify({k: v for k, v in i.items() if k in ITEM_FIELDS}, source_map.get(i["source_id"], {}), at) is None]
     safe_urls = {url for i in safe_items for url in i.get("sources", []) + [i["url"]]}
     posts = [p for p in store.posts() if not contains_secret(p) and set(p["source_urls"]) <= safe_urls]
+    # data.json is also the publisher's asset manifest. Archive/story rows must
+    # not consume a display limit and hide an older, still-due parent. Retain
+    # every safe active parent, including frozen claims and blocked-source rows.
+    parents = [p for p in posts if not p.get("publish_format")
+               and p["status"] not in ("superseded", "expired")]
     assets = {}
     illustrator = Illustrator(store, at, illustration_dir or public_dir.parent / 'illustrations', demo=demo)
     item_map = {i['id']: i for i in safe_items}
     illustrator.prune(set(item_map))
     # Public output always rebuilt; removed/sensitive/superseded images cannot linger.
     shutil.rmtree(public_dir / "media", ignore_errors=True)
-    for post in sorted([p for p in posts if not p.get("publish_format")][:100], key=lambda p: p['due_at']):
+    for post in sorted(parents, key=lambda p: p['due_at']):
         if post["status"] in ("prepared", "published", "publishing", "uncertain"):
             illustrations = illustrator.for_post(post, item_map)
             if post["status"] == "prepared":
@@ -194,7 +199,7 @@ def _export(store: Store, public_dir: Path, sources: list[dict], at: datetime, d
     events = sorted((e for e in public_items if e["kind"] == "event" and parse_date(e["start"]).date() >= at.date() - timedelta(days=1)), key=lambda e: e["start"])
     news = sorted((i for i in public_items if i["kind"] == "news"), key=lambda i: i["published_at"], reverse=True)
     public_posts = [{"id": p["id"], "kind": p["kind"], "title": p["title"], "due_at": p["due_at"], "status": p["status"],
-                     "caption": p["caption"], "assets": assets.get(p["id"], {}), "category": p["category"]} for p in posts[:100] if p["status"] not in ("superseded", "expired") and not p.get("publish_format")]
+                     "caption": p["caption"], "assets": assets.get(p["id"], {}), "category": p["category"]} for p in parents]
     snapshot = {"schema_version": 1, "generated_at": at.isoformat(), "demo": demo,
                 "publishing_enabled": not demo and os.getenv('PUBLISHING_CONFIGURED') == 'true', "illustrations": illustrator.stats,
                 "news": news, "events": events, "posts": public_posts,

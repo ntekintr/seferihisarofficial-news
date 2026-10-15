@@ -44,6 +44,12 @@ doğrulamak gerekir. Başarılı okuma tek başına yeni yayın kanıtı sayılm
 
 ## Kalan kapsam sınırları
 
+`data.json` içindeki gönderiler yayın komutunun görsel listesidir. Güvenli,
+aktif ana gönderilerin tamamı bu listede tutulur; eski/yerine yenisi gelen
+kayıtlar ve bağımsız story işleri listeyi kesip sıradaki gönderinin görselini
+gizleyemez. Kaynağı engelli gönderiler listede görselsiz kalır; yayınlanmış,
+işlenmekte olan ve belirsiz iddialar yeniden hazırlanmaz veya gönderilmez.
+
 - `@shgundem`: API okuması hedef hesap için kullanılamıyor; diğer sekiz hedefin
   başarısı bu hesabı çalışıyor yapmaz. Kullanıcının isteğiyle ek manuel tekrar yok.
 - Güzelbahçe Kaymakamlığı: bilinen TLS alan adı uyuşmazlığı; doğrudan okuyucu bağlı
