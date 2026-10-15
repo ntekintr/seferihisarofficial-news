@@ -306,6 +306,16 @@ def caption_with_hashtags(content: str, tags: list[str], *, footer: str = "", li
     return "\n\n".join(part for part in (body, tail) if part)
 
 
+def event_description_repeats_title(description: str, title: str) -> bool:
+    """Discard title-only ticket descriptions, including glued duplicate headings."""
+    text = re.sub(r'^etkinlik duyurusu\s*', '', normalized(description))
+    heading = normalized(title)
+    # Separators (&, en dash, whitespace) can differ between duplicated headings.
+    # Compare complete repetitions, never a bag of words or a partial prefix.
+    text, heading = text.replace(' ', ''), heading.replace(' ', '')
+    return bool(heading) and any(text == heading * count for count in (1, 2, 3))
+
+
 def caption(item: dict, label: str) -> str:
     display_title = news_title(item) if item["kind"] == "news" else item["title"]
     lines = [label] if display_title in label else [label, display_title]
@@ -329,8 +339,7 @@ def caption(item: dict, label: str) -> str:
         elif item.get("status") == "rescheduled":
             lines.append("Etkinliğin tarihi güncellendi.")
     description = item.get('description', '')
-    redundant = item['kind'] == 'event' and normalized(description) in (
-        normalized(item['title']), normalized('Etkinlik duyurusu. ' + item['title']))
+    redundant = item['kind'] == 'event' and event_description_repeats_title(description, item['title'])
     if description and not redundant:
         if item["kind"] == "news":
             lines.append("Kaynak duyurusuna göre: " + excerpt(news_body(item), 1000))

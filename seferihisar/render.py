@@ -8,7 +8,7 @@ from datetime import datetime
 from PIL import Image, ImageDraw, ImageFont, ImageOps
 
 from .domain import CATEGORIES
-from .editor import event_type_label, news_type_label
+from .editor import event_activity, event_type_label, news_type_label
 
 NAVY, IVORY, ORANGE, TURQUOISE = '#06244a', '#f4efe4', '#f58220', '#20b8c9'
 ASSETS = Path(__file__).with_name('assets')
@@ -157,7 +157,7 @@ def graphic_title(title: str, category: str, event_details: bool = False):
 
 def card(title: str, body: str, category: str, target: Path, story: bool = False,
          index: str = '', illustration: Path | None = None, preview: bool = False,
-         event_details: bool = False):
+         event_details: bool = False, photo_centering: tuple[float, float] = (0.5, 0.5)):
     """Fixed branding and a per-item illustration, never a shared news scene."""
     width, height = 1080, 1920 if story else 1350
     top, bottom = (260, 1600) if story else (0, 1260)
@@ -179,7 +179,7 @@ def card(title: str, body: str, category: str, target: Path, story: bool = False
     if illustration is not None:
         with Image.open(illustration) as source:
             hero = ImageOps.fit(source.convert('RGB'), (width, hero_bottom - header_bottom),
-                                method=Image.Resampling.LANCZOS)
+                                method=Image.Resampling.LANCZOS, centering=photo_centering)
         image.paste(hero, (0, header_bottom))
     else:
         # A missing/rejected photo produces typography, never invented scenery.
@@ -236,9 +236,15 @@ def render_post(post: dict, public_dir: Path, illustrations: dict[int, Path] | N
         for i, slide in enumerate(slides):
             relative = f"media/{post['id']}/{fmt}-{i+1}.jpg"
             is_event = post['kind'] in ('announcement', 'reminder_3d', 'reminder_day', 'update', 'cancellation') or (post['kind'] in ('weekly', 'monthly') and i > 0)
+            category = slide.get('category', post['category'])
+            # Reviewed yoga scenes place mats/blocks on the floor. Preserve that
+            # subject in wide cards; keep claimed media's original framing.
+            mutable = post.get('status', 'prepared') in ('prepared', 'blocked_source')
+            yoga = is_event and i < len(post['slides']) and event_activity(category, slide['title']) == 'yoga'
             card(slide['title'], slide['body'], slide.get('category', post['category']), public_dir / relative,
                  fmt == 'story', f'{i+1}/{len(slides)}', illustration=(illustrations or {}).get(i),
-                 event_details=is_event and i < len(post['slides']))
+                 event_details=is_event and i < len(post['slides']),
+                 photo_centering=(0.5, 1.0) if mutable and yoga else (0.5, 0.5))
             assets[fmt].append(relative)
     return assets
 
