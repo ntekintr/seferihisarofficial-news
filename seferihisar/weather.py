@@ -105,6 +105,8 @@ def weather_error_code(exc):
         return 'source_http_error'
     if isinstance(exc, requests.ConnectionError):
         return 'source_connection_failed'
+    if isinstance(exc, requests.RequestException):
+        return 'source_unavailable'
     if isinstance(exc, ValueError) and str(exc) == 'robots.txt disallows this path':
         return 'source_robots_denied'
     return 'forecast_invalid'

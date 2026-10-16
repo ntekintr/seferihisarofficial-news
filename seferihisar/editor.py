@@ -127,7 +127,7 @@ _HOSPITAL_STAFF_TITLE = 'Seferihisar Necat Hepkon Devlet Hastanesi: Çalışan M
 
 
 def news_title(item: dict) -> str:
-    return neutral_title(_news_title(item))
+    return neutral_title(_news_title(item)) if item.get('kind') == 'news' else item['title']
 
 
 def _news_title(item: dict) -> str:

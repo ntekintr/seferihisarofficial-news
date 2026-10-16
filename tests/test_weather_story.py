@@ -269,6 +269,7 @@ def test_two_missing_temperatures_and_ambiguous_invalid_values_still_block():
     (requests.exceptions.SSLError('PRIVATE_REQUEST'),'source_tls_failed'),
     (requests.HTTPError('PRIVATE_REQUEST'),'source_http_error'),
     (requests.ConnectionError('PRIVATE_REQUEST'),'source_connection_failed'),
+    (requests.RequestException('PRIVATE_REQUEST'),'source_unavailable'),
     (ValueError('robots.txt disallows this path'),'source_robots_denied'),
     (ValueError('PRIVATE_REQUEST'),'forecast_invalid'),
 ])

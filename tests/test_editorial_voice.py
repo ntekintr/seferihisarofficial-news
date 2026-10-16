@@ -60,6 +60,8 @@ def test_existing_direct_quotes_and_multi_sentence_quotes_stay_verbatim():
     assert neutral_body(original)==original
     assert neutral_title('“Başkanımız” adlı tiyatro oyunu')=='“Başkanımız” adlı tiyatro oyunu'
     assert neutral_title('Sayın Yargıç adlı tiyatro oyunu Seferihisar’da')=='Sayın Yargıç adlı tiyatro oyunu Seferihisar’da'
+    event={'kind':'event','title':'Belediyemiz adlı tiyatro oyunu'}
+    assert news_title(event)==event['title']
 
 
 def test_campaign_filter_does_not_remove_a_specific_commitment():
