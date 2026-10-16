@@ -1,7 +1,7 @@
 name: Daily Seferihisar weather story
 on:
   schedule:
-    - cron: '0 5 * * *' # 08:00 Europe/Istanbul. GitHub can delay execution.
+    - cron: '0,17,32,47 5 * * *' # 08:00 target plus bounded backups away from the hour boundary.
   workflow_run:
     workflows: ['Research and prepare Seferihisar content']
     types: [completed]

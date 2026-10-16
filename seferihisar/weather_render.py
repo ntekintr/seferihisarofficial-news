@@ -60,10 +60,13 @@ def render_weather(forecast, public_dir: Path):
     weekday = ('Pazartesi','Salı','Çarşamba','Perşembe','Cuma','Cumartesi','Pazar')[day.weekday()]
     text((540,552),readable_date_line(day.strftime('%d.%m.%Y'))+' · '+weekday,29,'#60717d')
 
-    text((370,758),f"{forecast['high']}°",132,bold=True)
-    text((717,758),f"{forecast['low']}°",94,'#71838c')
-    text((370,873),'En yüksek',27,'#60717d')
-    text((717,873),'En düşük',27,'#60717d')
+    available = [(key, label) for key, label in (('high','En yüksek'),('low','En düşük'))
+                 if forecast[key] is not None]
+    for index, (key, label) in enumerate(available):
+        x = 540 if len(available) == 1 else (370,717)[index]
+        text((x,758),f"{forecast[key]}°",132 if index == 0 else 94,
+             NAVY if index == 0 else '#71838c',bold=index == 0)
+        text((x,873),label,27,'#60717d')
     description = display_condition(forecast)
     for size in (40,36,32,28,24):
         lines = wrap(draw,description,font(size*scale,True),870*scale)
