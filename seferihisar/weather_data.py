@@ -45,7 +45,7 @@ def asset_id(forecast):
     validate_forecast(forecast)
     # A changed prediction or renderer receives a new URL; checking again alone does not.
     values = {k: v for k, v in forecast.items() if k != 'fetched_at'}
-    return digest('daily-weather-snail-v1:' + json.dumps(values, ensure_ascii=False, sort_keys=True))
+    return digest('daily-weather-snail-3d-v2:' + json.dumps(values, ensure_ascii=False, sort_keys=True))
 
 
 def fresh(forecast, at):

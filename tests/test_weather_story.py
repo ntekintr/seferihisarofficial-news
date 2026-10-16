@@ -176,6 +176,19 @@ def test_fingerprint_is_revision_bound_and_export_is_public_safe(store,tmp_path)
     assert export_weather(store,target,MORNING+timedelta(days=1)) is None
 
 
+def test_old_two_dimensional_card_cannot_be_claimed_as_the_new_three_dimensional_card(store):
+    forecast=seed(store)
+    api=adapter(forecast)
+    # The actual previous renderer's identity for this exact MGM forecast.
+    legacy='9fdc7ce17cda06c3818e6098'
+    assert asset_id(forecast)!=legacy
+    data=api.session.get.return_value.json.return_value['weather_story']
+    data.update(asset_id=legacy,asset=f'media/{legacy}/story-1.jpg')
+    assert publish_weather(store,MORNING,SITE,api)=={'status':'media_not_deployed'}
+    api.container.assert_not_called()
+    assert store.rows('SELECT status FROM weather_stories')==[{'status':'prepared'}]
+
+
 @pytest.mark.parametrize('field,value',[('low',True),('high',90),('place','Urla'),('source_url','https://example.org/'),('date','2026-10-15'),('fetched_at','2026-10-16T07:00:00')])
 def test_durable_state_rejects_wrong_or_private_forecast_fields(store,field,value):
     forecast=parse_forecast(HTML,MORNING)
