@@ -29,7 +29,9 @@ Bilgisayarın açık olması gerekmez. Yeni anahtar/izin veya ücretli servis yo
 
 1080×1920 kart sıcak açık zemin, sabit logo/renkler, ince şerit, tarihle birlikte
 “Günaydın, Seferihisar!” ve kutusuz sıcaklıkları gösterir. Özgün salyangozlu
-manzara yalnız alt bölümde küçük yatay bir sahnedir. Aynı karakterin güneşli,
+manzara yalnız alt bölümde küçük yatay bir sahnedir. Kullanıcının tercihiyle
+salyangoz ve çevresi hacimli, yumuşak ışıklı 3D CGI görünümündedir; çizim,
+suluboya ve kâğıt dokusu kullanılmaz. Aynı karakterin güneşli,
 parçalı bulutlu, kapalı, yağmurlu, rüzgârlı, fırtınalı, karlı ve sisli sahneleri
 bir kez hazırlanmış yerel varlıklardır; günün gerçek tahminine göre seçilir.
 Google kurbağası veya resmî Cittaslow logosu kullanılmaz. Günlük kartın hazırlanması

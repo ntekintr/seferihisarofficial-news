@@ -1,4 +1,4 @@
-"""Minimal forecast typography with a small original snail landscape near the bottom."""
+"""Minimal forecast typography with a small original 3D snail scene near the bottom."""
 from __future__ import annotations
 
 import re
