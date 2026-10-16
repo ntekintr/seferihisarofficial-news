@@ -56,6 +56,10 @@ class Store:
             CREATE TABLE IF NOT EXISTS publication_checks (
               id INTEGER PRIMARY KEY, checked_at TEXT NOT NULL,
               mode TEXT NOT NULL, result TEXT NOT NULL);
+            CREATE TABLE IF NOT EXISTS weather_stories (
+              day TEXT PRIMARY KEY, forecast TEXT, status TEXT NOT NULL,
+              checked_at TEXT NOT NULL, last_result TEXT NOT NULL,
+              container_id TEXT, media_id TEXT, published_at TEXT);
         """)
         self.db.commit()
 

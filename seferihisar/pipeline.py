@@ -132,6 +132,9 @@ def run(db_path: Path, public_dir: Path, sources_path: Path, at: datetime | None
             store.db.execute("UPDATE runs SET finished_at=?,collected=?,errors=? WHERE id=?", ((now() if not fixture else at).isoformat(), collected, json.dumps(errors), run_id))
             store.db.execute("DELETE FROM runs WHERE id NOT IN (SELECT id FROM runs ORDER BY id DESC LIMIT 100)")
         prepare(store, at)
+        if not fixture:
+            from .weather import refresh_weather
+            refresh_weather(store, at, fetcher)
         result = export(store, public_dir, sources, at, demo=bool(fixture))
         return {"collected": collected, "prepared": len([p for p in store.posts() if p["status"] == "prepared"]), "errors": len(errors), "assets": result}
     finally:
@@ -213,6 +216,9 @@ def _export(store: Store, public_dir: Path, sources: list[dict], at: datetime, d
     catalogue_path = Path(__file__).resolve().parents[1] / 'config/source_catalog.json'
     from .operations import summary
     snapshot['operations'] = summary(store, at)
+    if not demo:
+        from .weather import export_weather
+        snapshot['weather_story'] = export_weather(store, public_dir, at)
     if catalogue_path.exists():
         from .source_catalog import public_catalog
         catalogue = json.loads(catalogue_path.read_text(encoding='utf-8'))

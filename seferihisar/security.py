@@ -52,9 +52,33 @@ def validate_state(path: Path):
     db = sqlite3.connect(f"file:{path.resolve()}?mode=ro", uri=True)
     try:
         tables = {r[0] for r in db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
-        if not tables <= {"items", "posts", "withheld", "runs", "candidates", "annotations", "illustrations", "illustration_days", "source_health", "facebook_deliveries", "publication_checks"}:
+        if not tables <= {"items", "posts", "withheld", "runs", "candidates", "annotations", "illustrations", "illustration_days", "source_health", "facebook_deliveries", "publication_checks", "weather_stories"}:
             raise ValueError("Unexpected state tables")
         for table in sorted(tables):
+            if table == 'weather_stories':
+                from datetime import date, datetime
+                from .weather_data import RESULTS, STATES, validate_forecast
+                if [r[1] for r in db.execute('PRAGMA table_info(weather_stories)')] != ['day','forecast','status','checked_at','last_result','container_id','media_id','published_at']:
+                    raise ValueError('Unexpected weather story fields')
+                for row in db.execute('SELECT * FROM weather_stories'):
+                    assert_no_secrets(row)
+                    day, payload, status, checked, result, container, media, published = row
+                    if date.fromisoformat(day).isoformat() != day or status not in STATES or result not in RESULTS or datetime.fromisoformat(checked).tzinfo is None:
+                        raise ValueError('Invalid weather story')
+                    if payload:
+                        forecast = validate_forecast(json.loads(payload))
+                        if forecast['date'] != day:
+                            raise ValueError('Weather story date mismatch')
+                    elif status != 'blocked':
+                        raise ValueError('Missing forecast')
+                    if any(v is not None and (not isinstance(v,str) or not re.fullmatch(r'\d{1,32}',v)) for v in (container,media)):
+                        raise ValueError('Invalid weather media identity')
+                    from .domain import TZ
+                    if published and (datetime.fromisoformat(published).tzinfo is None or datetime.fromisoformat(published).astimezone(TZ).date().isoformat() != day):
+                        raise ValueError('Invalid weather publication timestamp')
+                    if (status in ('publishing','published','uncertain') and not published) or (status == 'published' and not media):
+                        raise ValueError('Incomplete weather publication claim')
+                continue
             if table == 'publication_checks':
                 from datetime import datetime
                 from .operations import validate_result

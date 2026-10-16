@@ -52,9 +52,22 @@ function renderOperations(container){
  container.append(panel);
  if(op.checks?.length)container.append(table(['Kontrol','Instagram','Facebook'],op.checks.map(c=>[date(c.checked_at,{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}),publicationLabel(c.result.status),publicationLabel(c.result.facebook?.status)])));
 }
+function renderWeather(container){
+ const weather=snapshot.weather_story;if(!weather)return;
+ const reference=new Date(snapshot.demo?snapshot.generated_at:Date.now());
+ const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Istanbul',year:'numeric',month:'2-digit',day:'2-digit'}).format(reference);
+ if(weather.day!==today)return;
+ const panel=node('div','panel');panel.append(node('h3','','Günaydın, Seferihisar! · Hava durumu story'));
+ const states={prepared:'Hazır · Saat bekleniyor',blocked:'Güncel tahmin doğrulanamadı',publishing:'Yayın sonucu kontrol edilmeli',published:'Paylaşıldı',uncertain:'Yayın sonucu belirsiz; tekrar gönderilmez'};
+ panel.append(node('p','','Her sabah 08:00 Türkiye saati · Günde bir Instagram story. Haber gönderilerine ek olarak paylaşılır.'),node('p','','Durum: '+(states[weather.status]||'Kontrol bekleniyor')+(weather.published_at?' · '+date(weather.published_at,{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):'')));
+ if(weather.forecast){const f=weather.forecast;panel.append(node('p','',f.place+' · '+f.condition+' · En düşük '+f.low+'° / En yüksek '+f.high+'°'),link('Kaynak: Meteoroloji Genel Müdürlüğü ↗',f.source_url));if(weather.asset)panel.append(link('Story görselini aç',weather.asset));}
+ if(['forecast_stale','media_not_deployed','not_ready','source_unavailable','awaiting_resolution','uncertain','disabled'].includes(weather.last_result))panel.append(node('p','notice','Son kontrol: '+({forecast_stale:'Güncel tahmin bekleniyor',media_not_deployed:'Görselin bulutta yayımlanması bekleniyor',not_ready:'Hazır tahmin yok',source_unavailable:'Kaynak doğrulanamadı',awaiting_resolution:'Önceki yayın sonucu kontrol edilmeli',uncertain:'Yayın sonucu kontrol edilmeli',disabled:'Instagram bağlantısı veya yayın ayarı eksik'}[weather.last_result])));
+ container.append(panel);
+}
 function render() {
  if(!snapshot)return;const container=$('content');container.replaceChildren();$('view-title').textContent=labels[view];
  document.querySelector('.controls').hidden=['sources','system'].includes(view);document.querySelector('.hero').hidden=view!=='overview';
+ if(['posts','system'].includes(view))renderWeather(container);
  if(view==='overview'){container.append(node('h3','section-label','Yaklaşan buluşmalar'),grid(events().slice(0,3),'event'),node('h3','section-label','Yerel gelişmeler'),grid(displayNews(snapshot,new Date(snapshot.demo?snapshot.generated_at:Date.now()).getTime()).filter(matches).slice(0,3),'news'));}
  else if(view==='events')container.append(grid(events(),'event'));
  else if(view==='news')container.append(grid(displayNews(snapshot,new Date(snapshot.demo?snapshot.generated_at:Date.now()).getTime()).filter(matches),'news'));
