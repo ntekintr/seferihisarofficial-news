@@ -7,7 +7,10 @@ Bu istek Instagram içindir; Facebook'a yeni bir hava durumu yayını eklenmez.
 Kaynak MGM İzmir Bölgesel Tahmin ve Uyarı Merkezi'nin açık ilçe tablosudur:
 https://www.mgm.gov.tr/tahmin/gunluk-tahmin.aspx?b=3
 Yalnız Seferihisar satırı, açık başlangıç/bitiş tarihleri ve sayısal en düşük/
-en yüksek sıcaklık alınır. Başka ilçenin değeri kullanılmaz. Yağış yüzdesi,
+en yüksek sıcaklık alınır. MGM sabah bülteninde en düşük sıcaklığı boş bırakırsa
+yalnız mevcut en yüksek değer gösterilir; en yüksek boşsa yalnız en düşük
+gösterilir. İkisi de boşsa yayın engellenir. Eksik değer önceki bültenden veya
+başka ilçeden doldurulmaz. Başka ilçenin değeri kullanılmaz. Yağış yüzdesi,
 rüzgâr veya anlık sıcaklık bu tablodan tahmin edilmez. Görseldeki değerler
 günlük tahminin en düşük/en yüksek değerleridir. Kaynak adı/adresi panelde
 saklanır; kullanıcının mevcut tercihiyle story görselinde kaynak yazısı yoktur.
@@ -18,7 +21,8 @@ Pages'e dağıtır. Robots ve TLS denetimleri korunur. Yayın anında aynı gün
 son kontrolün başarısı ve canlı Pages manifesti/görsel eşleşmesi zorunludur.
 Kaynak bulunamaz veya tarihler doğrulanamazsa hava durumu uydurulmaz.
 
-Ayrı günlük zamanlama 08:00'da yayını dener. Başarılı sabah araştırmaları
+Ayrı günlük zamanlama 08:00'ı hedefler; 08:17, 08:32 ve 08:47'de sınırlı yedek
+denemeler vardır. Her gün yalnız bir story paylaşılır. Başarılı sabah araştırmaları
 08:00–08:59 içinde yedek tetikleyicidir. GitHub kuyruğu nedeniyle tam dakika
 garanti değildir; 09:00 ve sonrasında gecikmiş hava durumu story'si gönderilmez.
 Bilgisayarın açık olması gerekmez. Yeni anahtar/izin veya ücretli servis yoktur.
@@ -33,4 +37,6 @@ görsel üretim isteği yapmaz ve bulut görsel kotası tüketmez.
 Eski veya belirsiz yayınlar yeniden gönderilmez. Her günün ayrı kalıcı kaydı,
 Meta çağrısından önce otomasyon durumuna yazılır. Kaynak sonradan değişse de
 başlamış/tamamlanmış iddialar değiştirilmez. Meta belirsizliğinde insan kontrolü
-gerekir. Panelde hazırlık ve gerçek yayın sonucu ayrı gösterilir.
+gerekir. Panelde hazırlık ve gerçek yayın sonucu ayrı gösterilir. Kaynak erişimi,
+eksik sıcaklık/satır ve tarih okuma hataları sabit güvenli kodlarla ayrılır;
+ham hata veya erişim anahtarı kaydedilmez. Saat dışı iş, sabahın hata nedenini silmez.

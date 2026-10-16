@@ -10,7 +10,7 @@ from PIL import Image
 
 from seferihisar.domain import parse_date
 from seferihisar.security import validate_public, validate_state
-from seferihisar.weather import export_weather, parse_forecast, publish_weather, refresh_weather
+from seferihisar.weather import export_weather, parse_forecast, publish_weather, refresh_weather, record_result
 from seferihisar.weather_data import SITE, SOURCE, asset_id, fresh, validate_forecast
 from seferihisar.weather_render import display_condition, render_weather, scene_for
 
@@ -75,7 +75,7 @@ def test_refresh_recovery_and_frozen_claims(store,monkeypatch):
     fetcher.get.side_effect = requests.Timeout('api_key=PRIVATE_EXCEPTION_VALUE')
     monkeypatch.setattr('seferihisar.weather.now',lambda:MORNING)
     refresh_weather(store,MORNING,fetcher)
-    assert store.rows('SELECT status,last_result FROM weather_stories') == [{'status':'blocked','last_result':'source_unavailable'}]
+    assert store.rows('SELECT status,last_result FROM weather_stories') == [{'status':'blocked','last_result':'source_timeout'}]
     assert b'PRIVATE_EXCEPTION_VALUE' not in store.path.read_bytes()
     fetcher.get.side_effect = None
     refresh_weather(store,MORNING,fetcher)
@@ -187,7 +187,7 @@ def test_durable_state_rejects_wrong_or_private_forecast_fields(store,field,valu
 
 def test_workflow_is_cloud_scheduled_trusted_and_serialized():
     workflow=yaml.load(Path('.github/workflows/weather-story.yml').read_text(),Loader=yaml.BaseLoader)
-    assert workflow['on']['schedule']==[{'cron':'0 5 * * *'}]
+    assert workflow['on']['schedule']==[{'cron':'0,17,32,47 5 * * *'}]
     assert 'workflow_dispatch' not in workflow['on']
     assert workflow['concurrency']=={'group':'seferihisar-production','cancel-in-progress':'false'}
     job=workflow['jobs']['weather']
@@ -213,3 +213,77 @@ def test_relative_tomorrow_from_yesterday_bulletin_is_today_on_card():
     forecast=parse_forecast(HTML.replace('Parçalı ve çok bulutlu','Yarın öğleden sonra sağanak yağışlı'),MORNING)
     assert display_condition(forecast)=='bugün öğleden sonra sağanak yağışlı'
     assert forecast['condition']=='Yarın öğleden sonra sağanak yağışlı'
+
+
+def test_real_daytime_bulletin_recovers_without_inventing_an_overnight_minimum(store,monkeypatch,tmp_path):
+    html=Path('tests/fixtures/mgm-seferihisar-daytime.html').read_text(encoding='utf8')
+    old=seed(store,status='blocked')
+    assert old['low']==12
+    fetcher=Mock();fetcher.get.return_value=(html,SOURCE)
+    monkeypatch.setattr('seferihisar.weather.now',lambda:MORNING)
+    refresh_weather(store,MORNING,fetcher)
+    row=store.rows('SELECT * FROM weather_stories')[0]
+    forecast=json.loads(row['forecast'])
+    assert row['status']=='prepared' and row['last_result']=='prepared'
+    assert forecast['low'] is None and forecast['high']==20
+    assert forecast['period_start']=='2026-10-16T06:00:00+03:00'
+    assert forecast['period_end']=='2026-10-17T06:00:00+03:00'
+    assert fresh(forecast,MORNING)
+    validate_state(store.path)
+    target=tmp_path/'public'
+    export_weather(store,target,MORNING)
+    validate_public(target)
+    api=adapter(forecast)
+    assert publish_weather(store,MORNING,SITE,api)=={'status':'published'}
+    assert publish_weather(store,MORNING+timedelta(minutes=18),SITE,api)=={'status':'already_published'}
+    assert api.container.call_count==1
+
+
+@pytest.mark.parametrize('low,high',[(None,20),(12,None),(-3,0)])
+def test_only_available_temperature_is_drawn_and_absent_value_is_never_printed(store,tmp_path,monkeypatch,low,high):
+    forecast=parse_forecast(HTML,MORNING);forecast.update(low=low,high=high)
+    import seferihisar.weather_render as renderer
+    original=renderer.ImageDraw.ImageDraw.text
+    labels=[]
+    def text(self,xy,value,*args,**kwargs):
+        labels.append(value)
+        return original(self,xy,value,*args,**kwargs)
+    monkeypatch.setattr(renderer.ImageDraw.ImageDraw,'text',text)
+    render_weather(forecast,tmp_path)
+    assert 'None°' not in labels
+    assert ('En düşük' in labels)==(low is not None)
+    assert ('En yüksek' in labels)==(high is not None)
+    assert all(str(value)+'°' in labels for value in (low,high) if value is not None)
+
+
+def test_two_missing_temperatures_and_ambiguous_invalid_values_still_block():
+    with pytest.raises(ValueError):
+        parse_forecast(HTML.replace('<td>12</td>','<td></td>').replace('<td>20</td>','<td></td>'),MORNING)
+    forecast=parse_forecast(HTML,MORNING)
+    for changes in ({'low':None,'high':None},{'low':None,'high':True},{'low':None,'high':'20'}):
+        with pytest.raises(ValueError):validate_forecast({**forecast,**changes})
+
+
+@pytest.mark.parametrize('error,code',[
+    (requests.Timeout('PRIVATE_REQUEST'),'source_timeout'),
+    (requests.exceptions.SSLError('PRIVATE_REQUEST'),'source_tls_failed'),
+    (requests.HTTPError('PRIVATE_REQUEST'),'source_http_error'),
+    (requests.ConnectionError('PRIVATE_REQUEST'),'source_connection_failed'),
+    (requests.RequestException('PRIVATE_REQUEST'),'source_unavailable'),
+    (ValueError('robots.txt disallows this path'),'source_robots_denied'),
+    (ValueError('PRIVATE_REQUEST'),'forecast_invalid'),
+])
+def test_failure_reason_survives_late_runs_without_saving_provider_text(store,monkeypatch,error,code):
+    seed(store)
+    monkeypatch.setattr('seferihisar.weather.now',lambda:MORNING)
+    fetcher=Mock();fetcher.get.side_effect=error
+    refresh_weather(store,MORNING,fetcher)
+    before=store.rows('SELECT * FROM weather_stories')
+    assert before[0]['last_result']==code
+    api=adapter(json.loads(before[0]['forecast']))
+    assert publish_weather(store,MORNING,SITE,api)=={'status':code}
+    api.container.assert_not_called()
+    record_result(store,'2026-10-16',{'status':'outside_window'})
+    assert store.rows('SELECT * FROM weather_stories')==before
+    validate_state(store.path)
+    assert b'PRIVATE_REQUEST' not in store.path.read_bytes()

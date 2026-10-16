@@ -11,7 +11,9 @@ SOURCE = 'https://www.mgm.gov.tr/tahmin/gunluk-tahmin.aspx?b=3'
 SITE = 'https://ntekintr.github.io/seferihisarofficial-news'
 FIELDS = {'date', 'place', 'condition', 'low', 'high', 'period_start', 'period_end', 'fetched_at', 'source_url'}
 RESULTS = {'prepared', 'published', 'already_published', 'outside_window', 'disabled', 'source_unavailable',
-           'forecast_invalid', 'forecast_stale', 'not_ready', 'media_not_deployed', 'awaiting_resolution', 'uncertain'}
+           'forecast_invalid', 'forecast_stale', 'not_ready', 'media_not_deployed', 'awaiting_resolution', 'uncertain',
+           'forecast_temperature_missing', 'forecast_district_missing', 'forecast_period_missing',
+           'source_timeout', 'source_tls_failed', 'source_http_error', 'source_connection_failed', 'source_robots_denied'}
 STATES = {'prepared', 'blocked', 'publishing', 'published', 'uncertain'}
 
 
@@ -23,7 +25,9 @@ def validate_forecast(value):
         raise ValueError('Invalid forecast identity')
     if not isinstance(value['condition'], str) or not 2 <= len(value['condition']) <= 240 or not re.fullmatch(r'[\w\s,;:.()°/–%-]+', value['condition']):
         raise ValueError('Invalid forecast description')
-    if any(type(value[k]) is not int or not -40 <= value[k] <= 60 for k in ('low', 'high')) or value['low'] > value['high']:
+    temperatures = [value[k] for k in ('low', 'high') if value[k] is not None]
+    if (not temperatures or any(type(v) is not int or not -40 <= v <= 60 for v in temperatures)
+            or (len(temperatures) == 2 and value['low'] > value['high'])):
         raise ValueError('Invalid forecast temperature')
     stamps = [datetime.fromisoformat(value[k]) for k in ('period_start', 'period_end', 'fetched_at')]
     if any(s.tzinfo is None for s in stamps):

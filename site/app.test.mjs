@@ -9,6 +9,20 @@ const context={};
 vm.runInNewContext(source.slice(0,source.indexOf('const labels =')),context);
 const label=context.errorLabel;
 
+test('daytime weather never renders null or makes up a missing temperature',()=>{
+ assert.equal(context.weatherTemperatures({low:null,high:20}),'En yüksek 20°');
+ assert.equal(context.weatherTemperatures({low:12,high:null}),'En düşük 12°');
+ assert.equal(context.weatherTemperatures({low:0,high:20}),'En düşük 0° / En yüksek 20°');
+ assert.equal(context.weatherTemperatures({low:null,high:null}),'');
+});
+
+test('weather retains distinct safe source and data failure explanations',()=>{
+ assert.match(context.weatherReason('forecast_temperature_missing'),/sıcaklık yok/);
+ assert.match(context.weatherReason('forecast_district_missing'),/Seferihisar/);
+ assert.match(context.weatherReason('source_tls_failed'),/güvenli bağlantı/);
+ for(const value of ['__proto__','toString','PRIVATE_PROVIDER_ERROR',null,{}])assert.equal(context.weatherReason(value),null);
+});
+
 test('publication waits, missing media and uncertainty have separate safe labels',()=>{
  assert.equal(context.publicationLabel('outside_window'),'Yayın saati bekleniyor');
  assert.match(context.publicationLabel('uncertain'),/tekrar gönderilmez/);

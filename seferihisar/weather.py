@@ -12,6 +12,13 @@ from .domain import TZ, now
 from .weather_data import SITE, SOURCE, asset_id, fresh, validate_forecast
 
 
+class ForecastError(ValueError):
+    """Controlled diagnostics, without retaining source HTML or provider errors."""
+    def __init__(self, code):
+        self.code = code
+        super().__init__(code)
+
+
 def parse_forecast(html, at):
     from bs4 import BeautifulSoup
     soup = BeautifulSoup(html,'html.parser')
@@ -27,7 +34,7 @@ def parse_forecast(html, at):
                 if m := re.fullmatch(r':?\s*(\d{2}\.\d{2}\.\d{4}-\d{2}:\d{2})',raw):
                     stamps.append(datetime.strptime(m[1],'%d.%m.%Y-%H:%M').replace(tzinfo=TZ))
         if len(stamps) != 1:
-            raise ValueError('Forecast period missing or ambiguous')
+            raise ForecastError('forecast_period_missing')
         values[key] = stamps[0].isoformat()
     rows = []
     for row in soup.select('tr'):
@@ -35,12 +42,22 @@ def parse_forecast(html, at):
         if len(cells) == 4 and cells[0].get_text(' ',strip=True) == 'Seferihisar':
             rows.append([c.get_text(' ',strip=True) for c in cells])
     if len(rows) != 1:
-        raise ValueError('District forecast missing or ambiguous')
+        raise ForecastError('forecast_district_missing')
     _,condition,low,high = rows[0]
-    if not re.fullmatch(r'-?\d{1,2}',low) or not re.fullmatch(r'-?\d{1,2}',high):
-        raise ValueError('Temperature unavailable')
+    # MGM's daytime bulletin leaves the overnight minimum cell empty. Retain
+    # that absence explicitly; never borrow yesterday's or another district's.
+    temperatures = []
+    for raw in (low, high):
+        if not raw:
+            temperatures.append(None)
+        elif re.fullmatch(r'-?\d{1,2}', raw):
+            temperatures.append(int(raw))
+        else:
+            raise ForecastError('forecast_temperature_missing')
+    if temperatures == [None, None]:
+        raise ForecastError('forecast_temperature_missing')
     result = {'date':at.astimezone(TZ).date().isoformat(),'place':'Seferihisar','condition':condition,
-              'low':int(low),'high':int(high),**values,'fetched_at':at.isoformat(),'source_url':SOURCE}
+              'low':temperatures[0],'high':temperatures[1],**values,'fetched_at':at.isoformat(),'source_url':SOURCE}
     validate_forecast(result)
     from .security import assert_no_secrets
     assert_no_secrets(result)
@@ -68,13 +85,31 @@ def refresh_weather(store, at, fetcher=None):
             raise ValueError('Research crossed a local day boundary')
         payload = json.dumps(forecast,ensure_ascii=False)
         status,result = 'prepared','prepared'
-    except (requests.RequestException,ValueError,TypeError,KeyError):
+    except (requests.RequestException,ValueError,TypeError,KeyError) as exc:
         payload = old[0]['forecast'] if old else None
-        status,result = 'blocked','source_unavailable'
+        status, result = 'blocked', weather_error_code(exc)
     with store.db:
         store.db.execute('INSERT INTO weather_stories(day,forecast,status,checked_at,last_result) VALUES(?,?,?,?,?) '
                          'ON CONFLICT(day) DO UPDATE SET forecast=excluded.forecast,status=excluded.status,checked_at=excluded.checked_at,last_result=excluded.last_result '
                          "WHERE weather_stories.status IN ('prepared','blocked')",(day,payload,status,now().isoformat(),result))
+
+
+def weather_error_code(exc):
+    if isinstance(exc, ForecastError):
+        return exc.code
+    if isinstance(exc, requests.exceptions.SSLError):
+        return 'source_tls_failed'
+    if isinstance(exc, requests.Timeout):
+        return 'source_timeout'
+    if isinstance(exc, requests.HTTPError):
+        return 'source_http_error'
+    if isinstance(exc, requests.ConnectionError):
+        return 'source_connection_failed'
+    if isinstance(exc, requests.RequestException):
+        return 'source_unavailable'
+    if isinstance(exc, ValueError) and str(exc) == 'robots.txt disallows this path':
+        return 'source_robots_denied'
+    return 'forecast_invalid'
 
 
 def export_weather(store,public_dir,at):
@@ -110,7 +145,7 @@ def publish_weather(store,at,site_url,adapter=None,checkpoint=None):
     if row['status'] in ('publishing','uncertain'):
         return {'status':'awaiting_resolution'}
     if row['status'] != 'prepared' or not row['forecast']:
-        return {'status':'source_unavailable'}
+        return {'status': row['last_result'] if row['status'] == 'blocked' and row['last_result'] not in ('outside_window','prepared') else 'source_unavailable'}
     forecast = json.loads(row['forecast'])
     if not fresh(forecast,at):
         return {'status':'forecast_stale'}
@@ -161,6 +196,14 @@ def publish_weather(store,at,site_url,adapter=None,checkpoint=None):
         return {'status':'uncertain'}
 
 
+def record_result(store, day, result):
+    # A delayed scheduled run must not erase the actual morning failure.
+    if result['status'] == 'outside_window':
+        return
+    with store.db:
+        store.db.execute("UPDATE weather_stories SET last_result=? WHERE day=? AND status IN ('prepared','blocked')",(result['status'],day))
+
+
 def main():
     import os
     from .store import Store
@@ -171,8 +214,7 @@ def main():
                                  checkpoint=(lambda:persist(store.path)) if os.getenv('STATE_GIT_CHECKPOINT') == 'true' else None)
         # Retain only the controlled result, even when no claim was made.
         day = now().date().isoformat()
-        with store.db:
-            store.db.execute("UPDATE weather_stories SET last_result=? WHERE day=? AND status IN ('prepared','blocked')",(result['status'],day))
+        record_result(store,day,result)
         if target := os.getenv('GITHUB_STEP_SUMMARY'):
             with Path(target).open('a',encoding='utf-8') as out:
                 out.write('### Günlük hava durumu story\n\n'+json.dumps(result)+'\n\n08:00 Türkiye saati hedeflenir. Gecikme yedeği yalnız 08:00–08:59; günde bir story.\n')

@@ -52,16 +52,17 @@ def test_course_names_are_only_extracted_from_same_planned_sentence(course_notic
 
 def test_unrecognized_course_names_or_registration_status_are_not_inferred(course_notice):
     course_notice['description'] = 'Açmayı planladığımız "Başka bir şey" için talepler alınıyor.'
-    assert news_body(course_notice) == course_notice['description']
+    assert course_notice['description'] in news_body(course_notice)
+    assert news_body(course_notice).startswith('Kaynak açıklamasında “')
     course_notice['title'] = 'El Sanatları Kurslarımız İçin Talepler Alınıyor'
     course_notice['description'] = 'Açmayı planladığımız "Tığ Örücülüğü Kursu" için talepler alınıyor.'
-    assert news_body(course_notice) == course_notice['description']
+    assert course_notice['description'] in news_body(course_notice)
     assert 'kayıtlar sürüyor' not in news_title(course_notice)
 
 
 def test_source_specific_neutral_wording_does_not_apply_to_unreviewed_sources(course_notice):
     course_notice['source_id'] = 'other'
-    assert news_title(course_notice) == course_notice['title']
+    assert news_title(course_notice) == 'Kaynak duyurusu: “'+course_notice['title']+'”'
     assert 'açmayı planladığımız' in news_body(course_notice)
 
 

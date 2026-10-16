@@ -11,6 +11,7 @@ from .domain import CATEGORIES, SENSITIVE, canonical, local, normalized, parse_d
 from .security import contains_secret, public_url
 from .timeliness import service_validity_reason, undated_event_invitation
 from .quality import news_quality_reason
+from .editorial_voice import neutral_body, neutral_title
 
 
 def verify(item: dict, source: dict, at: datetime) -> str | None:
@@ -126,6 +127,10 @@ _HOSPITAL_STAFF_TITLE = 'Seferihisar Necat Hepkon Devlet Hastanesi: Çalışan M
 
 
 def news_title(item: dict) -> str:
+    return neutral_title(_news_title(item)) if item.get('kind') == 'news' else item['title']
+
+
+def _news_title(item: dict) -> str:
     """Use neutral display wording without rewriting the source record."""
     title = item["title"]
     if (item.get('kind') == 'news' and item.get('source_id') == 'seferihisar-hastane'
@@ -148,6 +153,10 @@ def news_title(item: dict) -> str:
 
 
 def news_body(item: dict) -> str:
+    return neutral_body(_news_body(item)) or news_title(item)
+
+
+def _news_body(item: dict) -> str:
     """Keep source facts, removing exact repeated sentences from news cards."""
     text = " ".join(item.get("description", "").split())
     if (item.get('source_id') == 'seferihisar-hastane' and item.get('title') == _HOSPITAL_STAFF_TITLE
