@@ -14,7 +14,7 @@ from pathlib import Path
 
 from PIL import Image, ImageOps
 
-VERSION = 'subject-crop-v1'
+VERSION = 'subject-crop-v2'
 MODEL = 'openai/clip-vit-base-patch32'
 REVISION = '3d74acf9a28c67741b2f4f2ea7635f0aaf6f0268'
 WEIGHT_SHA = 'a63082132ba4f97a80bea76823f544493bffa8082296d62d71581a4feff1576f'
@@ -140,9 +140,9 @@ def validate_match(data: bytes, expected: str) -> dict:
             image.load()
             center = (0.5, 1.0) if expected == 'yoga' else (0.5, 0.5)
             crops = [ImageOps.fit(image.convert('RGB'), size, Image.Resampling.LANCZOS, centering=center)
-                     for size in ((1080, 436), (1080, 586))]
+                     for size in ((1080, 436), (1080, 506), (1080, 586))]
         results = scores(crops)
-        if len(results) != 2 or not all(accepted(result, expected) for result in results):
+        if len(results) != 3 or not all(accepted(result, expected) for result in results):
             raise MatchRejected('Visual subject mismatch')
         return {'subject': expected, 'version': VERSION,
                 'image_sha256': hashlib.sha256(data).hexdigest()}

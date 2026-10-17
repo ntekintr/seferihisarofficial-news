@@ -158,7 +158,7 @@ def graphic_title(title: str, category: str, event_details: bool = False):
 def card(title: str, body: str, category: str, target: Path, story: bool = False,
          index: str = '', illustration: Path | None = None, preview: bool = False,
          event_details: bool = False, photo_centering: tuple[float, float] = (0.5, 0.5), compact: bool = False,
-         legacy_outage: bool = False):
+         legacy_outage: bool = False, story_details: bool = False):
     """Fixed branding and a per-item illustration, never a shared news scene."""
     width, height = 1080, 1920 if story else 1350
     top, bottom = (260, 1600) if story else (0, 1260)
@@ -177,6 +177,8 @@ def card(title: str, body: str, category: str, target: Path, story: bool = False
     draw.rectangle((0, header_bottom - 8, width, header_bottom), fill=ORANGE)
 
     hero_bottom = top + (730 if story else 580)
+    if story and story_details and illustration is not None:
+        hero_bottom -= 80
     if illustration is not None:
         with Image.open(illustration) as source:
             hero = ImageOps.fit(source.convert('RGB'), (width, hero_bottom - header_bottom),
@@ -204,8 +206,10 @@ def card(title: str, body: str, category: str, target: Path, story: bool = False
     draw.text((margin + 19, category_top + 9), label, font=font(30, True), fill=NAVY, anchor='lt')
     title_top = category_top + 70
     information_card = compact and illustration is None
+    detail_photo = story and story_details and illustration is not None and event_details
+    title_height = 180 if detail_photo else 400 if information_card else 276
     title_end = text_block(draw, upper_tr(display_title),
-                           (margin, title_top, right, title_top + (400 if information_card else 276)),
+                           (margin, title_top, right, title_top + title_height),
                            (84, 76, 68, 60, 52, 46, 40) if information_card else (68, 60, 52, 46, 40), True)
 
     # Legacy queued slide bodies may contain attribution. It belongs only in
@@ -217,7 +221,22 @@ def card(title: str, body: str, category: str, target: Path, story: bool = False
         date_end = text_block(draw, readable_date_line(date_line), (margin, title_end + 28, right, min(brand_top - 24, title_end + 136)),
                               (42, 38, 34, 30), True, color=ORANGE)
         compact = re.sub(r'\n\s*\n', '\n', rest.strip())
-        text_block(draw, compact, (margin, date_end + 28, right, brand_top - 24), (34, 32, 30, 28), color='#d8e7eb')
+        if detail_photo:
+            # Preserve the useful date/venue/price summary before optional
+            # organizer/address overflow. Full details stay in the caption.
+            lines = [line for line in compact.splitlines() if line.strip()]
+            prices = [line for line in lines if line.startswith(('Ücret:', 'Ücretsiz', 'Ücretli'))]
+            venues = [line for line in lines if line not in prices and not line.startswith('Düzenleyen:')]
+            organizers = [line for line in lines if line.startswith('Düzenleyen:')]
+            y = date_end + 20
+            if venues:
+                y = text_block(draw, '\n'.join(venues), (margin, y, right, min(y+80, brand_top-24)), (34,32,30,28), color='#d8e7eb') + 12
+            if prices:
+                y = text_block(draw, prices[0], (margin, y, right, min(y+48, brand_top-24)), (34,32,30,28), color=ORANGE) + 12
+            if organizers:
+                text_block(draw, '\n'.join(organizers), (margin, y, right, brand_top-24), (32,30,28), color='#d8e7eb')
+        else:
+            text_block(draw, compact, (margin, date_end + 28, right, brand_top - 24), (34, 32, 30, 28), color='#d8e7eb')
     else:
         text_block(draw, content, (margin, title_end + 20, right, brand_top - 24),
                    (46, 42, 38, 34, 30, 28, 26) if information_card else (30, 28, 26), color='#d8e7eb')
@@ -256,7 +275,8 @@ def render_post(post: dict, public_dir: Path, illustrations: dict[int, Path] | N
                  event_details=is_event and i < len(post['slides']),
                  photo_centering=(0.5, 1.0) if (mutable or review) and yoga else (0.5, 0.5),
                  compact=mutable or bool(review),
-                 legacy_outage=category == 'outage' and not mutable and not review)
+                 legacy_outage=category == 'outage' and not mutable and not review,
+                 story_details=(review.get('version') == 'content-visual-v2' or mutable and not review))
             assets[fmt].append(relative)
     return assets
 

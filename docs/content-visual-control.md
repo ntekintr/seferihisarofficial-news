@@ -16,8 +16,9 @@ istem üretmek ve OCR ile yazı aramak bu hataları engellemiyordu.
    sabit İngilizce nesne/sahne tanımlarına karşı karşılaştırılır. Kullanıcı
    başlığı modele istem olarak verilmez. Trafik, boş salon, manzara, toplantı,
    su baskını ve düz renk alternatifleri de karşılaştırmaya dahildir.
-3. Kare kaynağı kabul etmek yetmez. Gönderinin 1080×436 ve story'nin 1080×586
-   gerçek fotoğraf kırpmalarının ikisi de geçmelidir. Yoga kırpması alttaki
+3. Kare kaynağı kabul etmek yetmez. Gönderinin 1080×436 ve story'nin 1080×506
+   gerçek fotoğraf kırpmaları geçmelidir; eski 1080×586 çerçeve kontrolü de
+   ihtiyatlı bir ek ret filtresi olarak sürer. Yoga kırpması alttaki
    matları korur. En az 0,24 kosinüs benzerliği ve diğer tüm sınıflardan en az
    0,015 fark gerekir. Bunlar olasılık veya doğruluk yüzdesi değildir.
    Belirsiz, ilgisiz veya çalıştırılamayan kontrol **bilgi kartına döner**.
@@ -59,6 +60,11 @@ OCR ve kaynak/tarih/geçerlilik kontrolleri ayrıca sürer.
 - Yeni bilgi kartında boş resim alanı ve ikinci kategori başlığı yoktur.
   Kesinti türü doğru etiketlenir. Takvim kapağında açık tarih aralığı, etkinlik
   sayısı ve ilk üç etkinlik bulunur. Logo/renkler/şeritler korunur.
+- Canlı incelemede uzun konser başlığının story'de ücret/mekânı ittiği görüldü.
+  v2 sürümünde story fotoğrafı 80 piksel kısaltılır, başlık alanı sınırlandırılır;
+  mekân ve ücret organizatörden önce ayrılmış alanda gösterilir. Uzun adres
+  açık kısaltma işaretiyle özetlenir; tam bilgi açıklamadadır. v1 adresleri
+  yeni ölçülerle üzerine yazılmaz; yeni hazırlık v2 medya sürümünü gerektirir.
 - Ayrı kaynaklarda aynı haberin yüksek örtüşmeli başlıkları, toplantı
   eşanlamları ve tüm sayılarıyla karşılaştırılır. Son 72 saatte yayımlanmış,
   işlemde veya belirsiz eşleşme varsa ikinci haber bekletilir. Kaynak kayıtları
