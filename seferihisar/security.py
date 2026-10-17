@@ -51,7 +51,7 @@ def valid_visual_review(value):
     """Standard-library boundary; no model/Pillow dependency in state writer."""
     if not isinstance(value, dict) or set(value) != {'version','content','edition','images','references','assets'}:
         return False
-    if value['version'] not in ('content-visual-v1','content-visual-v2') or any(not isinstance(value[k], str) or not re.fullmatch(r'[a-f0-9]{24}', value[k]) for k in ('content','edition')):
+    if value['version'] not in ('content-visual-v1','content-visual-v2','content-visual-v3') or any(not isinstance(value[k], str) or not re.fullmatch(r'[a-f0-9]{24}', value[k]) for k in ('content','edition')):
         return False
     if not isinstance(value['images'], dict) or len(value['images']) > 10 or not isinstance(value['assets'], dict) or len(value['assets']) > 20:
         return False

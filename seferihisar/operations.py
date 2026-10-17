@@ -12,11 +12,13 @@ STATUSES = frozenset(('complete', 'published', 'already_published', 'outside_win
     'daily_limit', 'empty', 'disabled', 'rate_limited', 'media_missing',
     'media_not_deployed', 'already_claimed', 'awaiting_resolution', 'uncertain',
     'story_pending', 'blocked_source', 'account_mismatch', 'check_failed',
-    'visual_review_missing', 'visual_review_stale', 'visual_review_unavailable'))
+    'visual_review_missing', 'visual_review_stale', 'visual_review_unavailable',
+    'editorial_review_required', 'editorial_copy_stale'))
 RESULT_FIELDS = frozenset(('status', 'feed', 'story', 'facebook'))
 FAILURES = frozenset(('media_missing', 'media_not_deployed', 'awaiting_resolution',
     'uncertain', 'account_mismatch', 'check_failed',
-    'visual_review_missing', 'visual_review_stale', 'visual_review_unavailable'))
+    'visual_review_missing', 'visual_review_stale', 'visual_review_unavailable',
+    'editorial_review_required', 'editorial_copy_stale'))
 
 
 def safe_result(result):
@@ -76,7 +78,21 @@ def summary(store, at):
     budget = store.rows('SELECT attempts FROM illustration_days WHERE day=?', (utc_day.isoformat(),))
     from .illustrations import DAILY_ATTEMPTS
     attempts = budget[0]['attempts'] if budget else 0
+    from .quality import news_editorial_reason
+    from .domain import digest
+    reasons = ('editorial_headline_required','editorial_context_required','editorial_copy_required')
+    editorial = dict.fromkeys(reasons,0)
+    for item in store.items():
+        stamp = parse_date(item.get('published_at'))
+        if stamp and at-timedelta(hours=48) <= stamp <= at+timedelta(minutes=5):
+            reason = news_editorial_reason(item)
+            if reason in editorial:
+                editorial[reason] += 1
+    blocked = {digest(p['id']) for p in parents if p['status']=='blocked_source'}
+    editorial['unrenderable_card_text'] = sum(r['id'] in blocked for r in store.rows(
+        "SELECT id FROM withheld WHERE reason='unrenderable_card_text'"))
     return {'as_of': at.isoformat(), 'checks': checks,
+        'editorial_holds': editorial,
         'window_start': window.isoformat(), 'window_end': (window + timedelta(hours=1)).isoformat(),
         'window_open': window <= at < window + timedelta(hours=1),
         'queue': {status: sum(p['status'] == status for p in parents) for status in ('prepared', 'blocked_source')}

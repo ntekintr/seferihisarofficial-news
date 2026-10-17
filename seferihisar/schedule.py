@@ -49,6 +49,10 @@ def prepare(store: Store, at: datetime, *, refresh_digests: bool = True):
             valid = bool(references) and all(item and source_current(item, at, failed) for item in references)
             store.db.execute("UPDATE posts SET status=? WHERE id=?", ("prepared" if valid else "blocked_source", post["id"]))
     for item in store.items():
+        from .quality import news_editorial_reason
+        if reason := news_editorial_reason(item):
+            store.withhold(item['id']+':editorial', reason, at.isoformat())
+            continue
         if not source_current(item, at, failed):
             continue
         if item["kind"] == "news":
@@ -153,8 +157,8 @@ def card_location(item: dict) -> str | None:
 def slide_body(item: dict) -> str:
     if item["kind"] == "news":
         body = news_body(item)
-        endings = [match.end() for match in re.finditer(r'[.!?](?=\s|$)', body[:360]) if match.end() >= 100]
-        return body[:endings[-1]] if len(body) > 360 and endings else excerpt(body, 360)
+        endings = [match.end() for match in re.finditer(r'[.!?](?=\s|$)', body[:300]) if match.end() >= 80]
+        return body[:endings[min(1,len(endings)-1)]] if endings else excerpt(body, 300)
     if item['category']=='outage':
         return event_date_label(item)+'\n\nEtkilenen bölge: '+(item.get('location') or 'Açıklanmadı')+'\n\nMahalle ve sokak ayrıntıları için resmî duyuruyu kontrol edin.'
     details = [event_date_label(item)]

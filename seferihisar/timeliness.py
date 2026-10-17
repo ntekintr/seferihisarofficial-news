@@ -108,6 +108,9 @@ def publication_reason(item: dict, at: datetime) -> str | None:
             return 'outdated_or_missing_date'
         if at - published > timedelta(hours=48):
             return 'expired_news'
+        from .quality import news_editorial_reason
+        if reason := news_editorial_reason(item):
+            return reason
     elif item.get('kind') == 'event':
         start, end = parse_date(item.get('start')), parse_date(item.get('end'))
         if not start or not end or end < start or type(item.get('time_known')) is not bool:
