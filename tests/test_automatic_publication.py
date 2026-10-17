@@ -22,7 +22,7 @@ def api():
 
 
 def news(store, at, name='1'):
-    item = {'kind':'news','title':'Seferihisar kültür duyurusu '+name,'description':'Kaynaklı yerel kültür haberi.',
+    item = {'kind':'news','title':'Seferihisar kültür duyurusu '+name,'description':'Kaynak tarafından yerel kültür haberinin ayrıntıları duyuruldu.',
             'url':'https://example.org/news/'+name,'sources':['https://example.org/news/'+name],
             'source_id':'example','source_name':'Yerel kaynak','category':'culture',
             'published_at':(at-timedelta(minutes=20)).isoformat()}

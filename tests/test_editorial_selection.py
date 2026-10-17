@@ -32,7 +32,7 @@ def seed(store, at, cases):
     ids = []
     for index, case in enumerate(cases):
         item = {'kind': case.get('kind', 'news'), 'title': case['title'],
-                'description': 'Doğrulanmış yerel duyuru.', 'category': case.get('category', 'news'),
+                'description': 'Kaynak tarafından yerel duyurunun ayrıntıları kamuoyuyla paylaşıldı.', 'category': case.get('category', 'news'),
                 'url': f'https://example.org/{index}', 'sources': [f'https://example.org/{index}'],
                 'source_id': f'example-{index}', 'source_name': 'Yerel kaynak'}
         if item['kind'] == 'news':

@@ -11,6 +11,8 @@ from PIL import Image
 from seferihisar.domain import digest
 from seferihisar.instagram import publish_automatic
 from seferihisar.pipeline import export
+from seferihisar.editor import headline, caption
+from seferihisar.schedule import slide_body
 
 
 @pytest.mark.parametrize('history', ['expired', 'superseded', 'story', 'prepared'])
@@ -26,11 +28,12 @@ def test_manifest_keeps_oldest_due_media_after_large_history(
     monkeypatch.delenv('ILLUSTRATIONS_ENABLED', raising=False)
 
     def queue(label, due, status='prepared', **fields):
+        title = headline(event,'news')
         post = {'id': digest(label), 'item_id': item_id, 'revision': 1,
                 'kind': 'news', 'due_at': due.isoformat(), 'created_at': at.isoformat(),
-                'title': 'Seferihisar duyurusu', 'caption': 'Kaynak: Belediye\n' + event['url'],
+                'title': title, 'caption': caption(event,title),
                 'category': 'public', 'source_urls': [event['url']],
-                'slides': [{'title': 'Seferihisar duyurusu', 'body': 'Güncel duyuru.'}],
+                'slides': [{'title': title, 'body': slide_body(event)}],
                 **fields}
         store.queue(post)
         with store.db:

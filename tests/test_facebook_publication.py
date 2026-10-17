@@ -13,7 +13,7 @@ from seferihisar.store import Store
 
 
 def setup_content(store, at, *, slides=1):
-    item = {'kind':'news', 'title':'Seferihisar kültür duyurusu', 'description':'Kaynaklı yerel kültür haberi.',
+    item = {'kind':'news', 'title':'Seferihisar kültür duyurusu', 'description':'Kaynak tarafından yerel kültür haberinin ayrıntıları duyuruldu.',
             'url':'https://example.org/news/1', 'sources':['https://example.org/news/1'],
             'source_id':'example', 'source_name':'Yerel kaynak', 'category':'culture',
             'published_at':(at-timedelta(minutes=20)).isoformat()}

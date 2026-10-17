@@ -83,3 +83,7 @@ ekranlardaki yanlış sahneleri ve incelenmiş olumlu fotoğrafları sınar. Nor
 unit testleri gerçek modeli taklit ederek bu testin yerine geçirilmez.
 Kontrol dağıtıldı demek, yeni bir doğal yayının platformda görüldüğü anlamına
 gelmez; canlı dosya doğrulaması ve Meta teslimi ayrı kanıtlardır.
+
+Başlık, haber özeti ve gerçek font/yazı kontrolü v3 dosya sürümünde eklenmiştir:
+[Yayın öncesi metin kontrolü](editorial-publication-control.md). Yukarıdaki
+v2 story ölçüleri v3'te de sürer; dondurulmuş v1/v2 dosyaları değişmez.

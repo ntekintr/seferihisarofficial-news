@@ -32,6 +32,13 @@ test('publication waits, missing media and uncertainty have separate safe labels
  assert.match(context.publicationLabel('visual_review_missing'),/kontrolü bekleniyor/);
  assert.match(context.publicationLabel('visual_review_stale'),/güncel kart bekleniyor/);
  assert.match(context.publicationLabel('visual_review_unavailable'),/erişilemiyor/);
+ assert.match(context.publicationLabel('editorial_review_required'),/Haber başlığı/);
+ assert.match(context.publicationLabel('editorial_copy_stale'),/güncel kart/);
+});
+
+test('editorial holds show only known safe reasons and integer counts',()=>{
+ assert.deepEqual(JSON.parse(JSON.stringify(context.editorialRows({editorial_headline_required:2,unrenderable_card_text:1,PRIVATE_BODY:9}))),[['Anlaşılır haber başlığı bekleniyor',2],['Kart yazısı düzgün görüntülenemiyor',1]]);
+ assert.deepEqual(JSON.parse(JSON.stringify(context.editorialRows({editorial_copy_required:'PRIVATE_BODY',editorial_context_required:-1}))),[]);
 });
 
 test('detail and calendar failures have Turkish labels',()=>{

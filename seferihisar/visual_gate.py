@@ -11,7 +11,7 @@ import requests
 from .domain import digest
 from .security import public_url, valid_visual_review
 
-VERSION = 'content-visual-v2'
+VERSION = 'content-visual-v3'
 CONTENT_FIELDS = ('id', 'item_id', 'revision', 'kind', 'title', 'caption', 'category',
                   'source_urls', 'slides', 'illustration_keys')
 
@@ -62,10 +62,14 @@ def deployed(store, post, site_url, paths, session=None, *, story=False):
     parent = post
     if post.get('publish_format') == 'story':
         parent = next((p for p in store.posts() if p['id'] == post.get('parent_post_id')), {})
+    from .quality import publication_copy_reason
+    items = {i['id']:i for i in store.items()}
+    if reason := publication_copy_reason(parent, items):
+        return reason
     if not public_url(site_url) or not valid_review(parent):
         return 'visual_review_missing'
     proof = parent['visual_review']
-    current = {i['id']:i['revision'] for i in store.items()}
+    current = {key:i['revision'] for key,i in items.items()}
     if (not proof['references'] or any(current.get(key) != revision for key,revision in proof['references'].items())
             or (parent.get('item_id') and proof['references'].get(parent['item_id']) != parent['revision'])):
         return 'visual_review_stale'

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from functools import lru_cache
+from functools import lru_cache, partial
 from pathlib import Path
 import re
 from datetime import datetime
@@ -9,6 +9,7 @@ from PIL import Image, ImageDraw, ImageFont, ImageOps
 
 from .domain import CATEGORIES
 from .editor import event_activity, event_type_label, news_type_label
+from .text_quality import TextRenderError, plain_display, ensure_glyphs
 
 NAVY, IVORY, ORANGE, TURQUOISE = '#06244a', '#f4efe4', '#f58220', '#20b8c9'
 ASSETS = Path(__file__).with_name('assets')
@@ -63,9 +64,11 @@ def ellipsis(draw, value, typeface, width):
     return value + '…'
 
 
-def text_block(draw, text, box, sizes, bold=False, color=IVORY):
+def text_block(draw, text, box, sizes, bold=False, color=IVORY, *, strict=False, complete=False):
     """Fit a bounded text panel; visibly mark shortened excerpts."""
     left, top, right, bottom = box
+    if strict:
+        text = '\n'.join(plain_display(line) for line in text.splitlines())
     for size in sizes:
         typeface = font(size, bold)
         lines = wrap(draw, text, typeface, right - left)
@@ -73,6 +76,10 @@ def text_block(draw, text, box, sizes, bold=False, color=IVORY):
         if len(lines) * line_height <= bottom - top:
             break
     capacity = max(0, (bottom - top) // line_height)
+    if strict:
+        ensure_glyphs(text, typeface)
+        if complete and len(lines) > capacity:
+            raise TextRenderError('Card heading or date would be truncated')
     visible = lines[:capacity]
     if len(lines) > capacity and visible:
         visible[-1] = ellipsis(draw, visible[-1], typeface, right - left)
@@ -158,9 +165,10 @@ def graphic_title(title: str, category: str, event_details: bool = False):
 def card(title: str, body: str, category: str, target: Path, story: bool = False,
          index: str = '', illustration: Path | None = None, preview: bool = False,
          event_details: bool = False, photo_centering: tuple[float, float] = (0.5, 0.5), compact: bool = False,
-         legacy_outage: bool = False, story_details: bool = False):
+         legacy_outage: bool = False, story_details: bool = False, text_review: bool = False):
     """Fixed branding and a per-item illustration, never a shared news scene."""
     width, height = 1080, 1920 if story else 1350
+    block = partial(text_block, strict=text_review)
     top, bottom = (260, 1600) if story else (0, 1260)
     margin, right = 64, width - 64
     image = Image.new('RGB', (width, height), NAVY)
@@ -205,12 +213,14 @@ def card(title: str, body: str, category: str, target: Path, story: bool = False
     draw.rounded_rectangle((margin, category_top, margin + label_width, category_top + 48), 9, fill=ORANGE)
     draw.text((margin + 19, category_top + 9), label, font=font(30, True), fill=NAVY, anchor='lt')
     title_top = category_top + 70
+    if text_review and not re.search(r'\w',plain_display(display_title)):
+        raise TextRenderError('Empty card heading after decoration cleanup')
     information_card = compact and illustration is None
     detail_photo = story and story_details and illustration is not None and event_details
     title_height = 180 if detail_photo else 400 if information_card else 276
-    title_end = text_block(draw, upper_tr(display_title),
+    title_end = block(draw, upper_tr(display_title),
                            (margin, title_top, right, title_top + title_height),
-                           (84, 76, 68, 60, 52, 46, 40) if information_card else (68, 60, 52, 46, 40), True)
+                           (84, 76, 68, 60, 52, 46, 40) if information_card else (68, 60, 52, 46, 40), True, complete=True)
 
     # Legacy queued slide bodies may contain attribution. It belongs only in
     # the caption; never paint it or a fallback source label on the graphic.
@@ -218,8 +228,8 @@ def card(title: str, body: str, category: str, target: Path, story: bool = False
     brand_top = bottom - 70
     if event_details:
         date_line, _, rest = content.partition('\n')
-        date_end = text_block(draw, readable_date_line(date_line), (margin, title_end + 28, right, min(brand_top - 24, title_end + 136)),
-                              (42, 38, 34, 30), True, color=ORANGE)
+        date_end = block(draw, readable_date_line(date_line), (margin, title_end + 28, right, min(brand_top - 24, title_end + 136)),
+                              (42, 38, 34, 30), True, color=ORANGE, complete=True)
         compact = re.sub(r'\n\s*\n', '\n', rest.strip())
         if detail_photo:
             # Preserve the useful date/venue/price summary before optional
@@ -230,15 +240,15 @@ def card(title: str, body: str, category: str, target: Path, story: bool = False
             organizers = [line for line in lines if line.startswith('Düzenleyen:')]
             y = date_end + 20
             if venues:
-                y = text_block(draw, '\n'.join(venues), (margin, y, right, min(y+80, brand_top-24)), (34,32,30,28), color='#d8e7eb') + 12
+                y = block(draw, '\n'.join(venues), (margin, y, right, min(y+80, brand_top-24)), (34,32,30,28), color='#d8e7eb') + 12
             if prices:
-                y = text_block(draw, prices[0], (margin, y, right, min(y+48, brand_top-24)), (34,32,30,28), color=ORANGE) + 12
+                y = block(draw, prices[0], (margin, y, right, min(y+48, brand_top-24)), (34,32,30,28), color=ORANGE, complete=True) + 12
             if organizers:
-                text_block(draw, '\n'.join(organizers), (margin, y, right, brand_top-24), (32,30,28), color='#d8e7eb')
+                block(draw, '\n'.join(organizers), (margin, y, right, brand_top-24), (32,30,28), color='#d8e7eb')
         else:
-            text_block(draw, compact, (margin, date_end + 28, right, brand_top - 24), (34, 32, 30, 28), color='#d8e7eb')
+            block(draw, compact, (margin, date_end + 28, right, brand_top - 24), (34, 32, 30, 28), color='#d8e7eb')
     else:
-        text_block(draw, content, (margin, title_end + 20, right, brand_top - 24),
+        block(draw, content, (margin, title_end + 20, right, brand_top - 24),
                    (46, 42, 38, 34, 30, 28, 26) if information_card else (30, 28, 26), color='#d8e7eb')
     draw.line((margin, brand_top - 8, right, brand_top - 8), fill=TURQUOISE, width=2)
     draw.text((margin, brand_top + 23), '@seferihisarofficial', font=font(23, True), fill=IVORY, anchor='lt')
@@ -276,7 +286,8 @@ def render_post(post: dict, public_dir: Path, illustrations: dict[int, Path] | N
                  photo_centering=(0.5, 1.0) if (mutable or review) and yoga else (0.5, 0.5),
                  compact=mutable or bool(review),
                  legacy_outage=category == 'outage' and not mutable and not review,
-                 story_details=(review.get('version') == 'content-visual-v2' or mutable and not review))
+                 story_details=(review.get('version') in ('content-visual-v2','content-visual-v3') or mutable and not review),
+                 text_review=review.get('version') == 'content-visual-v3' or mutable and not review)
             assets[fmt].append(relative)
     return assets
 

@@ -182,6 +182,14 @@ def _export(store: Store, public_dir: Path, sources: list[dict], at: datetime, d
     shutil.rmtree(public_dir / "media", ignore_errors=True)
     for post in sorted(parents, key=lambda p: p['due_at']):
         if post["status"] in ("prepared", "published", "publishing", "uncertain"):
+            if post['status']=='prepared':
+                from .quality import publication_copy_reason
+                if reason := publication_copy_reason(post,item_map):
+                    store.withhold(post['id'],reason,at.isoformat())
+                    with store.db:
+                        store.db.execute("UPDATE posts SET status='blocked_source' WHERE id=? AND status='prepared'",(post['id'],))
+                    post['status']='blocked_source'
+                    continue
             illustrations = illustrator.for_post(post, item_map)
             if post["status"] == "prepared":
                 # Research records actual assignments. The publisher renders
@@ -201,7 +209,19 @@ def _export(store: Store, public_dir: Path, sources: list[dict], at: datetime, d
                 # vision runtime retains that proof and consumes deployed bytes.
                 if illustrator.enabled or not valid_review(post):
                     post['visual_review'] = review(post, illustrations, item_map)
-            assets[post["id"]] = render_post(post, public_dir, illustrations)
+            from .text_quality import TextRenderError
+            try:
+                assets[post["id"]] = render_post(post, public_dir, illustrations)
+            except TextRenderError:
+                # A bad draft cannot abort research for every other source or
+                # become an approved image with tofu/truncated heading.
+                if post['status'] != 'prepared':
+                    raise
+                store.withhold(post['id'], 'unrenderable_card_text', at.isoformat())
+                with store.db:
+                    store.db.execute("UPDATE posts SET status='blocked_source' WHERE id=? AND status='prepared'", (post['id'],))
+                post['status']='blocked_source'
+                continue
             if post['status'] == 'prepared':
                 from .visual_gate import record_assets
                 # A no-generation publisher must not replace a previous photo
