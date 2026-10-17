@@ -36,6 +36,8 @@ def source_lines(item: dict) -> list[str]:
     lines = [plain_display(line) for line in description.splitlines()]
     lines = [line for line in lines if line]
     brand = normalized(re.sub(r'\bInstagram\b', '', item.get('source_name') or '', flags=re.I))
+    if lines and brand and normalized(lines[-1]) in {brand+' '+town for town in ('seferihisar','urla','güzelbahçe','izmir')}:
+        lines.pop()
     # A trailing brand+town signature identifies the source, not the occurrence.
     if len(lines) >= 2 and brand and normalized(lines[-2]) == brand and re.fullmatch(
             r'(?:seferihisar|urla|güzelbahçe|izmir)', normalized(lines[-1])):
@@ -60,7 +62,7 @@ def source_body(item: dict) -> str:
     value = ' '.join(lines)
     # Reviewed rhetorical prefix only; retain the entire factual continuation.
     value = re.sub(r'^Elleri minik kalpleri kocaman\s+', '', value, flags=re.I)
-    return value[:1].upper() + value[1:]
+    return value[:1].translate(str.maketrans({'i':'İ','ı':'I'})).upper() + value[1:]
 
 
 @lru_cache(maxsize=4096)

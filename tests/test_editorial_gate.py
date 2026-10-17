@@ -42,7 +42,7 @@ def test_better_headline_alone_cannot_turn_source_signature_into_event_location(
     assert news_editorial_reason(children) is None
 
 
-@pytest.mark.parametrize('title',['Müjde!','DİKKAT⚠ DİKKAT⚠','Böyle dostluklar hep olsun 🙏','İyi ki varsınız', 'X'*180])
+@pytest.mark.parametrize('title',['Müjde!','DİKKAT⚠ DİKKAT⚠','Böyle dostluklar hep olsun 🙏','Seferihisar’da böyle çocuklar hep olsun','İyi ki varsınız', 'X'*180])
 def test_other_uninformative_or_truncated_social_headlines_are_held(children,title):
     children['title']=title
     assert news_editorial_reason(children)=='editorial_headline_required'
@@ -109,6 +109,12 @@ def test_cleanup_keeps_unrecognized_commitments_numbers_and_quoted_words():
     assert not value.startswith('Destekleriniz için teşekkürler.')
     assert '21 Ekim’de 23 aileye' in value and '24 Ekim’de 7 aileye' in value
     assert 'yardım edeceğiz' in value and '“İyi ki varsınız”' in value
+
+
+def test_same_line_brand_signature_is_not_place_evidence_and_turkish_case_is_preserved():
+    item={'title':'Yeni duyuru','source_name':'SEHAYDER Instagram',
+          'description':'izmir ile ilgili kaynak bilgisi korunur.\nSEHAYDER SEFERİHİSAR'}
+    assert source_body(item)=='İzmir ile ilgili kaynak bilgisi korunur.'
 
 
 def test_new_card_emoji_cleanup_preserves_actual_numbers_names_and_currency(tmp_path,monkeypatch):

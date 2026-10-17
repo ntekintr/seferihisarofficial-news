@@ -30,7 +30,7 @@ def news_editorial_reason(item: dict) -> str | None:
         return 'editorial_copy_required'
     title = plain_display(item.get('title',''))
     value = normalized(title)
-    vague = re.search(r'^(?:böyle\b.*\bhep olsun|iyi ki varsiniz\b.*|'
+    vague = re.search(r'\bböyle\b.*\bhep olsun$|\biyi ki varsiniz\b|^(?:'
                       r'dikkat(?: dikkat)*|bekle\b.*|engelli canlara öncelik|'
                       r'elleri minik\b.*|harika haber\b.*|müjde(?: müjde)*)$', value)
     if (not value or len(title)>160 or vague or title.endswith(('…','...'))
