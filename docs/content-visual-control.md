@@ -26,6 +26,8 @@ istem üretmek ve OCR ile yazı aramak bu hataları engellemiyordu.
    SHA-256 parmak izleriyle (iki haneli baytlar `:` ile ayrılır) sürümlü bir
    medya klasörü seçilir. Mevcut sır tarayıcısı gevşetilmez. Böylece eski bir
    fotoğraf aynı URL'de dururken yeni metinle onaylanamaz.
+   Fotoğrafsız takvimlerde de her kaynak öğesinin kimliği ve revizyonu ayrıca
+   bağlanır. Yayın öncesi kaynak revizyonu değişmişse eski kart kullanılamaz.
 5. Hem otomatik hem açık CLI yayını; Instagram gönderi/story ve Facebook
    teslimi öncesinde canlı Pages manifestini ve gerçek JPEG SHA-256 değerlerini
    GET ile karşılaştırır. Eksik/eski/erişilemeyen kanıt Meta yazımından ve

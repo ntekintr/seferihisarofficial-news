@@ -26,12 +26,18 @@ def content_key(post):
     return digest(json.dumps({k: post.get(k) for k in CONTENT_FIELDS}, ensure_ascii=False, sort_keys=True))
 
 
-def review(post, illustrations):
+def review(post, illustrations, items=None):
     images = {str(i): fingerprint(path.read_bytes()) for i, path in illustrations.items()}
     content = content_key(post)
-    edition = digest(VERSION + content + json.dumps(images, sort_keys=True))
+    if post.get('item_id'):
+        references = {post['item_id']:post['revision']}
+    else:
+        by_url = {url:i for i in (items or {}).values() for url in i.get('sources', []) + [i['url']]}
+        references = {by_url[url]['id']:by_url[url]['revision']
+                      for url in post.get('source_urls', []) if url in by_url}
+    edition = digest(VERSION + content + json.dumps([images,references], sort_keys=True))
     return {'version': VERSION, 'content': content, 'edition': edition,
-            'images': images, 'assets': {}}
+            'images': images, 'references': references, 'assets': {}}
 
 
 def valid_review(post):
@@ -59,6 +65,10 @@ def deployed(store, post, site_url, paths, session=None, *, story=False):
     if not public_url(site_url) or not valid_review(parent):
         return 'visual_review_missing'
     proof = parent['visual_review']
+    current = {i['id']:i['revision'] for i in store.items()}
+    if (not proof['references'] or any(current.get(key) != revision for key,revision in proof['references'].items())
+            or (parent.get('item_id') and proof['references'].get(parent['item_id']) != parent['revision'])):
+        return 'visual_review_stale'
     if not paths or any(path not in proof['assets'] or not re.fullmatch(
             r'media/' + proof['edition'] + r'/(?:feed|story)-\d+\.jpg', path) for path in paths):
         return 'visual_review_stale'

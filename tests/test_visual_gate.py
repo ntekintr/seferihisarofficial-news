@@ -147,7 +147,7 @@ def reviewed_post(store,event,at,tmp_path):
     return post,assets,{'demo':False,'posts':[visible]}
 
 
-@pytest.mark.parametrize('problem',['none','old-manifest','old-bytes','changed-copy','wrong-format','oversize','missing-review'])
+@pytest.mark.parametrize('problem',['none','old-manifest','old-bytes','changed-copy','changed-source','wrong-format','oversize','missing-review'])
 def test_deployed_gate_binds_actual_bytes_copy_and_format(store,event,at,tmp_path,problem):
     post,assets,manifest=reviewed_post(store,event,at,tmp_path)
     paths=assets['feed']
@@ -156,6 +156,8 @@ def test_deployed_gate_binds_actual_bytes_copy_and_format(store,event,at,tmp_pat
     if problem=='changed-copy':changed['caption']+=' Değişti'
     if problem=='missing-review':changed.pop('visual_review')
     if problem=='wrong-format':paths=assets['story']
+    if problem=='changed-source':
+        with store.db:store.db.execute('UPDATE items SET revision=revision+1')
     def get(url,**kwargs):
         if url.endswith('data.json'):return Response(json.dumps(manifest).encode(),'application/json')
         body=(tmp_path / url.split('https://example.org/')[1]).read_bytes()
@@ -165,6 +167,17 @@ def test_deployed_gate_binds_actual_bytes_copy_and_format(store,event,at,tmp_pat
     client=SimpleNamespace(get=get)
     result=deployed(store,changed,'https://example.org/',paths,client)
     assert (result is None)==(problem=='none')
+
+
+def test_calendar_review_binds_each_source_revision_even_without_photos(store,event,at,tmp_path):
+    store.upsert(event,at.isoformat());item=store.items()[0]
+    post={'id':'a'*24,'kind':'weekly','title':'Takvim','source_urls':[item['url']],
+          'slides':[{'title':'Takvim','body':'Tarih bilgileri'}],'category':'event'}
+    post['visual_review']=review(post,{}, {item['id']:item})
+    assert post['visual_review']['references']=={item['id']:item['revision']}
+    assets=render_post(post,tmp_path);record_assets(post,assets,tmp_path)
+    with store.db:store.db.execute('UPDATE items SET revision=revision+1')
+    assert deployed(store,post,'https://example.org/',assets['feed'],Mock())=='visual_review_stale'
 
 
 def test_gate_failure_precedes_claim_checkpoint_and_every_meta_call(store,event,at,tmp_path):

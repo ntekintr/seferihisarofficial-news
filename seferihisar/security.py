@@ -49,12 +49,17 @@ def assert_no_secrets(value):
 
 def valid_visual_review(value):
     """Standard-library boundary; no model/Pillow dependency in state writer."""
-    if not isinstance(value, dict) or set(value) != {'version','content','edition','images','assets'}:
+    if not isinstance(value, dict) or set(value) != {'version','content','edition','images','references','assets'}:
         return False
     if value['version'] != 'content-visual-v1' or any(not isinstance(value[k], str) or not re.fullmatch(r'[a-f0-9]{24}', value[k]) for k in ('content','edition')):
         return False
     if not isinstance(value['images'], dict) or len(value['images']) > 10 or not isinstance(value['assets'], dict) or len(value['assets']) > 20:
         return False
+    if not isinstance(value['references'], dict) or len(value['references']) > 10:
+        return False
+    for key, revision in value['references'].items():
+        if not isinstance(key, str) or not re.fullmatch(r'[a-f0-9]{24}', key) or type(revision) is not int or not 1 <= revision <= 1000000:
+            return False
     for key, sha in value['images'].items():
         if not isinstance(key, str) or not re.fullmatch(r'[0-9]', key) or not isinstance(sha, str) or not re.fullmatch(r'(?:[a-f0-9]{2}:){31}[a-f0-9]{2}', sha):
             return False

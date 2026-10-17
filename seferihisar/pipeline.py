@@ -200,7 +200,7 @@ def _export(store: Store, public_dir: Path, sources: list[dict], at: datetime, d
                 # Research checks real image pixels. A publisher without the
                 # vision runtime retains that proof and consumes deployed bytes.
                 if illustrator.enabled or not valid_review(post):
-                    post['visual_review'] = review(post, illustrations)
+                    post['visual_review'] = review(post, illustrations, item_map)
             assets[post["id"]] = render_post(post, public_dir, illustrations)
             if post['status'] == 'prepared':
                 from .visual_gate import record_assets
