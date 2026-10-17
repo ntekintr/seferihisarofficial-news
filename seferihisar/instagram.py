@@ -68,7 +68,7 @@ class Instagram:
         return value
 
 
-def publish_one(store: Store, at: datetime, site_url: str, assets: dict[str, dict], story: bool = False, adapter=None, checkpoint=None, *, target_id: str | None = None, paired_story: bool = False, exclude_event_ids: set[str] | None = None, editorial: bool = False) -> dict:
+def publish_one(store: Store, at: datetime, site_url: str, assets: dict[str, dict], story: bool = False, adapter=None, checkpoint=None, *, target_id: str | None = None, paired_story: bool = False, exclude_event_ids: set[str] | None = None, editorial: bool = False, require_visual_review: bool = False) -> dict:
     api = adapter or Instagram()
     if not api.enabled():
         return {"status": "disabled"}
@@ -107,6 +107,10 @@ def publish_one(store: Store, at: datetime, site_url: str, assets: dict[str, dic
     media = ([post["story_asset"]] if story else assets.get(post["id"], {}).get("feed", []))
     if not media:
         return {"status": "media_missing"}
+    if require_visual_review or isinstance(api, Instagram):
+        from .visual_gate import deployed
+        if reason := deployed(store, post, site_url, media, session=api.session, story=story):
+            return {'status':reason}
     urls = [urljoin(site_url.rstrip("/") + "/", path) for path in media]
     # Verify media is deployed before container creation. No image upload API is used.
     for url in urls:
@@ -144,7 +148,7 @@ def publish_one(store: Store, at: datetime, site_url: str, assets: dict[str, dic
         return {"status": "uncertain", "post_id": post["id"]}
 
 
-def publish_automatic(store: Store, at: datetime, site_url: str, assets: dict[str, dict], adapter=None, checkpoint=None) -> dict:
+def publish_automatic(store: Store, at: datetime, site_url: str, assets: dict[str, dict], adapter=None, checkpoint=None, *, require_visual_review: bool = False) -> dict:
     """At most two feeds per Turkish day; each gets one matching story card.
 
     A completed/uncertain claim consumes its slot and daily budget, including
@@ -173,7 +177,7 @@ def publish_automatic(store: Store, at: datetime, site_url: str, assets: dict[st
         if len(today) >= 2:
             return {'status':'daily_limit'}
         covered = {p['item_id'] for p in today if p.get('item_id')}
-        feed = publish_one(store, at, site_url, assets, adapter=api, checkpoint=checkpoint, exclude_event_ids=covered, editorial=True)
+        feed = publish_one(store, at, site_url, assets, adapter=api, checkpoint=checkpoint, exclude_event_ids=covered, editorial=True, require_visual_review=require_visual_review)
         if feed['status'] != 'published':
             return {'status':feed['status']}
         parent = next(p for p in store.posts() if p['id'] == feed['post_id'])
@@ -181,7 +185,7 @@ def publish_automatic(store: Store, at: datetime, site_url: str, assets: dict[st
     child = next((p for p in store.posts() if p['id'] == child_id), None)
     if child and child['status'] in ('published','publishing','uncertain'):
         return {'status':'complete' if child['status']=='published' else 'awaiting_resolution', 'feed':feed['status'], 'story':child['status']}
-    story_result = publish_one(store, at, site_url, assets, story=True, adapter=api, checkpoint=checkpoint, target_id=child_id, paired_story=True)
+    story_result = publish_one(store, at, site_url, assets, story=True, adapter=api, checkpoint=checkpoint, target_id=child_id, paired_story=True, require_visual_review=require_visual_review)
     return {'status':'complete' if story_result['status']=='published' else 'story_pending', 'feed':feed['status'], 'story':story_result['status']}
 
 

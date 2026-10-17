@@ -29,6 +29,9 @@ test('publication waits, missing media and uncertainty have separate safe labels
  assert.match(context.publicationLabel('media_not_deployed'),/Görsel bağlantısı/);
  assert.equal(context.publicationLabel('__proto__'),'Henüz doğrulanmadı');
  assert.equal(context.publicationLabel('PRIVATE_BODY'),'Henüz doğrulanmadı');
+ assert.match(context.publicationLabel('visual_review_missing'),/kontrolü bekleniyor/);
+ assert.match(context.publicationLabel('visual_review_stale'),/güncel kart bekleniyor/);
+ assert.match(context.publicationLabel('visual_review_unavailable'),/erişilemiyor/);
 });
 
 test('detail and calendar failures have Turkish labels',()=>{

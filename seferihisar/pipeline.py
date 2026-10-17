@@ -196,7 +196,21 @@ def _export(store: Store, public_dir: Path, sources: list[dict], at: datetime, d
                     with store.db:
                         store.db.execute("UPDATE posts SET payload=? WHERE id=? AND status='prepared'",
                                          (json.dumps(payload, ensure_ascii=False), post["id"]))
+                from .visual_gate import review, valid_review
+                # Research checks real image pixels. A publisher without the
+                # vision runtime retains that proof and consumes deployed bytes.
+                if illustrator.enabled or not valid_review(post):
+                    post['visual_review'] = review(post, illustrations)
             assets[post["id"]] = render_post(post, public_dir, illustrations)
+            if post['status'] == 'prepared':
+                from .visual_gate import record_assets
+                # A no-generation publisher must not replace a previous photo
+                # proof with hashes of its local text-only render.
+                if illustrator.enabled or not post['visual_review']['assets']:
+                    record_assets(post, assets[post['id']], public_dir)
+                with store.db:
+                    store.db.execute("UPDATE posts SET payload=? WHERE id=? AND status='prepared'",
+                                     (json.dumps({k:v for k,v in post.items() if k not in ('status','container_id','media_id')}, ensure_ascii=False), post['id']))
     illustrator.prune(set(item_map))
     from .schedule import blocked_sources, source_current
     failed = blocked_sources(store)
@@ -204,7 +218,8 @@ def _export(store: Store, public_dir: Path, sources: list[dict], at: datetime, d
     events = sorted((e for e in public_items if e["kind"] == "event" and parse_date(e["start"]).date() >= at.date() - timedelta(days=1)), key=lambda e: e["start"])
     news = sorted((i for i in public_items if i["kind"] == "news"), key=lambda i: i["published_at"], reverse=True)
     public_posts = [{"id": p["id"], "kind": p["kind"], "title": p["title"], "due_at": p["due_at"], "status": p["status"],
-                     "caption": p["caption"], "assets": assets.get(p["id"], {}), "category": p["category"]} for p in parents]
+                     "caption": p["caption"], "assets": assets.get(p["id"], {}), "category": p["category"],
+                     **({'visual_review':p['visual_review']} if 'visual_review' in p else {})} for p in parents]
     snapshot = {"schema_version": 1, "generated_at": at.isoformat(), "demo": demo,
                 "publishing_enabled": not demo and os.getenv('PUBLISHING_CONFIGURED') == 'true', "illustrations": illustrator.stats,
                 "news": news, "events": events, "posts": public_posts,

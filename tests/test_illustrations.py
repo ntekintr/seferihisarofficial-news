@@ -32,6 +32,7 @@ def configured(monkeypatch):
     monkeypatch.setenv('CLOUDFLARE_ACCOUNT_ID', 'a' * 32)
     monkeypatch.setenv('ILLUSTRATIONS_ENABLED', 'true')
     monkeypatch.setattr('seferihisar.illustrations.ocr_available', lambda: True)
+    monkeypatch.setattr('seferihisar.illustrations.validate_match', lambda data, expected: {})
     monkeypatch.setattr('seferihisar.illustrations.validate_text_free_illustration', validate_jpeg)
 
 
@@ -355,6 +356,11 @@ def test_prepared_photo_refreshes_once_while_frozen_published_card_keeps_old_sce
     generator = Illustrator(store, at, tmp_path / 'first', session=session)
     assert generator.for_post(frozen, {item['id']: item})[0].name == old_key + '.jpg'
     session.post.assert_not_called()
+    if kind == 'news':
+        assert generator.for_post(prepared, {item['id']: item}) == {}
+        session.post.assert_not_called()
+        assert store.rows('SELECT image FROM illustrations WHERE id=?', (old_key,))[0]['image'] == old_data
+        return
     assert generator.for_post(prepared, {item['id']: item})[0].name == image_key(item) + '.jpg'
     assert session.post.call_count == 1
     assert ('theatre stage' if kind == 'event' else 'road-maintenance area') in session.post.call_args.kwargs['json']['prompt']

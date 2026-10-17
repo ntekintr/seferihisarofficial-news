@@ -90,6 +90,8 @@ def event_activity(category: str, title: str = '') -> str | None:
 
 def event_type_label(category: str, title: str = '') -> str:
     """Describe the verified category without inventing an event's genre."""
+    if category == 'outage':
+        return 'Elektrik kesintisi' if 'elektrik' in normalized(title) else 'Su kesintisi' if re.search(r'\bsu\b', normalized(title)) else 'Kesinti'
     activity = event_activity(category, title)
     if activity:
         return {'yoga':'Yoga etkinliği', 'tile_art':'Çini etkinliği', 'workshop':'Atölye'}[activity]
@@ -173,6 +175,11 @@ def _news_body(item: dict) -> str:
         credit = (re.escape(' '.join(item['title'].split())) + r'\s+yazısı ilk önce\s+'
                   + re.escape(item['source_name']) + r'\s+üzerinde ortaya çıktı\.?\s*$')
         text = re.sub(credit, '', text, flags=re.I).strip()
+    # Social captions often repeat their exact headline as the first sentence.
+    # Remove only that complete match; keep added facts and different numbers.
+    first = re.match(r'^(.+?[.!?])(?:\s+|$)', text)
+    if first and normalized(first[1]) == normalized(item['title']):
+        text = re.sub(r'^[\s\u200d\ufe0f\U0001F300-\U0001FAFF]+', '', text[first.end():])
     sentences, seen = [], set()
     for sentence in re.split(r"(?<=[.!?])\s+", text):
         # Short fragments can be repeated abbreviations or distinct numbered

@@ -157,7 +157,8 @@ def graphic_title(title: str, category: str, event_details: bool = False):
 
 def card(title: str, body: str, category: str, target: Path, story: bool = False,
          index: str = '', illustration: Path | None = None, preview: bool = False,
-         event_details: bool = False, photo_centering: tuple[float, float] = (0.5, 0.5)):
+         event_details: bool = False, photo_centering: tuple[float, float] = (0.5, 0.5), compact: bool = False,
+         legacy_outage: bool = False):
     """Fixed branding and a per-item illustration, never a shared news scene."""
     width, height = 1080, 1920 if story else 1350
     top, bottom = (260, 1600) if story else (0, 1260)
@@ -181,25 +182,31 @@ def card(title: str, body: str, category: str, target: Path, story: bool = False
             hero = ImageOps.fit(source.convert('RGB'), (width, hero_bottom - header_bottom),
                                 method=Image.Resampling.LANCZOS, centering=photo_centering)
         image.paste(hero, (0, header_bottom))
-    else:
+    elif not compact:
         # A missing/rejected photo produces typography, never invented scenery.
         # Keep the same branded layout without a vector scene or category icon.
         draw.rectangle((0, header_bottom, width, hero_bottom), fill='#0b355a')
-        text_block(draw, upper_tr(event_type_label(category, title) if event_details else news_type_label(category, title)),
+        text_block(draw, 'ETKİNLİK' if legacy_outage else upper_tr(event_type_label(category, title) if event_details else news_type_label(category, title)),
                    (margin, header_bottom + 100, right, hero_bottom - 60), (58, 48, 40), True)
+    else:
+        # A deliberate information card: no empty picture placeholder, no
+        # duplicate category heading. Keep logo and the same brand colours.
+        hero_bottom = header_bottom + 20
     draw.rectangle((0, hero_bottom, width, hero_bottom + 10), fill=TURQUOISE)
 
     category_top = hero_bottom + 35
     display_title, notice = graphic_title(title, category, event_details)
-    label = 'TASARIM ÖRNEĞİ' if preview else upper_tr(event_type_label(category, display_title) if event_details else news_type_label(category, display_title))
+    label = 'TASARIM ÖRNEĞİ' if preview else 'ETKİNLİK' if legacy_outage else upper_tr(event_type_label(category, display_title) if event_details else news_type_label(category, display_title))
     if notice and not preview:
         label += ' • ' + notice
     label_width = min(right - margin, int(draw.textlength(label, font=font(30, True))) + 38)
     draw.rounded_rectangle((margin, category_top, margin + label_width, category_top + 48), 9, fill=ORANGE)
     draw.text((margin + 19, category_top + 9), label, font=font(30, True), fill=NAVY, anchor='lt')
     title_top = category_top + 70
-    title_end = text_block(draw, upper_tr(display_title), (margin, title_top, right, title_top + 276),
-                           (68, 60, 52, 46, 40), True)
+    information_card = compact and illustration is None
+    title_end = text_block(draw, upper_tr(display_title),
+                           (margin, title_top, right, title_top + (400 if information_card else 276)),
+                           (84, 76, 68, 60, 52, 46, 40) if information_card else (68, 60, 52, 46, 40), True)
 
     # Legacy queued slide bodies may contain attribution. It belongs only in
     # the caption; never paint it or a fallback source label on the graphic.
@@ -212,7 +219,8 @@ def card(title: str, body: str, category: str, target: Path, story: bool = False
         compact = re.sub(r'\n\s*\n', '\n', rest.strip())
         text_block(draw, compact, (margin, date_end + 28, right, brand_top - 24), (34, 32, 30, 28), color='#d8e7eb')
     else:
-        text_block(draw, content, (margin, title_end + 20, right, brand_top - 24), (30, 28, 26), color='#d8e7eb')
+        text_block(draw, content, (margin, title_end + 20, right, brand_top - 24),
+                   (46, 42, 38, 34, 30, 28, 26) if information_card else (30, 28, 26), color='#d8e7eb')
     draw.line((margin, brand_top - 8, right, brand_top - 8), fill=TURQUOISE, width=2)
     draw.text((margin, brand_top + 23), '@seferihisarofficial', font=font(23, True), fill=IVORY, anchor='lt')
     if index:
@@ -234,7 +242,9 @@ def render_post(post: dict, public_dir: Path, illustrations: dict[int, Path] | N
                            'body': 'Güncel bilgiler ve bağlantılar için gönderi açıklamasına bakın.'}]
     for fmt in assets:
         for i, slide in enumerate(slides):
-            relative = f"media/{post['id']}/{fmt}-{i+1}.jpg"
+            review = post.get('visual_review', {})
+            edition = review.get('edition', post['id'])
+            relative = f"media/{edition}/{fmt}-{i+1}.jpg"
             is_event = post['kind'] in ('announcement', 'reminder_3d', 'reminder_day', 'update', 'cancellation') or (post['kind'] in ('weekly', 'monthly') and i > 0)
             category = slide.get('category', post['category'])
             # Reviewed yoga scenes place mats/blocks on the floor. Preserve that
@@ -244,7 +254,9 @@ def render_post(post: dict, public_dir: Path, illustrations: dict[int, Path] | N
             card(slide['title'], slide['body'], slide.get('category', post['category']), public_dir / relative,
                  fmt == 'story', f'{i+1}/{len(slides)}', illustration=(illustrations or {}).get(i),
                  event_details=is_event and i < len(post['slides']),
-                 photo_centering=(0.5, 1.0) if mutable and yoga else (0.5, 0.5))
+                 photo_centering=(0.5, 1.0) if (mutable or review) and yoga else (0.5, 0.5),
+                 compact=mutable or bool(review),
+                 legacy_outage=category == 'outage' and not mutable and not review)
             assets[fmt].append(relative)
     return assets
 

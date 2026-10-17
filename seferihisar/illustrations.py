@@ -19,6 +19,8 @@ from .image_safety import (MAX_CACHE_BYTES, MAX_CACHED_IMAGES, IllustrationCheck
 from .security import contains_secret
 from .illustration_review import save_rejected_image
 from .editor import event_activity
+from .visual_subject import subject
+from .visual_match import MatchRejected, MatchUnavailable, validate_match
 
 MODEL = '@cf/black-forest-labs/flux-1-schnell'
 DAILY_ATTEMPTS = 20
@@ -75,7 +77,7 @@ SCENE_RULES = ('This is a generic visual about the subject, not a reconstruction
 
 
 def event_scene(item: dict) -> str | None:
-    if item.get('kind') != 'event':
+    if item.get('kind') != 'event' or item.get('category') == 'outage':
         return None
     if activity := event_activity(item.get('category'), item.get('title', '')):
         return ACTIVITY_SCENES[activity]
@@ -186,6 +188,27 @@ class Illustrator:
         self.paths = {}
         self.checked_images = {}
         self.ocr_ready = None
+        self.match_checks = {}
+        self.match_ready = True
+        self.stats.update({'subject_rejected': 0, 'subject_unavailable': 0, 'text_only': 0})
+
+    def check_subject(self, key: str, data: bytes, expected: str):
+        signature = (key, expected)
+        if signature in self.match_checks:
+            if not self.match_checks[signature]:
+                raise MatchRejected('Visual subject mismatch')
+            return
+        if not self.match_ready:
+            raise MatchUnavailable('Visual match unavailable')
+        try:
+            validate_match(data, expected)
+        except MatchRejected:
+            self.match_checks[signature] = False
+            raise
+        except MatchUnavailable:
+            self.match_ready = False
+            raise
+        self.match_checks[signature] = True
 
     def can_check_text(self) -> bool:
         if self.ocr_ready is None:
@@ -255,6 +278,10 @@ class Illustrator:
     def image(self, item: dict, generate: bool) -> Path | None:
         if not self.enabled or contains_secret(item):
             return None
+        expected = subject(item)
+        if expected is None:
+            self.stats['text_only'] += 1
+            return None
         key = image_key(item)
         if key in self.paths:
             self.stats['reused'] += 1
@@ -265,6 +292,7 @@ class Illustrator:
             try:
                 validate_jpeg(old['image'])
                 self.check_image(key, old['image'])
+                self.check_subject(key, old['image'], expected)
                 self.stats['reused'] += 1
                 return self.materialize(key, old['image'])
             except IllustrationTextRejected:
@@ -273,6 +301,12 @@ class Illustrator:
                 return None
             except IllustrationCheckUnavailable:
                 self.stats['deferred'] += 1
+                return None
+            except MatchRejected:
+                self.stats['subject_rejected'] += 1
+                return None
+            except MatchUnavailable:
+                self.stats['subject_unavailable'] += 1
                 return None
             except ValueError:
                 # A damaged cache is not silently regenerated with more calls.
@@ -290,7 +324,7 @@ class Illustrator:
                 return None
             if path := self._reuse_v4(item, key):
                 return path
-        if not self.can_check_text():
+        if not self.can_check_text() or not self.match_ready:
             self.stats['deferred'] += 1
             return None
         used = self.store.rows('SELECT attempts FROM illustration_days WHERE day=?', (self.day,))
@@ -310,6 +344,7 @@ class Illustrator:
         try:
             data = self.generate(item)
             self.check_image(key, data)
+            self.check_subject(key, data, expected)
             with self.store.db:
                 self.store.db.execute("UPDATE illustrations SET status='ready',image=? WHERE id=?", (data, key))
             self.stats['generated'] += 1
@@ -323,6 +358,13 @@ class Illustrator:
                 self.store.db.execute("UPDATE illustrations SET status='failed',image=NULL WHERE id=?", (key,))
             self.stats['failed'] += 1
             self.stopped = True
+            return None
+        except (MatchRejected, MatchUnavailable) as exc:
+            # No reroll loop. Preserve frozen bindings, but never assign this
+            # rejected new scene. Missing vision falls back without publishing it.
+            with self.store.db:
+                self.store.db.execute("UPDATE illustrations SET status='failed',image=NULL,attempts=2 WHERE id=?", (key,))
+            self.stats['subject_rejected' if isinstance(exc, MatchRejected) else 'subject_unavailable'] += 1
             return None
         except (requests.RequestException, ValueError, KeyError, TypeError, OSError, Image.DecompressionBombError):
             # Exceptions/provider bodies may contain credentials; retain codes only.
@@ -358,6 +400,7 @@ class Illustrator:
         try:
             validate_jpeg(legacy['image'])
             self.check_image(legacy_key, legacy['image'])
+            self.check_subject(legacy_key, legacy['image'], subject(item))
         except IllustrationCheckUnavailable:
             self.stats['deferred'] += 1
             return None
@@ -444,6 +487,7 @@ class Illustrator:
             payload['illustration_keys'] = bindings
             with self.store.db:
                 self.store.db.execute('UPDATE posts SET payload=? WHERE id=?', (json.dumps(payload, ensure_ascii=False), post['id']))
+        post['illustration_keys'] = bindings
         return assignments
 
 

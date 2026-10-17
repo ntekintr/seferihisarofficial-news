@@ -38,6 +38,7 @@ def test_rejected_generation_is_quarantined_and_review_never_enters_state(store,
                         ('CLOUDFLARE_ACCOUNT_ID', 'a' * 32)]:
         monkeypatch.setenv(name, value)
     monkeypatch.setattr('seferihisar.illustrations.ocr_available', lambda: True)
+    monkeypatch.setattr('seferihisar.illustrations.validate_match', lambda data, expected: {})
     finding = {'text': '2021', 'confidence': 35, 'box': {'left': 10, 'top': 10, 'width': 50, 'height': 20}}
     def reject(data):
         raise IllustrationTextRejected(findings=[finding])
