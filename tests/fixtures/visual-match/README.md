@@ -14,3 +14,7 @@ bağlı olumlu örneklerdir. `yoga` eski genel salon sahnesidir; `theatre` ve
 Eşikler bu az sayıdaki örnek üzerinde doğrulanmıştır; bütün konular için
 kusursuz semantik tanıma iddiası yoktur. İlgisiz haber fotoğrafını asıl önleyen
 kapalı konu politikası ayrıca test edilir.
+
+v2'nin 506 piksel story kırpmasında `tile_art-accepted` de belirsiz kalır.
+Dosya adı eski v1 kabulünü anlatır; bu dosya artık ek bir ret regresyonudur.
+Eşik bu örneği geçirmek için gevşetilmez; kart fotoğrafsız hazırlanır.

@@ -73,10 +73,10 @@ def test_both_actual_wide_crops_must_match_not_only_source_square(monkeypatch):
     seen=[]
     def check(images):
         seen.extend(image.size for image in images)
-        return [values,bad]
+        return [values,bad,values]
     monkeypatch.setattr('seferihisar.visual_match.scores',check)
     with pytest.raises(MatchRejected):validate_match(jpeg(),'theatre')
-    assert seen==[(1080,436),(1080,586)]
+    assert seen==[(1080,436),(1080,506),(1080,586)]
 
 
 @pytest.mark.parametrize('error',[MatchRejected,MatchUnavailable])

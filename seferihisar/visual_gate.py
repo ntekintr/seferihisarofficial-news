@@ -11,7 +11,7 @@ import requests
 from .domain import digest
 from .security import public_url, valid_visual_review
 
-VERSION = 'content-visual-v1'
+VERSION = 'content-visual-v2'
 CONTENT_FIELDS = ('id', 'item_id', 'revision', 'kind', 'title', 'caption', 'category',
                   'source_urls', 'slides', 'illustration_keys')
 
