@@ -23,6 +23,7 @@ def generated_scene(monkeypatch):
     monkeypatch.setenv('CLOUDFLARE_ACCOUNT_ID', 'a' * 32)
     monkeypatch.setenv('ILLUSTRATIONS_ENABLED', 'true')
     monkeypatch.setattr('seferihisar.illustrations.ocr_available', lambda: True)
+    monkeypatch.setattr('seferihisar.illustrations.validate_match', lambda data, expected: {})
     monkeypatch.setattr('seferihisar.illustrations.validate_text_free_illustration', validate_jpeg)
     image = io.BytesIO()
     Image.new('RGB', (512, 512), '#346175').save(image, 'PNG')
@@ -57,10 +58,11 @@ def test_source_only_caption_survives_research_to_disabled_publisher_and_final_p
     export(store, tmp_path / 'research', source_config(), research_at)
     post = next(p for p in store.posts() if p['kind'] == {'event': 'reminder_3d'}.get(kind, kind))
     expected_keys = post['illustration_keys']
-    assert expected_keys and GENERATED_IMAGE_NOTE not in post['caption']
+    assert bool(expected_keys) == (kind != 'news')
+    assert GENERATED_IMAGE_NOTE not in post['caption']
     assert event['source_name'] in post['caption'] and event['url'] in post['caption']
     assert len(post['caption']) <= 2200
-    assert generated_scene.call_count == 1
+    assert generated_scene.call_count == (0 if kind == 'news' else 1)
 
     # An older research version may already have queued the retired note.
     legacy = json.loads(store.rows('SELECT payload FROM posts WHERE id=?', (post['id'],))[0]['payload'])
@@ -91,7 +93,7 @@ def test_source_only_caption_survives_research_to_disabled_publisher_and_final_p
     assert GENERATED_IMAGE_NOTE not in published_caption
     assert published_caption == retained['caption']
     assert len(published_caption) <= 2200
-    assert generated_scene.call_count == 1
+    assert generated_scene.call_count == (0 if kind == 'news' else 1)
 
 
 @pytest.mark.parametrize('status', ['published', 'publishing', 'uncertain'])

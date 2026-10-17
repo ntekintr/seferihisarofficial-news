@@ -12,7 +12,7 @@ ITEM_FIELDS = {"kind", "title", "description", "url", "source_id", "source_name"
                "identity", "start", "end", "time_known", "location", "organizer", "free", "price", "currency", "ticket_url", "status", "previous_start", "valid_until"}
 PUBLIC_ITEM_FIELDS = ITEM_FIELDS - {"identity"}
 POST_FIELDS = {"id", "item_id", "revision", "kind", "due_at", "title", "caption", "category", "source_urls", "slides", "created_at", "formats",
-               "publish_format", "parent_post_id", "story_asset", "story_index", "published_at", "status", "container_id", "media_id", "illustration_keys"}
+               "publish_format", "parent_post_id", "story_asset", "story_index", "published_at", "status", "container_id", "media_id", "illustration_keys", "visual_review"}
 SECRET_PATTERN = re.compile(
     r"AIza[\w-]{35}|(?:gh[pousr]_[A-Za-z0-9]{20,})|github_pat_[A-Za-z0-9_]{20,}|EAA[A-Za-z0-9]{50,}|"
     r"-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----|"
@@ -45,6 +45,28 @@ def assert_no_secrets(value):
     if contains_secret(value):
         # A controlled exception must not reproduce the offending payload.
         raise ValueError("Public-data validation rejected credential-like content")
+
+
+def valid_visual_review(value):
+    """Standard-library boundary; no model/Pillow dependency in state writer."""
+    if not isinstance(value, dict) or set(value) != {'version','content','edition','images','references','assets'}:
+        return False
+    if value['version'] != 'content-visual-v1' or any(not isinstance(value[k], str) or not re.fullmatch(r'[a-f0-9]{24}', value[k]) for k in ('content','edition')):
+        return False
+    if not isinstance(value['images'], dict) or len(value['images']) > 10 or not isinstance(value['assets'], dict) or len(value['assets']) > 20:
+        return False
+    if not isinstance(value['references'], dict) or len(value['references']) > 10:
+        return False
+    for key, revision in value['references'].items():
+        if not isinstance(key, str) or not re.fullmatch(r'[a-f0-9]{24}', key) or type(revision) is not int or not 1 <= revision <= 1000000:
+            return False
+    for key, sha in value['images'].items():
+        if not isinstance(key, str) or not re.fullmatch(r'[0-9]', key) or not isinstance(sha, str) or not re.fullmatch(r'(?:[a-f0-9]{2}:){31}[a-f0-9]{2}', sha):
+            return False
+    for path, sha in value['assets'].items():
+        if not isinstance(path, str) or not re.fullmatch(r'media/'+value['edition']+r'/(?:feed|story)-(?:[1-9]|10)\.jpg', path) or not isinstance(sha, str) or not re.fullmatch(r'(?:[a-f0-9]{2}:){31}[a-f0-9]{2}', sha):
+            return False
+    return True
 
 
 def validate_state(path: Path):
@@ -168,6 +190,9 @@ def validate_state(path: Path):
                 for row in db.execute(f'SELECT payload FROM "{table}"'):
                     if not set(json.loads(row[0])) <= allowed:
                         raise ValueError("Unexpected state payload fields")
+                    payload = json.loads(row[0])
+                    if table == 'posts' and 'visual_review' in payload and not valid_visual_review(payload['visual_review']):
+                        raise ValueError('Invalid visual review')
     finally:
         db.close()
 

@@ -81,7 +81,7 @@ def current_post(store, post, at):
     return True
 
 
-def deliver(store, post, at, site_url, paths, story, api, checkpoint):
+def deliver(store, post, at, site_url, paths, story, api, checkpoint, *, require_visual_review=False):
     kind = 'story' if story else 'feed'
     key = digest(f"facebook:{api.page}:{post['id']}:{kind}")
     previous = store.rows('SELECT * FROM facebook_deliveries WHERE id=?', (key,))
@@ -96,6 +96,10 @@ def deliver(store, post, at, site_url, paths, story, api, checkpoint):
         raise ValueError('Public HTTPS media base required')
     if not paths or len(paths) > 10:
         return 'media_missing'
+    if require_visual_review or isinstance(api, Facebook):
+        from .visual_gate import deployed
+        if reason := deployed(store, post, site_url, paths, session=api.session, story=story):
+            return reason
     urls = []
     for path in paths:
         if not re.fullmatch(r'media/[a-f0-9]{24}/(?:feed|story)-\d+\.jpg', path):
@@ -137,7 +141,7 @@ def deliver(store, post, at, site_url, paths, story, api, checkpoint):
         return 'uncertain'
 
 
-def publish_recent(store: Store, at: datetime, site_url, assets, adapter=None, checkpoint=None):
+def publish_recent(store: Store, at: datetime, site_url, assets, adapter=None, checkpoint=None, *, require_visual_review=False):
     api = adapter or Facebook()
     if not api.enabled():
         return {'status': 'disabled'}
@@ -153,11 +157,11 @@ def publish_recent(store: Store, at: datetime, site_url, assets, adapter=None, c
     parent = parents[0]
     if not current_post(store, parent, at):
         return {'status': 'blocked_source'}
-    feed = deliver(store, parent, at, site_url, assets.get(parent['id'], {}).get('feed', []), False, api, checkpoint)
+    feed = deliver(store, parent, at, site_url, assets.get(parent['id'], {}).get('feed', []), False, api, checkpoint, require_visual_review=require_visual_review)
     if feed not in ('published', 'already_published'):
         return {'status': feed}
     child = next((p for p in store.posts() if p['id'] == digest(parent['id'] + ':story:0') and p['status'] == 'published'), None)
     if not child:
         return {'status': 'story_pending', 'feed': feed}
-    story = deliver(store, parent, at, site_url, [child['story_asset']], True, api, checkpoint)
+    story = deliver(store, parent, at, site_url, [child['story_asset']], True, api, checkpoint, require_visual_review=require_visual_review)
     return {'status': 'complete' if story in ('published', 'already_published') else 'story_pending', 'feed': feed, 'story': story}

@@ -11,10 +11,12 @@ from .domain import TZ, parse_date
 STATUSES = frozenset(('complete', 'published', 'already_published', 'outside_window',
     'daily_limit', 'empty', 'disabled', 'rate_limited', 'media_missing',
     'media_not_deployed', 'already_claimed', 'awaiting_resolution', 'uncertain',
-    'story_pending', 'blocked_source', 'account_mismatch', 'check_failed'))
+    'story_pending', 'blocked_source', 'account_mismatch', 'check_failed',
+    'visual_review_missing', 'visual_review_stale', 'visual_review_unavailable'))
 RESULT_FIELDS = frozenset(('status', 'feed', 'story', 'facebook'))
 FAILURES = frozenset(('media_missing', 'media_not_deployed', 'awaiting_resolution',
-    'uncertain', 'account_mismatch', 'check_failed'))
+    'uncertain', 'account_mismatch', 'check_failed',
+    'visual_review_missing', 'visual_review_stale', 'visual_review_unavailable'))
 
 
 def safe_result(result):

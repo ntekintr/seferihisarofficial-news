@@ -47,11 +47,11 @@ def main():
             if os.getenv("STATE_GIT_CHECKPOINT") == "true":
                 from .state_git import persist
                 checkpoint = lambda: persist(args.db)
-            result = (publish_automatic(store, at, args.site_url, assets, checkpoint=checkpoint) if args.automatic
-                      else publish_one(store, at, args.site_url, assets, args.story, checkpoint=checkpoint))
+            result = (publish_automatic(store, at, args.site_url, assets, checkpoint=checkpoint, require_visual_review=True) if args.automatic
+                      else publish_one(store, at, args.site_url, assets, args.story, checkpoint=checkpoint, require_visual_review=True))
             if args.automatic:
                 from .facebook import publish_recent
-                result['facebook'] = publish_recent(store, at, args.site_url, assets, checkpoint=checkpoint)
+                result['facebook'] = publish_recent(store, at, args.site_url, assets, checkpoint=checkpoint, require_visual_review=True)
             from .operations import record_check, write_job_summary, failed
             observation = record_check(store, result, at, 'automatic' if args.automatic else 'story' if args.story else 'feed')
             write_job_summary(observation)

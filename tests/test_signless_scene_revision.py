@@ -34,6 +34,7 @@ def jpeg():
 def enabled(monkeypatch):
     monkeypatch.setenv('ILLUSTRATIONS_ENABLED', 'true')
     monkeypatch.setattr('seferihisar.illustrations.ocr_available', lambda: True)
+    monkeypatch.setattr('seferihisar.illustrations.validate_match', lambda data, expected: {})
     monkeypatch.setattr('seferihisar.illustrations.validate_text_free_illustration', validate_jpeg)
 
 

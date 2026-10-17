@@ -98,6 +98,12 @@ def prepare(store: Store, at: datetime, *, refresh_digests: bool = True):
     if refresh_digests:
         prepare_digest(store, at, "weekly", 7)
         prepare_digest(store, at, "monthly", 30)
+    from .story_identity import repeat
+    for post in store.posts():
+        if post['status'] == 'prepared' and repeat(store, post):
+            with store.db:
+                store.db.execute("UPDATE posts SET status='blocked_source' WHERE id=? AND status='prepared'", (post['id'],))
+            store.withhold(post['id'], 'duplicate_story', at.isoformat())
 
 
 def queue_item(store: Store, item: dict, kind: str, due: datetime, at: datetime):
@@ -123,6 +129,8 @@ def queue_item(store: Store, item: dict, kind: str, due: datetime, at: datetime)
     post["created_at"] = previous["created_at"]
     if "illustration_keys" in previous:
         post["illustration_keys"] = previous["illustration_keys"]
+    if "visual_review" in previous:
+        post['visual_review'] = deepcopy(previous['visual_review'])
     post["caption"] = generated_image_caption(post["caption"], bool(post.get("illustration_keys")))
     with store.db:
         store.db.execute("UPDATE posts SET payload=? WHERE id=? AND revision=? AND status IN ('prepared','blocked_source')",
@@ -194,7 +202,12 @@ def prepare_digest(store: Store, at: datetime, kind: str, days: int):
         return
     selected = events[:9]  # Meta carousel cover + 9 slides; do not imply a complete calendar.
     description = f"{at.strftime('%d.%m.%Y')} itibarıyla önümüzdeki {days} gün için doğrulanmış etkinliklerden seçki."
-    slides = [{"title": title, "body": description}] + [{"title": event_title(e), "body": slide_body(e), "category": e["category"]} for e in selected]
+    cover = (at.strftime('%d.%m.%Y') + ' – ' + (at + timedelta(days=days)).strftime('%d.%m.%Y')
+             + f'\n\n{len(selected)} etkinlikten seçki\n\n'
+             + '\n\n'.join(excerpt(event_title(e), 85) + '\n' + event_date_label(e, include_time=False) for e in selected[:3]))
+    if len(selected) > 3:
+        cover += '\n\nDevamı sonraki kartlarda →'
+    slides = [{"title": title, "body": cover}] + [{"title": event_title(e), "body": slide_body(e), "category": e["category"]} for e in selected]
     content = "\n\n".join([title, description] + [event_title(e) + " · " + event_date_label(e, include_time=False) + "\nKaynak: " + plain_source_text(e["source_name"]) + "\n" + e["url"] for e in selected])
     post = {"id": key, "kind": kind, "revision": 1, "due_at": next_slot(at, event=True).isoformat(),
             "title": title, "caption": caption_with_hashtags(content, digest_hashtags(selected)), "category": "event", "slides": slides,
@@ -208,6 +221,8 @@ def prepare_digest(store: Store, at: datetime, kind: str, days: int):
                 and len(existing["slides"]) == len(post["slides"])
                 and "illustration_keys" in existing):
             post["illustration_keys"] = deepcopy(existing["illustration_keys"])
+            if 'visual_review' in existing:
+                post['visual_review'] = deepcopy(existing['visual_review'])
         post["caption"] = generated_image_caption(post["caption"], bool(post.get("illustration_keys")))
         with store.db:
             store.db.execute("UPDATE posts SET payload=?,status='prepared' WHERE id=?", (json.dumps(post, ensure_ascii=False), key))
