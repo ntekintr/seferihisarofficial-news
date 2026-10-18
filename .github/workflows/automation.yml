@@ -37,10 +37,20 @@ jobs:
           IG_SOURCE_USER_ID: ${{ secrets.INSTAGRAM_USER_ID }}
           META_GRAPH_VERSION: ${{ vars.META_GRAPH_VERSION || 'v25.0' }}
         run: python -m seferihisar.instagram_sources
+      - name: Read optional single news photos (GET only; caption failures stay isolated)
+        continue-on-error: true
+        env:
+          IG_SOURCE_ACCESS_TOKEN: ${{ secrets.INSTAGRAM_ACCESS_TOKEN }}
+          IG_SOURCE_USER_ID: ${{ secrets.INSTAGRAM_USER_ID }}
+          META_GRAPH_VERSION: ${{ vars.META_GRAPH_VERSION || 'v25.0' }}
+        run: python -m seferihisar.instagram_source_photos
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: public-instagram-sources
-          path: work/instagram-sources/public.json
+          path: |
+            work/instagram-sources/public.json
+            work/instagram-sources/photos.json
+            work/instagram-sources/photos/*.jpg
           if-no-files-found: error
           retention-days: 1
 

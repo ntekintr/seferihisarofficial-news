@@ -1,7 +1,8 @@
 """GET-only public professional-account captions, isolated from the publisher.
 
-Never follow Graph pagination URLs, download media, scrape a login, or persist
-an API response. Only a validated public item/health manifest leaves this job.
+Never follow Graph pagination URLs, scrape a login, or persist an API response.
+This caption reader never downloads media. The separate optional photo reader
+can request media fields; its failure cannot remove this caption manifest.
 """
 from __future__ import annotations
 
@@ -47,13 +48,14 @@ def username(source: dict) -> str:
     return value
 
 
-def read_account(source: dict, token: str, owner_id: str, version: str, session) -> dict:
+def read_account(source: dict, token: str, owner_id: str, version: str, session, *, photos=False) -> dict:
     target = username(source)
     if not token or not re.fullmatch(r'\d{8,32}', owner_id):
         raise SourceReadError('instagram_credentials_missing')
     if not re.fullmatch(r'v\d{1,2}\.0', version):
         raise SourceReadError('instagram_read_failed')
-    fields = 'business_discovery.username(' + target + '){username,media.limit(12){id,caption,permalink,timestamp}}'
+    media_fields='id,caption,permalink,timestamp'+(',media_type,media_url' if photos else '')
+    fields = 'business_discovery.username(' + target + '){username,media.limit(12){'+media_fields+'}}'
     try:
         endpoint = safe_url('https://graph.facebook.com/' + version + '/' + owner_id,
                             {'graph.facebook.com'})
