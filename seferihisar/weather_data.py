@@ -6,6 +6,7 @@ import re
 from datetime import date, datetime, time, timedelta
 
 from .domain import TZ, digest
+from .weather_copy import VERSION as DISPLAY_VERSION
 
 SOURCE = 'https://www.mgm.gov.tr/tahmin/gunluk-tahmin.aspx?b=3'
 SITE = 'https://ntekintr.github.io/seferihisarofficial-news'
@@ -13,13 +14,16 @@ FIELDS = {'date', 'place', 'condition', 'low', 'high', 'period_start', 'period_e
 RESULTS = {'prepared', 'published', 'already_published', 'outside_window', 'disabled', 'source_unavailable',
            'forecast_invalid', 'forecast_stale', 'not_ready', 'media_not_deployed', 'awaiting_resolution', 'uncertain',
            'forecast_temperature_missing', 'forecast_district_missing', 'forecast_period_missing',
-           'source_timeout', 'source_tls_failed', 'source_http_error', 'source_connection_failed', 'source_robots_denied'}
+           'source_timeout', 'source_tls_failed', 'source_http_error', 'source_connection_failed', 'source_robots_denied',
+           'forecast_text_review_required', 'forecast_text_unreadable'}
 STATES = {'prepared', 'blocked', 'publishing', 'published', 'uncertain'}
 
 
 def validate_forecast(value):
-    if not isinstance(value, dict) or set(value) != FIELDS:
+    if not isinstance(value, dict) or set(value) not in (FIELDS, FIELDS | {'display_version'}):
         raise ValueError('Invalid forecast fields')
+    if 'display_version' in value and value['display_version'] != DISPLAY_VERSION:
+        raise ValueError('Unknown forecast display version')
     day = date.fromisoformat(value['date'])
     if day.isoformat() != value['date'] or value['place'] != 'Seferihisar' or value['source_url'] != SOURCE:
         raise ValueError('Invalid forecast identity')
@@ -45,7 +49,8 @@ def asset_id(forecast):
     validate_forecast(forecast)
     # A changed prediction or renderer receives a new URL; checking again alone does not.
     values = {k: v for k, v in forecast.items() if k != 'fetched_at'}
-    return digest('daily-weather-snail-3d-v2:' + json.dumps(values, ensure_ascii=False, sort_keys=True))
+    version = 'daily-weather-snail-3d-v3:' if 'display_version' in forecast else 'daily-weather-snail-3d-v2:'
+    return digest(version + json.dumps(values, ensure_ascii=False, sort_keys=True))
 
 
 def fresh(forecast, at):

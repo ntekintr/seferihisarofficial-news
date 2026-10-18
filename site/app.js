@@ -26,6 +26,8 @@ const editorialLabels={editorial_headline_required:'Anlaşılır haber başlığ
 function editorialRows(holds){return Object.entries(editorialLabels).filter(([key])=>Number.isInteger(holds?.[key])&&holds[key]>0).map(([key,label])=>[label,holds[key]]);}
 function weatherTemperatures(f){return [['low','En düşük'],['high','En yüksek']].filter(([key])=>Number.isInteger(f[key])).map(([key,label])=>label+' '+f[key]+'°').join(' / ');}
 const weatherReasons={forecast_stale:'Güncel tahmin bekleniyor',media_not_deployed:'Görselin bulutta yayımlanması bekleniyor',not_ready:'Hazır tahmin yok',source_unavailable:'Kaynak doğrulanamadı',forecast_invalid:'Tahminin tarih veya veri biçimi doğrulanamadı',forecast_temperature_missing:'Kaynakta kullanılabilir sıcaklık yok',forecast_district_missing:'Seferihisar satırı bulunamadı veya birden fazla',forecast_period_missing:'Tahmin başlangıç/bitiş tarihi okunamadı',source_http_error:'Hava kaynağı hata yanıtı verdi',awaiting_resolution:'Önceki yayın sonucu kontrol edilmeli',uncertain:'Yayın sonucu kontrol edilmeli',disabled:'Instagram bağlantısı veya yayın ayarı eksik'};
+Object.assign(weatherReasons,{forecast_text_review_required:'Hava metni kontrolü ve güncel kart bekleniyor',forecast_text_unreadable:'Hava metni okunaklı ve eksiksiz görüntülenemiyor'});
+function weatherDescription(weather){return typeof weather?.display_condition==='string'?weather.display_condition:weather?.forecast?.condition||'';}
 function weatherReason(value){if(typeof value!=='string')return null;if(Object.hasOwn(weatherReasons,value))return weatherReasons[value];return Object.hasOwn(errorLabels,value)?errorLabel(value):null;}
 const labels = {overview:'İlçeden ve takvimden',news:'Yerel haberler',events:'Etkinlik takvimi',posts:'İçerik stüdyosu',sources:'Kaynak ağı',system:'Otomasyon ve sistem durumu'};
 const statusLabels = {prepared:'Hazır',blocked_source:'Kaynak yeniden doğrulanmalı',published:'Paylaşıldı',uncertain:'Yayın sonucu kontrol edilmeli',publishing:'Yayın kontrol edilmeli',cancelled:'İptal edildi',postponed:'Ertelendi',rescheduled:'Tarihi değişti',scheduled:'Takvimde'};
@@ -70,7 +72,7 @@ function renderWeather(container){
  const panel=node('div','panel');panel.append(node('h3','','Günaydın, Seferihisar! · Hava durumu story'));
  const states={prepared:'Hazır · Saat bekleniyor',blocked:'Güncel tahmin doğrulanamadı',publishing:'Yayın sonucu kontrol edilmeli',published:'Paylaşıldı',uncertain:'Yayın sonucu belirsiz; tekrar gönderilmez'};
  panel.append(node('p','','Her sabah 08:00 Türkiye saati · Günde bir Instagram story. Haber gönderilerine ek olarak paylaşılır.'),node('p','','Durum: '+(states[weather.status]||'Kontrol bekleniyor')+(weather.published_at?' · '+date(weather.published_at,{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):'')));
- if(weather.forecast){const f=weather.forecast;panel.append(node('p','',f.place+' · '+f.condition+' · '+weatherTemperatures(f)),link('Kaynak: Meteoroloji Genel Müdürlüğü ↗',f.source_url));if(weather.asset)panel.append(link('Story görselini aç',weather.asset));}
+ if(weather.forecast){const f=weather.forecast;panel.append(node('p','',f.place+' · '+weatherDescription(weather)+' · '+weatherTemperatures(f)),link('Kaynak: Meteoroloji Genel Müdürlüğü ↗',f.source_url));if(weather.asset)panel.append(link('Story görselini aç',weather.asset));}
  const reason=weatherReason(weather.last_result);if(reason)panel.append(node('p','notice','Son kontrol: '+reason));
  container.append(panel);
 }
