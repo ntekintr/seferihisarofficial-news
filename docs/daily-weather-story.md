@@ -21,10 +21,17 @@ Pages'e dağıtır. Robots ve TLS denetimleri korunur. Yayın anında aynı gün
 son kontrolün başarısı ve canlı Pages manifesti/görsel eşleşmesi zorunludur.
 Kaynak bulunamaz veya tarihler doğrulanamazsa hava durumu uydurulmaz.
 
-Ayrı günlük zamanlama 08:00'ı hedefler; 08:17, 08:32 ve 08:47'de sınırlı yedek
-denemeler vardır. Her gün yalnız bir story paylaşılır. Başarılı sabah araştırmaları
-08:00–08:59 içinde yedek tetikleyicidir. GitHub kuyruğu nedeniyle tam dakika
-garanti değildir; 09:00 ve sonrasında gecikmiş hava durumu story'si gönderilmez.
+Ayrı günlük zamanlama 07:35'te yayın işini erken başlatmayı, 08:00'da paylaşmayı
+hedefler; 08:00, 08:17, 08:32 ve 08:47'de sınırlı yedek tetiklemeler vardır.
+Başarılı güvenilir sabah araştırmaları da aynı işi tetikler. İş 07:35–07:59'da
+başlarsa yalnız 08:00'da da güncel olacak, kontrol edilmiş ve Pages'e dağıtılmış
+kartla bekler. Eksik veya başarısız hazırlıkta beklemeden çıkar; normal araştırma
+devam edebilir. Bekleme en fazla 25 dakikadır; ortak üretim kilidi ve kalıcı durum
+korunur. 08:00'da kaynak geçerliliği, güncellik, hazırlık kaydı ve canlı görsel
+eşleşmesi yeniden kontrol edilir; ardından mevcut tek günlük yayın yolu kullanılır.
+07:35'ten önceki işler beklemez. Yeni kaynak isteği veya görsel üretimi bu beklemenin
+parçası değildir. GitHub kuyruğu veya Meta erişimi nedeniyle tam dakika garanti
+değildir; 09:00 ve sonrasında gecikmiş hava durumu story'si gönderilmez.
 Bilgisayarın açık olması gerekmez. Yeni anahtar/izin veya ücretli servis yoktur.
 
 1080×1920 kart sıcak açık zemin, sabit logo/renkler, ince şerit, tarihle birlikte
