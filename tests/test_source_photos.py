@@ -258,3 +258,14 @@ def test_prune_removes_revoked_draft_pixels_and_preserves_frozen_records(store,t
     before=store.rows('SELECT * FROM source_photos')
     photos.prune(set())
     assert store.rows('SELECT * FROM source_photos')==(before if frozen else [])
+
+
+@pytest.mark.parametrize('title',[
+    'Seferihisar için sel uyarısı',
+    'Seferihisar’da su baskını önlenecek',
+    'Seferihisar muhtarlar toplantısı iptal edildi',
+    'Seferihisar’da yarın muhtarlar toplantısı yapılacak',
+    'Seferihisar’da planlanan çevre yolu hakkında açıklama',
+])
+def test_warning_cancellation_and_future_plan_never_become_an_occurrence_photo(title):
+    assert news_subject({**NEWS,'title':title}) is None
