@@ -3,6 +3,8 @@ from __future__ import annotations
 
 import json
 import re
+import time
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -149,13 +151,15 @@ def export_weather(store,public_dir,at):
     return result
 
 
-def publish_weather(store,at,site_url,adapter=None,checkpoint=None):
-    at = at.astimezone(TZ)
-    # No late catch-up, old-day replay, feed, or news-slot consumption.
-    if at.hour != 8:
-        return {'status':'outside_window'}
-    from .instagram import Instagram
-    api = adapter or Instagram()
+@dataclass(frozen=True)
+class _ReadyWeather:
+    day: str
+    forecast_json: str
+    url: str
+
+
+def _weather_readiness(store,at,site_url,api):
+    """Check validity at the supplied time without a claim or any Meta request."""
     if not api.enabled():
         return {'status':'disabled'}
     day = at.date().isoformat()
@@ -199,8 +203,22 @@ def publish_weather(store,at,site_url,adapter=None,checkpoint=None):
             return {'status':'media_not_deployed'}
     except (requests.RequestException,ValueError,KeyError,TypeError):
         return {'status':'media_not_deployed'}
+    return _ReadyWeather(day,row['forecast'],url)
+
+
+def publish_weather(store,at,site_url,adapter=None,checkpoint=None):
+    at = at.astimezone(TZ)
+    # No late catch-up, old-day replay, feed, or news-slot consumption.
+    if at.hour != 8:
+        return {'status':'outside_window'}
+    from .instagram import Instagram
+    api = adapter or Instagram()
+    ready = _weather_readiness(store,at,site_url,api)
+    if not isinstance(ready,_ReadyWeather):
+        return ready
+    day,url = ready.day,ready.url
     with store.db:
-        changed = store.db.execute("UPDATE weather_stories SET status='publishing',published_at=?,last_result='awaiting_resolution' WHERE day=? AND status='prepared' AND forecast=?",(at.isoformat(),day,row['forecast']))
+        changed = store.db.execute("UPDATE weather_stories SET status='publishing',published_at=?,last_result='awaiting_resolution' WHERE day=? AND status='prepared' AND forecast=?",(at.isoformat(),day,ready.forecast_json))
     if changed.rowcount != 1:
         return {'status':'awaiting_resolution'}
     if checkpoint:
@@ -228,6 +246,39 @@ def publish_weather(store,at,site_url,adapter=None,checkpoint=None):
         return {'status':'uncertain'}
 
 
+def run_weather(store,site_url,adapter=None,checkpoint=None,*,wait_for_morning=False,clock=None,sleeper=None):
+    """Keep an already-ready cloud job until 08:00; never wait more than 25 minutes.
+
+    The workflow retains the shared production lock while waiting. Missing,
+    stale or undeployed forecasts release it immediately for normal research.
+    All readiness checks run again after waiting, before the durable claim.
+    """
+    clock,sleeper = clock or now,sleeper or time.sleep
+    at = clock().astimezone(TZ)
+    target = at.replace(hour=8,minute=0,second=0,microsecond=0)
+    start = target-timedelta(minutes=25)
+    if not wait_for_morning or not start <= at < target:
+        return publish_weather(store,at,site_url,adapter,checkpoint)
+    from .instagram import Instagram
+    api = adapter or Instagram()
+    ready = _weather_readiness(store,target,site_url,api)
+    if not isinstance(ready,_ReadyWeather):
+        return ready
+    remaining = 25*60
+    while True:
+        at = clock().astimezone(TZ)
+        if at.date() != target.date() or at < start:
+            return {'status':'outside_window'}
+        if at >= target:
+            break
+        if remaining <= 0:
+            return {'status':'outside_window'}
+        seconds = min(30,(target-at).total_seconds(),remaining)
+        sleeper(seconds)
+        remaining -= seconds
+    return publish_weather(store,at,site_url,api,checkpoint)
+
+
 def record_result(store, day, result):
     # A delayed scheduled run must not erase the actual morning failure.
     if result['status'] == 'outside_window':
@@ -237,19 +288,23 @@ def record_result(store, day, result):
 
 
 def main():
+    import argparse
     import os
     from .store import Store
     from .state_git import persist
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--wait-for-morning',action='store_true',help='Wait from 07:35–07:59 only when the deployed forecast is ready for 08:00.')
+    args = parser.parse_args()
     store = Store('state/platform.sqlite')
     try:
-        result = publish_weather(store,now(),os.getenv('SITE_URL',''),
+        result = run_weather(store,os.getenv('SITE_URL',''),wait_for_morning=args.wait_for_morning,
                                  checkpoint=(lambda:persist(store.path)) if os.getenv('STATE_GIT_CHECKPOINT') == 'true' else None)
         # Retain only the controlled result, even when no claim was made.
         day = now().date().isoformat()
         record_result(store,day,result)
         if target := os.getenv('GITHUB_STEP_SUMMARY'):
             with Path(target).open('a',encoding='utf-8') as out:
-                out.write('### Günlük hava durumu story\n\n'+json.dumps(result)+'\n\n08:00 Türkiye saati hedeflenir. Gecikme yedeği yalnız 08:00–08:59; günde bir story.\n')
+                out.write('### Günlük hava durumu story\n\n'+json.dumps(result)+'\n\nHazır kartla 07:35–07:59 erken bekleme; 08:00 Türkiye saati hedeflenir. Gecikme yedeği yalnız 08:00–08:59; günde bir story.\n')
         print(json.dumps(result))
         if result['status'] not in ('published','already_published','outside_window'):
             raise SystemExit(1)

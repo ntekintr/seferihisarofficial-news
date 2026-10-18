@@ -10,7 +10,7 @@ from PIL import Image
 
 from seferihisar.domain import parse_date
 from seferihisar.security import validate_public, validate_state
-from seferihisar.weather import export_weather, parse_forecast, publish_weather, refresh_weather, record_result
+from seferihisar.weather import export_weather, parse_forecast, publish_weather, refresh_weather, record_result, run_weather
 from seferihisar.weather_data import SITE, SOURCE, asset_id, fresh, validate_forecast
 from seferihisar.weather_render import display_condition, render_weather, scene_for
 
@@ -200,13 +200,15 @@ def test_durable_state_rejects_wrong_or_private_forecast_fields(store,field,valu
 
 def test_workflow_is_cloud_scheduled_trusted_and_serialized():
     workflow=yaml.load(Path('.github/workflows/weather-story.yml').read_text(),Loader=yaml.BaseLoader)
-    assert workflow['on']['schedule']==[{'cron':'0,17,32,47 5 * * *'}]
+    assert workflow['on']['schedule']==[{'cron':'35 4 * * *'},{'cron':'0,17,32,47 5 * * *'}]
     assert 'workflow_dispatch' not in workflow['on']
     assert workflow['concurrency']=={'group':'seferihisar-production','cancel-in-progress':'false'}
     job=workflow['jobs']['weather']
     assert job['environment']=='instagram-production' and job['permissions']=={'contents':'write'}
     assert 'head_repository.full_name == github.repository' in job['if'] and "conclusion == 'success'" in job['if']
     assert job['steps'][0]['with']['ref']=='main'
+    assert job['timeout-minutes']=='35'
+    assert job['steps'][-2]['run']=='python -m seferihisar.weather --wait-for-morning'
     assert 'FACEBOOK_PAGE_ACCESS_TOKEN' not in str(job)
     assert 'always()' in job['steps'][-1]['if']
     assert job['steps'][-1]['run']=='python -m seferihisar.state_git persist'
@@ -300,3 +302,110 @@ def test_failure_reason_survives_late_runs_without_saving_provider_text(store,mo
     assert store.rows('SELECT * FROM weather_stories')==before
     validate_state(store.path)
     assert b'PRIVATE_REQUEST' not in store.path.read_bytes()
+
+
+class MorningClock:
+    def __init__(self,at):
+        self.at,self.sleeps = at,[]
+
+    def now(self):
+        return self.at
+
+    def sleep(self,seconds):
+        self.sleeps.append(seconds)
+        self.at += timedelta(seconds=seconds)
+
+
+@pytest.mark.parametrize('early',['2026-10-16T07:35:00+03:00','2026-10-16T07:41:38+03:00',
+                                  '2026-10-16T04:59:59Z'])
+def test_early_ready_runner_waits_without_a_claim_then_rechecks_at_eight(store,early):
+    forecast=seed(store);api=adapter(forecast);clock=MorningClock(parse_date(early))
+    before=store.rows('SELECT * FROM weather_stories')
+    original_sleep=clock.sleep
+    def sleep(seconds):
+        assert store.rows('SELECT * FROM weather_stories')==before
+        api.container.assert_not_called();api.call.assert_not_called()
+        original_sleep(seconds)
+    claims=[]
+    def checkpoint():
+        assert clock.at==MORNING
+        validate_state(store.path)
+        claims.append(store.rows('SELECT status FROM weather_stories')[0]['status'])
+    result=run_weather(store,SITE,api,checkpoint,wait_for_morning=True,clock=clock.now,sleeper=sleep)
+    assert result=={'status':'published'}
+    assert sum(clock.sleeps)==(MORNING-parse_date(early)).total_seconds()
+    assert max(clock.sleeps)<=30
+    assert api.session.get.call_count==2 and api.session.head.call_count==2
+    assert claims==['publishing','publishing','published']
+    assert store.rows('SELECT published_at FROM weather_stories')==[{'published_at':MORNING.isoformat()}]
+    assert run_weather(store,SITE,api,wait_for_morning=True,clock=clock.now,sleeper=sleep)=={'status':'already_published'}
+    assert api.container.call_count==1 and api.call.call_count==1
+
+
+@pytest.mark.parametrize('at,wait,status',[
+    ('2026-10-16T07:34:59+03:00',True,'outside_window'),
+    ('2026-10-16T07:41:00+03:00',False,'outside_window'),
+    ('2026-10-16T08:00:00+03:00',True,'published'),
+    ('2026-10-16T08:21:00+03:00',True,'published'),
+    ('2026-10-16T08:59:59+03:00',True,'published'),
+    ('2026-10-16T09:00:00+03:00',True,'outside_window'),
+])
+def test_wait_is_opt_in_bounded_and_preserves_the_existing_publication_window(store,at,wait,status):
+    stamp=parse_date(at)
+    forecast=seed(store,parse_forecast(HTML,stamp-timedelta(minutes=5)))
+    api=adapter(forecast);sleeper=Mock()
+    assert run_weather(store,SITE,api,wait_for_morning=wait,clock=lambda:stamp,sleeper=sleeper)=={'status':status}
+    sleeper.assert_not_called()
+    assert api.container.call_count==(status=='published')
+
+
+@pytest.mark.parametrize('failure,status',[
+    ('missing','not_ready'),('disabled','disabled'),('blocked','source_timeout'),
+    ('old_at_eight','forecast_stale'),('legacy','forecast_text_review_required'),
+    ('undeployed','media_not_deployed'),('published','already_published'),
+    ('publishing','awaiting_resolution'),('uncertain','awaiting_resolution'),
+])
+def test_unready_or_claimed_early_job_releases_the_production_lock_without_waiting(store,failure,status):
+    forecast=parse_forecast(HTML,MORNING-timedelta(minutes=20))
+    if failure=='old_at_eight':
+        forecast['fetched_at']=(MORNING-timedelta(minutes=91)).isoformat()
+        assert fresh(forecast,MORNING-timedelta(minutes=19))
+    if failure=='legacy':forecast.pop('display_version')
+    if failure!='missing':
+        seed(store,forecast,status=failure if failure in ('blocked','published','publishing','uncertain') else 'prepared')
+    if failure=='blocked':
+        with store.db:store.db.execute("UPDATE weather_stories SET last_result='source_timeout'")
+    before=store.rows('SELECT * FROM weather_stories')
+    api=adapter(forecast);sleeper=Mock()
+    if failure=='disabled':api.enabled.return_value=False
+    if failure=='undeployed':api.session.head.return_value.status_code=404
+    assert run_weather(store,SITE,api,wait_for_morning=True,clock=lambda:MORNING-timedelta(minutes=19),sleeper=sleeper)=={'status':status}
+    assert store.rows('SELECT * FROM weather_stories')==before
+    sleeper.assert_not_called();api.container.assert_not_called();api.call.assert_not_called()
+
+
+@pytest.mark.parametrize('change,status',[('media','media_not_deployed'),('claim','awaiting_resolution'),
+                                         ('late','outside_window'),('day','outside_window')])
+def test_wakeup_rechecks_manifest_claim_and_clock_before_any_meta_write(store,change,status):
+    forecast=seed(store);api=adapter(forecast);clock=MorningClock(MORNING-timedelta(minutes=19))
+    def sleep(seconds):
+        assert seconds<=30
+        clock.at=MORNING
+        if change=='media':api.session.head.return_value.status_code=404
+        elif change=='claim':
+            with store.db:store.db.execute("UPDATE weather_stories SET status='uncertain'")
+        elif change=='late':clock.at=MORNING+timedelta(hours=1)
+        else:clock.at=MORNING+timedelta(days=1)
+    assert run_weather(store,SITE,api,wait_for_morning=True,clock=clock.now,sleeper=sleep)=={'status':status}
+    assert store.rows('SELECT status FROM weather_stories')==[{'status':'uncertain' if change=='claim' else 'prepared'}]
+    api.container.assert_not_called();api.call.assert_not_called()
+
+
+def test_clock_stall_cannot_hold_production_beyond_the_bounded_wait(store):
+    forecast=seed(store);api=adapter(forecast);sleeper=Mock()
+    before=store.rows('SELECT * FROM weather_stories')
+    result=run_weather(store,SITE,api,wait_for_morning=True,clock=lambda:MORNING-timedelta(minutes=19),sleeper=sleeper)
+    assert result=={'status':'outside_window'}
+    assert sum(c.args[0] for c in sleeper.call_args_list)==25*60
+    assert store.rows('SELECT * FROM weather_stories')==before
+    api.container.assert_not_called();api.call.assert_not_called()

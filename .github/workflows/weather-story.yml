@@ -1,6 +1,7 @@
 name: Daily Seferihisar weather story
 on:
   schedule:
+    - cron: '35 4 * * *' # Prepare the runner before the hour; only a ready card waits until 08:00 TR.
     - cron: '0,17,32,47 5 * * *' # 08:00 target plus bounded backups away from the hour boundary.
   workflow_run:
     workflows: ['Research and prepare Seferihisar content']
@@ -21,7 +22,7 @@ jobs:
         github.event.workflow_run.head_repository.full_name == github.repository &&
         (contains(github.event.workflow_run.created_at, 'T04:') || contains(github.event.workflow_run.created_at, 'T05:'))))
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 35 # At most 25 minutes waiting, plus setup and the bounded publication call.
     environment: instagram-production
     permissions:
       contents: write
@@ -37,7 +38,7 @@ jobs:
       - run: python -m pip install -e .
       - id: restore
         run: python -m seferihisar.state_git restore
-      - name: Publish this morning's deployed weather card once
+      - name: Wait with a ready card, then publish this morning's weather once
         env:
           INSTAGRAM_PUBLISH_ENABLED: ${{ vars.INSTAGRAM_PUBLISH_ENABLED }}
           META_TESTS_COMPLETED: ${{ vars.META_TESTS_COMPLETED }}
@@ -48,7 +49,7 @@ jobs:
           SITE_URL: ${{ vars.SITE_URL }}
           STATE_GIT_CHECKPOINT: 'true'
           STATE_WRITE_TOKEN: ${{ github.token }}
-        run: python -m seferihisar.weather
+        run: python -m seferihisar.weather --wait-for-morning
       - name: Persist the result without replaying uncertain publications
         if: always() && steps.restore.outcome == 'success'
         env:
