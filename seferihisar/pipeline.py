@@ -135,13 +135,13 @@ def run(db_path: Path, public_dir: Path, sources_path: Path, at: datetime | None
         if not fixture:
             from .weather import refresh_weather
             refresh_weather(store, at, fetcher)
-        result = export(store, public_dir, sources, at, demo=bool(fixture))
+        result = export(store, public_dir, sources, at, demo=bool(fixture), instagram_manifest=instagram_manifest)
         return {"collected": collected, "prepared": len([p for p in store.posts() if p["status"] == "prepared"]), "errors": len(errors), "assets": result}
     finally:
         store.close()
 
 
-def export(store: Store, public_dir: Path, sources: list[dict], at: datetime, demo=False) -> dict:
+def export(store: Store, public_dir: Path, sources: list[dict], at: datetime, demo=False, *, instagram_manifest=None) -> dict:
     # Build a clean, validated staging directory. Never carry arbitrary old files
     # (.env, a database, logs or stale private media) into the Pages artifact.
     root = Path(__file__).resolve().parents[1]
@@ -152,7 +152,7 @@ def export(store: Store, public_dir: Path, sources: list[dict], at: datetime, de
     public_dir.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="pages-staging-", dir=public_dir.parent) as directory:
         staging = Path(directory) / "public"
-        result = _export(store, staging, sources, at, demo, Path(directory) / 'illustrations')
+        result = _export(store, staging, sources, at, demo, Path(directory) / 'illustrations', instagram_manifest=instagram_manifest)
         validate_public(staging)
         if public_dir.exists():
             shutil.rmtree(public_dir)
@@ -160,7 +160,7 @@ def export(store: Store, public_dir: Path, sources: list[dict], at: datetime, de
     return result
 
 
-def _export(store: Store, public_dir: Path, sources: list[dict], at: datetime, demo=False, illustration_dir: Path | None = None) -> dict:
+def _export(store: Store, public_dir: Path, sources: list[dict], at: datetime, demo=False, illustration_dir: Path | None = None, *, instagram_manifest=None) -> dict:
     public_dir.mkdir(parents=True)
     root = Path(__file__).resolve().parents[1]
     for filename in ("index.html", "style.css", "app.js"):
@@ -177,7 +177,10 @@ def _export(store: Store, public_dir: Path, sources: list[dict], at: datetime, d
     assets = {}
     illustrator = Illustrator(store, at, illustration_dir or public_dir.parent / 'illustrations', demo=demo)
     from .source_photos import SourcePhotos
-    photos=SourcePhotos(store,at,(illustration_dir or public_dir.parent/'illustrations')/'source-photos',sources,demo=demo)
+    from .instagram_source_photos import consume_photos
+    instagram_photos,instagram_checks=consume_photos(instagram_manifest,sources,at)
+    photos=SourcePhotos(store,at,(illustration_dir or public_dir.parent/'illustrations')/'source-photos',sources,demo=demo,
+                        instagram_photos=instagram_photos,instagram_checks=instagram_checks)
     item_map = {i['id']: i for i in safe_items}
     photos.prune(set(item_map))
     illustrator.prune(set(item_map))

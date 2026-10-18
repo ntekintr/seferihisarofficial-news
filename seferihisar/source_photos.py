@@ -93,7 +93,9 @@ def cleaned_photo(raw):
         with Image.open(io.BytesIO(raw)) as image:
             if (image.format not in ('JPEG','PNG','WEBP') or image.width*image.height>4_000_000
                     or image.width<640 or image.height<300 or not 1.4<=image.width/image.height<=2.6
-                    or getattr(image,'n_frames',1)!=1):
+                    or getattr(image,'n_frames',1)!=1 or image.getexif().get(274,1)!=1):
+                # Cleaning strips EXIF. Do not silently turn an orientation-
+                # dependent photograph sideways or change its displayed frame.
                 raise ValueError('Unsupported source photo dimensions')
     except Image.DecompressionBombError:
         raise ValueError('Oversized source photo') from None
@@ -122,13 +124,16 @@ def binding_reason(store,post,items,at):
 
 
 class SourcePhotos:
-    def __init__(self,store,at,directory,sources,*,demo=False,fetcher=None):
+    def __init__(self,store,at,directory,sources,*,demo=False,fetcher=None,instagram_photos=None,instagram_checks=None):
         self.store,self.at,self.directory=store,at,directory
         self.enabled=not demo and os.getenv('ILLUSTRATIONS_ENABLED')=='true'
         self.sources={s['id']:s for s in sources if s.get('enabled') and s.get('trusted')
-                      and s.get('kind') in ('html','rss') and s.get('access')=='robots'}
+                      and ((s.get('kind') in ('html','rss') and s.get('access')=='robots')
+                           or (s.get('kind')=='instagram_api' and s.get('access')=='api'))}
+        self.instagram_photos=instagram_photos or {}
         self.fetcher=fetcher
         self.stats={'enabled':self.enabled,'downloaded':0,'reused':0,'rejected':0,'unavailable':0,'deferred':0}
+        if instagram_checks is not None:self.stats['instagram']=instagram_checks
         self.reads=0
         self.results={}
 
@@ -155,6 +160,23 @@ class SourcePhotos:
         source=self.sources.get(item['source_id']);expected=news_subject(item)
         if (not source or not expected or contains_secret(item) or not public_url(item['url'])
                 or urlsplit(item['url']).hostname!=urlsplit(source['url']).hostname):return None
+        if source['kind']=='instagram_api':
+            result=self.instagram_photos.get(item['url'])
+            if not result:return None
+            if self.reads>=MAX_READS:self.stats['deferred']+=1;return None
+            self.reads+=1
+            try:
+                evidence,image=result
+                # Artifact provenance is revalidated by the consumer; check it
+                # again against the actual durable item revision before binding.
+                if (evidence['source_id']!=item['source_id'] or evidence['title']!=item['title']
+                        or evidence['published_at']!=item['published_at'] or evidence['subject']!=expected):
+                    raise ValueError('Instagram photo changed')
+                validate_news_photo(image,expected)
+                return self.save(item,evidence,image)
+            except MatchUnavailable:self.stats['unavailable']+=1
+            except (ValueError,TypeError,KeyError,OSError):self.stats['rejected']+=1
+            return None
         rows=self.store.rows('SELECT * FROM source_photos WHERE item_id=? AND revision=?',(item['id'],item['revision']))
         for row in rows:
             value=validate_record(row['id'],row['item_id'],row['revision'],row['payload'],row['image'])
@@ -179,34 +201,41 @@ class SourcePhotos:
             sha=fingerprint(image)
             for previous in self.store.rows('SELECT item_id,payload FROM source_photos WHERE item_id!=?',(item['id'],)):
                 old=json.loads(previous['payload'])
-                if old['image_url']==url or old['sha256']==sha:
+                if old.get('image_url')==url or old['sha256']==sha:
                     raise ValueError('Photograph reused by another article')
             evidence={'version':VERSION,'source_id':item['source_id'],'source_url':item['url'],
                       'image_url':url,'title':item['title'],'published_at':item['published_at'],
                       'checked_at':self.at.isoformat(),'subject':expected,'sha256':sha}
-            photo=key(item['id'],item['revision'],evidence)
-            payload=json.dumps(evidence,ensure_ascii=False)
-            validate_record(photo,item['id'],item['revision'],payload,image)
-            frozen=self.frozen()
-            with self.store.db:
-                # Only unreferenced draft cache rows may be evicted. Frozen
-                # pixels and evidence survive every later research/export.
-                used={key for p in self.store.posts() for key in p.get('source_photo_keys',{}).values()}
-                for row in self.store.rows('SELECT id FROM source_photos'):
-                    if row['id'] not in used and row['id']!=photo:self.store.db.execute('DELETE FROM source_photos WHERE id=?',(row['id'],))
-                size,count=self.store.db.execute('SELECT COALESCE(SUM(length(image)),0),COUNT(*) FROM source_photos WHERE id!=?',(photo,)).fetchone()
-                if size+len(image)>MAX_CACHE_BYTES or count>=MAX_CACHED_IMAGES:
-                    self.stats['deferred']+=1;return None
-                if photo not in frozen:
-                    self.store.db.execute('INSERT OR REPLACE INTO source_photos VALUES(?,?,?,?,?)',
-                                          (photo,item['id'],item['revision'],payload,image))
-            row=self.store.rows('SELECT * FROM source_photos WHERE id=?',(photo,))[0]
-            self.stats['downloaded']+=1
-            self.results[item['id']]=(photo,self.materialize(row))
-            return self.results[item['id']]
+            return self.save(item,evidence,image)
         except MatchUnavailable:self.stats['unavailable']+=1
         except (requests.RequestException,ValueError,TypeError,KeyError,OSError):self.stats['rejected']+=1
         return None
+
+    def save(self,item,evidence,image):
+        photo=key(item['id'],item['revision'],evidence)
+        payload=json.dumps(evidence,ensure_ascii=False)
+        validate_record(photo,item['id'],item['revision'],payload,image)
+        for previous in self.store.rows('SELECT item_id,payload FROM source_photos WHERE item_id!=?',(item['id'],)):
+            old=json.loads(previous['payload'])
+            if old['sha256']==evidence['sha256'] or (evidence.get('media_id') and old.get('media_id')==evidence['media_id']):
+                raise ValueError('Photograph reused by another item')
+        frozen=self.frozen()
+        with self.store.db:
+            # Only unreferenced draft cache rows may be evicted. Frozen
+            # pixels and evidence survive every later research/export.
+            used={key for p in self.store.posts() for key in p.get('source_photo_keys',{}).values()}
+            for row in self.store.rows('SELECT id FROM source_photos'):
+                if row['id'] not in used and row['id']!=photo:self.store.db.execute('DELETE FROM source_photos WHERE id=?',(row['id'],))
+            size,count=self.store.db.execute('SELECT COALESCE(SUM(length(image)),0),COUNT(*) FROM source_photos WHERE id!=?',(photo,)).fetchone()
+            if size+len(image)>MAX_CACHE_BYTES or count>=MAX_CACHED_IMAGES:
+                self.stats['deferred']+=1;return None
+            if photo not in frozen:
+                self.store.db.execute('INSERT OR REPLACE INTO source_photos VALUES(?,?,?,?,?)',
+                                      (photo,item['id'],item['revision'],payload,image))
+        row=self.store.rows('SELECT * FROM source_photos WHERE id=?',(photo,))[0]
+        self.stats['downloaded']+=1
+        self.results[item['id']]=(photo,self.materialize(row))
+        return self.results[item['id']]
 
     def for_post(self,post,items):
         assignments={}
