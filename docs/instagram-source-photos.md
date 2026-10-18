@@ -6,7 +6,7 @@ endpoint, adding `media_type` and `media_url`. It does not request new permissio
 generate a token, scrape login pages, read pagination, or publish anything. If
 those fields are unavailable, caption research continues with information cards.
 
-At most two recent, verified caption items per run are selected, restricted to
+At most two recent, verified, publication-eligible caption items per run are selected (including the existing 48-hour news-age limit), restricted to
 the existing meeting, flood and traffic news subjects. Accounts whose caption
 read failed receive no extra query. Each selected account is read at most once
 in this optional step. The returned caption, permalink and timestamp must still

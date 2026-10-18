@@ -20,6 +20,7 @@ from .instagram_sources import consume, read_account, caption_items, SourceReadE
 from .security import assert_no_secrets
 from .source_photo_data import INSTAGRAM_VERSION, validate_evidence
 from .source_photos import ARCHIVE, cleaned_photo, news_subject, normalized
+from .timeliness import publication_reason
 from .visual_gate import fingerprint
 
 MAX_PHOTOS=2
@@ -61,7 +62,7 @@ def build(path,sources,at,*,graph=None,images=None):
     selected={s['id']:s for s in sources}
     # No second call to accounts whose caption read failed. No attempt to
     # download reel thumbnails, video frames or an arbitrary carousel slide.
-    candidates=[i for i in items if news_subject(i) and i.get('kind')=='news'
+    candidates=[i for i in items if news_subject(i) and i.get('kind')=='news' and publication_reason(i,at) is None
                 and '/p/' in i['url'] and not ARCHIVE.search(normalized(i['description']))]
     candidates.sort(key=lambda i:(i['published_at'],i['url']),reverse=True)
     checks=[];photos=[];accounts={};blobs={}
@@ -141,7 +142,8 @@ def consume_photos(path,sources,at):
             matching=[i for i in items if i['url']==value['source_url'] and i['source_id']==value['source_id']]
             if len(matching)!=1:raise ValueError('Unknown photo item')
             item=matching[0];checked=parse_date(value['checked_at'])
-            if (item['kind']!='news' or news_subject(item)!=value['subject'] or ARCHIVE.search(normalized(item['description']))
+            if (item['kind']!='news' or publication_reason(item,at) is not None
+                    or news_subject(item)!=value['subject'] or ARCHIVE.search(normalized(item['description']))
                     or item['title']!=value['title'] or item['published_at']!=value['published_at']
                     or not at-timedelta(hours=1)<=checked<=at+timedelta(minutes=5)
                     or value['source_url'] in found or value['sha256'] in hashes):

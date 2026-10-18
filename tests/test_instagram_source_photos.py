@@ -175,6 +175,16 @@ def test_unavailable_instagram_artifact_does_not_consume_web_photo_budget(store,
     fetcher.get.assert_not_called()
 
 
+def test_expired_news_caption_does_not_trigger_optional_media_get(tmp_path,at,monkeypatch):
+    data=account(at);data['media']['data'][0]['timestamp']=(at-timedelta(hours=49)).isoformat()
+    path,items=caption_file(tmp_path,at,data)
+    assert items  # Search can retain older items; publication eligibility is narrower.
+    read=Mock();monkeypatch.setattr(photos,'read_account',read)
+    result,blobs=photos.build(path,[SOURCE],at,graph=Mock(),images=Mock())
+    assert not result['photos'] and not result['checks'] and not blobs
+    read.assert_not_called()
+
+
 @pytest.mark.parametrize('mutation',['stale','other_run','wrong_title','wrong_source','wrong_hash','extra_secret','missing_jpeg','changed_jpeg','unknown_field'])
 def test_bad_artifact_never_affects_captions(tmp_path,at,monkeypatch,mutation):
     path,items,index,blobs,_=artifact(tmp_path,at,monkeypatch)
