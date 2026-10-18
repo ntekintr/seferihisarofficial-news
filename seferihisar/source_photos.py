@@ -19,7 +19,7 @@ from .visual_gate import fingerprint
 from .visual_match import validate_news_photo,MatchRejected,MatchUnavailable
 
 MAX_READS=2
-ARCHIVE=re.compile(r'\b(?:arsiv|arşiv|temsili|illustration|illustrasyon|stok|stock|yapay zeka|ai generated)\b')
+ARCHIVE=re.compile(r'\b(?:ar[şs]iv\w*|temsili\w*|illustration\w*|ill[uü]strasyon\w*|stok|stock|yapay zek[aâ]\w*|ai generated)\b')
 
 
 def news_subject(item):

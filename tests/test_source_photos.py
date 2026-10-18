@@ -64,7 +64,7 @@ def test_actual_article_identity_and_primary_image_excludes_related_thumbnails()
 
 
 @pytest.mark.parametrize('change',[
-    'title','date','canonical','final','archive','foreign','logo','related','ambiguous','secret',
+    'title','date','canonical','final','archive','generated','foreign','logo','related','ambiguous','secret',
 ])
 def test_unproven_default_archival_related_or_private_images_are_rejected(change):
     body=html();final=NEWS['url']
@@ -73,6 +73,7 @@ def test_unproven_default_archival_related_or_private_images_are_rejected(change
     elif change=='canonical':body=body.replace('rel="canonical" href="'+NEWS['url'],'rel="canonical" href="https://news.example/other')
     elif change=='final':final='https://news.example/login'
     elif change=='archive':body=body.replace('alt="Muhtarlar toplantısı"','alt="Arşiv görseli"')
+    elif change=='generated':body=body.replace('alt="Muhtarlar toplantısı"','alt="Yapay zekâyla hazırlanmış görsel"')
     elif change=='foreign':body=body.replace(PHOTO,'https://other.example/meeting.jpg')
     elif change=='logo':body=body.replace(PHOTO,'https://news.example/logo.jpg')
     elif change=='related':body=body.replace('<img src="'+PHOTO,'<a href="https://news.example/other"><img src="'+PHOTO).replace('alt="Muhtarlar toplantısı">','alt="Muhtarlar toplantısı"></a>')
