@@ -6,6 +6,8 @@ toplantı/muhtar buluşması, trafik ve su baskınıdır. Konu yalnız kaynak ba
 açıkça varsa seçilir; genel kategori veya görsel benzerliği olayın kanıtı sayılmaz.
 Diğer haberlerde mevcut logolu bilgi kartı kullanılır. Etkinliklerin denetlenen
 görsel akışı ve bağımsız günlük hava story'si kendi kurallarını korur.
+Uyarı, risk, iptal veya henüz planlanan/gelecekte yapılacak iş başlıkları da
+bilgi kartında kalır; bunlar gerçekleşmiş olay fotoğrafı için kanıt değildir.
 
 Kaynak metni değişmez. Ayrı fotoğraf kanıtı, haber kimliği/sürümü, aynı kaynağın
 haber adresi, fotoğraf adresi, kaynak başlığı/yayım tarihi, kontrol zamanı, konu ve

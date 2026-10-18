@@ -25,6 +25,10 @@ ARCHIVE=re.compile(r'\b(?:ar[şs]iv\w*|temsili\w*|illustration\w*|ill[uü]strasy
 def news_subject(item):
     if item.get('kind')!='news' or item.get('category')=='outage':return None
     title=normalized(item.get('title',''))
+    # A warning, cancellation or proposal is not evidence that the pictured
+    # incident/meeting happened. Keep those notices on information cards.
+    if re.search(r'\b(?:uyari\w*|beklen\w*|risk\w*|iptal\w*|planlan\w*|yarin|yapilacak|gerçekleşecek|önlenecek)\b',title):
+        return None
     if re.search(r'\b(?:sel|su baskini|göle döndü|sular altinda)\b',title):return 'flood'
     if re.search(r'\b(?:toplanti\w*|bir araya gel\w*|buluştu|bulustu)\b',title):return 'meeting'
     if re.search(r'\b(?:trafik|çevre yolu|kavşak)\b',title):return 'traffic'
