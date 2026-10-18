@@ -10,6 +10,7 @@ import requests
 
 from .domain import TZ, now
 from .weather_data import SITE, SOURCE, asset_id, fresh, validate_forecast
+from .weather_copy import VERSION as DISPLAY_VERSION, WeatherTextError, display_condition, reviewed
 
 
 class ForecastError(ValueError):
@@ -57,8 +58,10 @@ def parse_forecast(html, at):
     if temperatures == [None, None]:
         raise ForecastError('forecast_temperature_missing')
     result = {'date':at.astimezone(TZ).date().isoformat(),'place':'Seferihisar','condition':condition,
-              'low':temperatures[0],'high':temperatures[1],**values,'fetched_at':at.isoformat(),'source_url':SOURCE}
+              'low':temperatures[0],'high':temperatures[1],**values,'fetched_at':at.isoformat(),'source_url':SOURCE,
+              'display_version':DISPLAY_VERSION}
     validate_forecast(result)
+    display_condition(result)
     from .security import assert_no_secrets
     assert_no_secrets(result)
     return result
@@ -72,7 +75,9 @@ def refresh_weather(store, at, fetcher=None):
     old = store.rows('SELECT * FROM weather_stories WHERE day=?',(day,))
     if old and old[0]['status'] in ('publishing','published','uncertain'):
         return  # A publication claim is immutable, even if the forecast changes.
-    if old and old[0]['status'] == 'prepared' and datetime.fromisoformat(old[0]['checked_at']) > at-timedelta(minutes=15):
+    if (old and old[0]['status'] == 'prepared' and old[0]['forecast']
+            and reviewed(json.loads(old[0]['forecast']))
+            and datetime.fromisoformat(old[0]['checked_at']) > at-timedelta(minutes=15)):
         return
     try:
         if fetcher is None:
@@ -95,6 +100,8 @@ def refresh_weather(store, at, fetcher=None):
 
 
 def weather_error_code(exc):
+    if isinstance(exc, WeatherTextError):
+        return 'forecast_text_unreadable'
     if isinstance(exc, ForecastError):
         return exc.code
     if isinstance(exc, requests.exceptions.SSLError):
@@ -122,7 +129,23 @@ def export_weather(store,public_dir,at):
     if row['forecast']:
         forecast = json.loads(row['forecast'])
         from .weather_render import render_weather
-        result.update(forecast=forecast,asset_id=asset_id(forecast),asset=render_weather(forecast,public_dir))
+        result['forecast'] = forecast
+        if row['status'] == 'blocked' and not reviewed(forecast):
+            return result  # Preserve a real source failure; no stale preview.
+        try:
+            if row['status'] in ('prepared', 'blocked') and not reviewed(forecast):
+                raise ForecastError('forecast_text_review_required')
+            description = display_condition(forecast)
+            asset = render_weather(forecast,public_dir)
+            result.update(display_condition=description,asset_id=asset_id(forecast),asset=asset)
+        except (WeatherTextError, ForecastError) as exc:
+            if row['status'] not in ('prepared', 'blocked'):
+                raise  # Never rewrite a frozen claim or its media to fix copy.
+            reason = weather_error_code(exc)
+            with store.db:
+                store.db.execute("UPDATE weather_stories SET status='blocked',last_result=? WHERE day=? AND status IN ('prepared','blocked')",
+                                 (reason,row['day']))
+            result.update(status='blocked',last_result=reason)
     return result
 
 
@@ -147,6 +170,13 @@ def publish_weather(store,at,site_url,adapter=None,checkpoint=None):
     if row['status'] != 'prepared' or not row['forecast']:
         return {'status': row['last_result'] if row['status'] == 'blocked' and row['last_result'] not in ('outside_window','prepared') else 'source_unavailable'}
     forecast = json.loads(row['forecast'])
+    if not reviewed(forecast):
+        return {'status':'forecast_text_review_required'}
+    try:
+        from .weather_render import condition_layout
+        condition_layout(forecast)
+    except WeatherTextError:
+        return {'status':'forecast_text_unreadable'}
     if not fresh(forecast,at):
         return {'status':'forecast_stale'}
     if site_url.rstrip('/') != SITE:
@@ -159,7 +189,9 @@ def publish_weather(store,at,site_url,adapter=None,checkpoint=None):
         snapshot = response.json()
         deployed = snapshot.get('weather_story') or {}
         expected = f'media/{asset_id(forecast)}/story-1.jpg'
-        if snapshot.get('demo') is not False or deployed.get('forecast') != forecast or deployed.get('asset') != expected or deployed.get('asset_id') != asset_id(forecast):
+        if (snapshot.get('demo') is not False or deployed.get('forecast') != forecast
+                or deployed.get('display_condition') != display_condition(forecast)
+                or deployed.get('asset') != expected or deployed.get('asset_id') != asset_id(forecast)):
             return {'status':'media_not_deployed'}
         url = SITE+'/'+expected
         head = api.session.head(url,timeout=15,allow_redirects=False)

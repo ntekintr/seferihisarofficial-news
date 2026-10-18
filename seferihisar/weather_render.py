@@ -9,6 +9,8 @@ from PIL import Image, ImageDraw, ImageOps
 
 from .render import ASSETS, NAVY, ORANGE, TURQUOISE, font, readable_date_line, wrap
 from .weather_data import asset_id, validate_forecast
+from .weather_copy import WeatherTextError, display_condition, reviewed
+from .text_quality import TextRenderError, ensure_glyphs
 
 
 def scene_for(condition):
@@ -30,15 +32,27 @@ def scene_for(condition):
     return 'sunny' if 'güneş' in value or 'açık' in value else 'cloudy'
 
 
-def display_condition(forecast):
-    description = forecast['condition']
-    if datetime.fromisoformat(forecast['period_start']).date() < date.fromisoformat(forecast['date']):
-        description = re.sub(r'\byarın\b','bugün',description,flags=re.I)
-    return description
+def condition_layout(forecast):
+    description = display_condition(forecast)
+    draw = ImageDraw.Draw(Image.new('RGB',(1,1)))
+    for size in (40,36,32,28,24):
+        typeface = font(size*2,True)
+        lines = wrap(draw,description,typeface,870*2)
+        if len(lines) <= 3:
+            break
+    if reviewed(forecast):
+        try:
+            ensure_glyphs(description,typeface)
+        except TextRenderError:
+            raise WeatherTextError('Unsupported weather character') from None
+        if len(lines)>3:
+            raise WeatherTextError('Weather text would overflow')
+    return description, size, lines
 
 
 def render_weather(forecast, public_dir: Path):
     validate_forecast(forecast)
+    description, condition_size, condition_lines = condition_layout(forecast)
     scale = 2
     image = Image.new('RGB', (1080*scale, 1920*scale), '#fbf6eb')
     draw = ImageDraw.Draw(image)
@@ -67,18 +81,14 @@ def render_weather(forecast, public_dir: Path):
         text((x,758),f"{forecast[key]}°",132 if index == 0 else 94,
              NAVY if index == 0 else '#71838c',bold=index == 0)
         text((x,873),label,27,'#60717d')
-    description = display_condition(forecast)
-    for size in (40,36,32,28,24):
-        lines = wrap(draw,description,font(size*scale,True),870*scale)
-        if len(lines) <= 3: break
-    for i,value in enumerate(lines):
-        text((540,1000+i*(size+12)),value,size,bold=True)
+    for i,value in enumerate(condition_lines):
+        text((540,1000+i*(condition_size+12)),value,condition_size,bold=True)
     end = datetime.fromisoformat(forecast['period_end'])
     end_label = end.strftime('%H:%M') if end.date() == day else readable_date_line(end.strftime('%d.%m.%Y'))+' '+end.strftime('%H:%M')
     text((540,1210),'Tahmin geçerliliği: '+end_label,24,'#71838c')
 
     # Small original landscape confined to the lower fifth of the story.
-    scene = scene_for(forecast['condition'])
+    scene = scene_for(description if reviewed(forecast) else forecast['condition'])
     with Image.open(ASSETS/f'weather-snail-{scene}.jpg') as original:
         landscape = ImageOps.fit(original.convert('RGB'),(1080*scale,400*scale),
                                  method=Image.Resampling.LANCZOS,centering=(0.5,1.0))

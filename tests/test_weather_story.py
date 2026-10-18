@@ -35,7 +35,7 @@ def adapter(forecast):
     api.enabled.return_value = True
     api.account = '123'
     response = Mock(status_code=200,content=b'public JSON')
-    response.json.return_value = {'demo':False,'weather_story':{'forecast':forecast,'asset_id':asset_id(forecast),'asset':f'media/{asset_id(forecast)}/story-1.jpg'}}
+    response.json.return_value = {'demo':False,'weather_story':{'forecast':forecast,'display_condition':display_condition(forecast),'asset_id':asset_id(forecast),'asset':f'media/{asset_id(forecast)}/story-1.jpg'}}
     api.session.get.return_value = response
     api.session.head.return_value = Mock(status_code=200,headers={'Content-Type':'image/jpeg'})
     api.container.return_value = '999'

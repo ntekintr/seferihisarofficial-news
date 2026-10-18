@@ -20,7 +20,17 @@ test('weather retains distinct safe source and data failure explanations',()=>{
  assert.match(context.weatherReason('forecast_temperature_missing'),/sıcaklık yok/);
  assert.match(context.weatherReason('forecast_district_missing'),/Seferihisar/);
  assert.match(context.weatherReason('source_tls_failed'),/güvenli bağlantı/);
+ assert.match(context.weatherReason('forecast_text_review_required'),/Hava metni kontrolü/);
+ assert.match(context.weatherReason('forecast_text_unreadable'),/eksiksiz/);
  for(const value of ['__proto__','toString','PRIVATE_PROVIDER_ERROR',null,{}])assert.equal(context.weatherReason(value),null);
+});
+
+test('weather panel uses reviewed display without overwriting the source forecast',()=>{
+ const weather={forecast:{condition:'sabah puzlu'},display_condition:'sabah puslu'};
+ assert.equal(context.weatherDescription(weather),'sabah puslu');
+ assert.equal(weather.forecast.condition,'sabah puzlu');
+ assert.equal(context.weatherDescription({forecast:weather.forecast}),'sabah puzlu');
+ assert.equal(context.weatherDescription(null),'');
 });
 
 test('publication waits, missing media and uncertainty have separate safe labels',()=>{

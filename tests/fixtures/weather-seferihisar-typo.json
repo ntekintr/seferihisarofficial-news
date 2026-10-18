@@ -1,0 +1,11 @@
+{
+  "date": "2026-10-18",
+  "place": "Seferihisar",
+  "condition": "Parçalı ve az bulutlu, sabah saatlerinde puzlu",
+  "low": null,
+  "high": 20,
+  "period_start": "2026-10-18T06:00:00+03:00",
+  "period_end": "2026-10-19T06:00:00+03:00",
+  "fetched_at": "2026-10-18T08:09:45.859920+03:00",
+  "source_url": "https://www.mgm.gov.tr/tahmin/gunluk-tahmin.aspx?b=3"
+}
