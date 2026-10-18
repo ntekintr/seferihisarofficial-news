@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from seferihisar.visual_match import MatchRejected, validate_match
+from seferihisar.visual_match import MatchRejected, validate_match,validate_news_photo
 
 pytestmark=pytest.mark.skipif(os.getenv('RUN_VISUAL_NATIVE')!='true',reason='Explicit pinned CPU visual model job')
 ROOT=Path('tests/fixtures/visual-match')
@@ -23,3 +23,15 @@ def test_observed_unrelated_scenes_are_rejected(file,expected):
 def test_reviewed_current_matching_scenes_pass_both_crops(expected):
     proof=validate_match((ROOT/(expected+'-accepted.jpg')).read_bytes(),expected)
     assert proof['subject']==expected
+
+
+def test_article_bound_meeting_source_passes_all_full_frame_news_formats():
+    proof=validate_news_photo((ROOT/'news-meeting-source.jpg').read_bytes(),'meeting')
+    assert proof['subject']=='meeting'
+
+
+@pytest.mark.parametrize('file,expected',[
+    ('traffic-meeting','meeting'),('dry-road-flood','flood'),('hall-outage','meeting'),
+])
+def test_observed_unrelated_source_news_images_are_rejected(file,expected):
+    with pytest.raises(MatchRejected):validate_news_photo((ROOT/(file+'.jpg')).read_bytes(),expected)

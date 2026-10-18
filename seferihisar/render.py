@@ -165,7 +165,7 @@ def graphic_title(title: str, category: str, event_details: bool = False):
 def card(title: str, body: str, category: str, target: Path, story: bool = False,
          index: str = '', illustration: Path | None = None, preview: bool = False,
          event_details: bool = False, photo_centering: tuple[float, float] = (0.5, 0.5), compact: bool = False,
-         legacy_outage: bool = False, story_details: bool = False, text_review: bool = False):
+         legacy_outage: bool = False, story_details: bool = False, text_review: bool = False, source_photo: bool = False):
     """Fixed branding and a per-item illustration, never a shared news scene."""
     width, height = 1080, 1920 if story else 1350
     block = partial(text_block, strict=text_review)
@@ -189,8 +189,9 @@ def card(title: str, body: str, category: str, target: Path, story: bool = False
         hero_bottom -= 80
     if illustration is not None:
         with Image.open(illustration) as source:
-            hero = ImageOps.fit(source.convert('RGB'), (width, hero_bottom - header_bottom),
-                                method=Image.Resampling.LANCZOS, centering=photo_centering)
+            hero = (ImageOps.pad(source.convert('RGB'), (width,hero_bottom-header_bottom),method=Image.Resampling.LANCZOS,color=NAVY)
+                    if source_photo else ImageOps.fit(source.convert('RGB'), (width, hero_bottom - header_bottom),
+                                method=Image.Resampling.LANCZOS, centering=photo_centering))
         image.paste(hero, (0, header_bottom))
     elif not compact:
         # A missing/rejected photo produces typography, never invented scenery.
@@ -287,7 +288,8 @@ def render_post(post: dict, public_dir: Path, illustrations: dict[int, Path] | N
                  compact=mutable or bool(review),
                  legacy_outage=category == 'outage' and not mutable and not review,
                  story_details=(review.get('version') in ('content-visual-v2','content-visual-v3') or mutable and not review),
-                 text_review=review.get('version') == 'content-visual-v3' or mutable and not review)
+                 text_review=review.get('version') == 'content-visual-v3' or mutable and not review,
+                 source_photo=bool(post.get('source_photo_keys',{}).get(str(i))))
             assets[fmt].append(relative)
     return assets
 

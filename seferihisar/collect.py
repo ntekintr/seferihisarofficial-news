@@ -135,7 +135,7 @@ class Fetcher:
         self.retries = {urlsplit(s['url']).hostname: min(1, max(0, s.get('transient_retries', 0)))
                         for s in web_sources if s.get('enabled')}
 
-    def request(self, url: str) -> tuple[str, str]:
+    def request(self, url: str, *, binary=False):
         url = safe_url(url, self.hosts)
         # Validate every redirect before following it; keep requests bounded.
         for _ in range(5):
@@ -147,6 +147,8 @@ class Fetcher:
             response = self.session.get(url, timeout=(8, 20), headers={"User-Agent": AGENT}, allow_redirects=False, stream=True)
             try:
                 if response.is_redirect:
+                    if binary:
+                        raise ValueError('Image redirect rejected')
                     url = safe_url(urljoin(url, response.headers["Location"]), self.hosts)
                     continue
                 response.raise_for_status()
@@ -155,6 +157,10 @@ class Fetcher:
                     body.extend(chunk)
                     if len(body) > MAX_BYTES:
                         raise ValueError("Response too large")
+                if binary:
+                    if response.headers.get('Content-Type','').split(';')[0].strip().lower() not in ('image/jpeg','image/png','image/webp'):
+                        raise ValueError('Unsupported source image response')
+                    return bytes(body),url
                 return decode_document(bytes(body), response.headers.get('Content-Type', '')), url
             finally:
                 response.close()
@@ -183,7 +189,11 @@ class Fetcher:
             time.sleep(delay)
             return self._get(url)
 
-    def _get(self, url: str) -> tuple[str, str]:
+    def image(self, url: str):
+        """One robots-aware bounded image read; no redirect, retry or credential."""
+        return self._get(url,binary=True)
+
+    def _get(self, url: str, *, binary=False):
         host = urlsplit(url).hostname
         if host not in self.robots:
             robot = RobotFileParser()
@@ -209,7 +219,7 @@ class Fetcher:
         wait = max(0, delay - (time.monotonic() - self.last_request.get(host, 0)))
         if wait:
             time.sleep(wait)
-        return self.request(url)
+        return self.request(url,binary=True) if binary else self.request(url)
 
 
 def text(value) -> str:

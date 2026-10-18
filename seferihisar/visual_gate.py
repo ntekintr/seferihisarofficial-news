@@ -8,7 +8,7 @@ from urllib.parse import urljoin
 
 import requests
 
-from .domain import digest
+from .domain import digest,now
 from .security import public_url, valid_visual_review
 
 VERSION = 'content-visual-v3'
@@ -23,7 +23,10 @@ def fingerprint(data):
 
 
 def content_key(post):
-    return digest(json.dumps({k: post.get(k) for k in CONTENT_FIELDS}, ensure_ascii=False, sort_keys=True))
+    values={k:post.get(k) for k in CONTENT_FIELDS}
+    # Leave every pre-existing frozen edition's fingerprint unchanged.
+    if 'source_photo_keys' in post:values['source_photo_keys']=post['source_photo_keys']
+    return digest(json.dumps(values, ensure_ascii=False, sort_keys=True))
 
 
 def review(post, illustrations, items=None):
@@ -65,6 +68,9 @@ def deployed(store, post, site_url, paths, session=None, *, story=False):
     from .quality import publication_copy_reason
     items = {i['id']:i for i in store.items()}
     if reason := publication_copy_reason(parent, items):
+        return reason
+    from .source_photos import binding_reason
+    if reason := binding_reason(store,parent,items,now()):
         return reason
     if not public_url(site_url) or not valid_review(parent):
         return 'visual_review_missing'
