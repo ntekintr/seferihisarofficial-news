@@ -135,11 +135,24 @@ def accepted(result: dict[str, float], expected: str) -> bool:
 def validate_match(data: bytes, expected: str) -> dict:
     if expected not in LABELS or expected in ('traffic', 'empty_hall', 'landscape', 'meeting', 'flood', 'blank'):
         raise MatchRejected('Unsupported visual subject')
+    return _validate_crops(data,expected)
+
+
+def validate_news_photo(data: bytes, expected: str) -> dict:
+    # These remain forbidden generated scenes. Only a separately verified,
+    # article-bound source photograph may reach this narrow news taxonomy.
+    if expected not in ('traffic','meeting','flood'):
+        raise MatchRejected('Unsupported news photograph')
+    return _validate_crops(data,expected,source_photo=True)
+
+
+def _validate_crops(data: bytes, expected: str, *, source_photo=False) -> dict:
     try:
         with Image.open(io.BytesIO(data)) as image:
             image.load()
             center = (0.5, 1.0) if expected == 'yoga' else (0.5, 0.5)
-            crops = [ImageOps.fit(image.convert('RGB'), size, Image.Resampling.LANCZOS, centering=center)
+            crops = [ImageOps.pad(image.convert('RGB'),size,Image.Resampling.LANCZOS,color='#06244a') if source_photo
+                     else ImageOps.fit(image.convert('RGB'), size, Image.Resampling.LANCZOS, centering=center)
                      for size in ((1080, 436), (1080, 506), (1080, 586))]
         results = scores(crops)
         if len(results) != 3 or not all(accepted(result, expected) for result in results):

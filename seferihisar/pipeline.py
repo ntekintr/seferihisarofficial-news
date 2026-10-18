@@ -176,7 +176,10 @@ def _export(store: Store, public_dir: Path, sources: list[dict], at: datetime, d
                and p["status"] not in ("superseded", "expired")]
     assets = {}
     illustrator = Illustrator(store, at, illustration_dir or public_dir.parent / 'illustrations', demo=demo)
+    from .source_photos import SourcePhotos
+    photos=SourcePhotos(store,at,(illustration_dir or public_dir.parent/'illustrations')/'source-photos',sources,demo=demo)
     item_map = {i['id']: i for i in safe_items}
+    photos.prune(set(item_map))
     illustrator.prune(set(item_map))
     # Public output always rebuilt; removed/sensitive/superseded images cannot linger.
     shutil.rmtree(public_dir / "media", ignore_errors=True)
@@ -191,6 +194,7 @@ def _export(store: Store, public_dir: Path, sources: list[dict], at: datetime, d
                     post['status']='blocked_source'
                     continue
             illustrations = illustrator.for_post(post, item_map)
+            illustrations.update(photos.for_post(post,item_map))
             if post["status"] == "prepared":
                 # Research records actual assignments. The publisher renders
                 # locally with generation disabled, but uses deployed Pages
@@ -244,7 +248,7 @@ def _export(store: Store, public_dir: Path, sources: list[dict], at: datetime, d
                 "publishing_enabled": not demo and os.getenv('PUBLISHING_CONFIGURED') == 'true', "illustrations": illustrator.stats,
                 "news": news, "events": events, "posts": public_posts,
                 "withheld_count": store.db.execute("SELECT COUNT(*) FROM withheld").fetchone()[0],
-                "sources": [public_source(s) for s in sources],
+                "sources": [public_source(s) for s in sources], "source_photos":photos.stats,
                 "candidate_count": store.db.execute("SELECT COUNT(*) FROM candidates").fetchone()[0],
                 "source_health": store.rows('SELECT * FROM source_health ORDER BY source_id'),
                 "runs": [{**r, "errors": json.loads(r["errors"])} for r in store.rows("SELECT * FROM runs ORDER BY id DESC LIMIT 20")]}

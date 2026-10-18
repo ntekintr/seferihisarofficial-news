@@ -12,7 +12,7 @@ ITEM_FIELDS = {"kind", "title", "description", "url", "source_id", "source_name"
                "identity", "start", "end", "time_known", "location", "organizer", "free", "price", "currency", "ticket_url", "status", "previous_start", "valid_until"}
 PUBLIC_ITEM_FIELDS = ITEM_FIELDS - {"identity"}
 POST_FIELDS = {"id", "item_id", "revision", "kind", "due_at", "title", "caption", "category", "source_urls", "slides", "created_at", "formats",
-               "publish_format", "parent_post_id", "story_asset", "story_index", "published_at", "status", "container_id", "media_id", "illustration_keys", "visual_review"}
+               "publish_format", "parent_post_id", "story_asset", "story_index", "published_at", "status", "container_id", "media_id", "illustration_keys", "source_photo_keys", "visual_review"}
 SECRET_PATTERN = re.compile(
     r"AIza[\w-]{35}|(?:gh[pousr]_[A-Za-z0-9]{20,})|github_pat_[A-Za-z0-9_]{20,}|EAA[A-Za-z0-9]{50,}|"
     r"-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----|"
@@ -74,9 +74,20 @@ def validate_state(path: Path):
     db = sqlite3.connect(f"file:{path.resolve()}?mode=ro", uri=True)
     try:
         tables = {r[0] for r in db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
-        if not tables <= {"items", "posts", "withheld", "runs", "candidates", "annotations", "illustrations", "illustration_days", "source_health", "facebook_deliveries", "publication_checks", "weather_stories"}:
+        if not tables <= {"items", "posts", "withheld", "runs", "candidates", "annotations", "illustrations", "illustration_days", "source_photos", "source_health", "facebook_deliveries", "publication_checks", "weather_stories"}:
             raise ValueError("Unexpected state tables")
         for table in sorted(tables):
+            if table=='source_photos':
+                from .source_photo_data import validate_record,MAX_CACHE_BYTES,MAX_CACHED_IMAGES
+                if [r[1] for r in db.execute('PRAGMA table_info(source_photos)')]!=['id','item_id','revision','payload','image']:
+                    raise ValueError('Unexpected source photo fields')
+                size,count=0,0
+                for row in db.execute('SELECT * FROM source_photos'):
+                    validate_record(*row)
+                    size+=len(row[4]);count+=1
+                if size>MAX_CACHE_BYTES or count>MAX_CACHED_IMAGES:
+                    raise ValueError('Source photo cache exceeds limit')
+                continue
             if table == 'weather_stories':
                 from datetime import date, datetime
                 from .weather_data import RESULTS, STATES, validate_forecast
@@ -193,6 +204,10 @@ def validate_state(path: Path):
                     payload = json.loads(row[0])
                     if table == 'posts' and 'visual_review' in payload and not valid_visual_review(payload['visual_review']):
                         raise ValueError('Invalid visual review')
+                    if table=='posts' and 'source_photo_keys' in payload:
+                        from .source_photo_data import valid_bindings
+                        if not valid_bindings(payload['source_photo_keys']):
+                            raise ValueError('Invalid source photo bindings')
     finally:
         db.close()
 
