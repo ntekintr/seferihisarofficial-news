@@ -10,6 +10,7 @@ from .editor import caption, caption_with_hashtags, digest_hashtags, event_date_
 from .media_caption import generated_image_caption
 from .store import Store
 from .timeliness import publication_reason
+from . import event_metadata
 
 SLOTS = (time(8, 30), time(12, 30), time(15), time(18, 30), time(21))
 SOURCE_MAX_AGE = timedelta(hours=1)
@@ -143,7 +144,7 @@ def queue_item(store: Store, item: dict, kind: str, due: datetime, at: datetime)
 
 def card_location(item: dict) -> str | None:
     """Use the named venue; leave its explicit street address in the caption."""
-    location = item.get("location")
+    location = event_metadata.location(item)
     if (item.get('source_id') == 'bubilet-bademler' and location
             and location.startswith('Bademler Sanat Köyü ')):
         return 'Bademler Sanat Köyü'
@@ -164,8 +165,8 @@ def slide_body(item: dict) -> str:
     details = [event_date_label(item)]
     if location := card_location(item):
         details.append(location)
-    if item.get("organizer"):
-        details.append("Düzenleyen: " + item["organizer"])
+    if organizer := event_metadata.organizer(item):
+        details.append("Düzenleyen: " + organizer)
     if item.get("free") is True:
         details.append("Ücretsiz")
     elif item.get("price"):

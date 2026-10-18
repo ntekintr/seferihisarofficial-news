@@ -13,6 +13,7 @@ from .timeliness import service_validity_reason, undated_event_invitation
 from .quality import news_quality_reason
 from .editorial_voice import neutral_body, neutral_title
 from .text_quality import plain_display, source_body
+from . import event_metadata
 
 
 def verify(item: dict, source: dict, at: datetime) -> str | None:
@@ -342,8 +343,15 @@ def caption(item: dict, label: str) -> str:
         lines += [event_date_label(item),'Etkilenen bölge: '+(item.get('location') or 'Açıklanmadı')]
     elif item["kind"] == "event":
         lines += [event_date_label(item),
-                  "Yer: " + (item.get("location") or "Açıklanmadı"),
-                  "Organizatör: " + (item.get("organizer") or "Açıklanmadı")]
+                  "Yer: " + (event_metadata.location(item) or "Açıklanmadı")]
+        if organizer := event_metadata.organizer(item):
+            lines.append("Organizatör: " + organizer)
+        elif item.get('organizer'):
+            lines.append("Organizatör: Doğrulanamadı")
+        else:
+            lines.append("Organizatör: Açıklanmadı")
+        if platform := event_metadata.ticket_platform(item):
+            lines.append("Bilet platformu: " + platform)
         price = "Ücretsiz" if item.get("free") is True else "Ücret bilgisi açıklanmadı"
         if item.get("free") is not True and (item.get("free") is False or item.get("price")):
             currency = 'TL' if (item.get('currency') or '').upper() == 'TRY' else item.get('currency')

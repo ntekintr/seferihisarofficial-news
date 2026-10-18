@@ -68,9 +68,12 @@ def test_bademler_card_uses_verified_venue_and_caption_preserves_address(event):
     event.update(source_id='bubilet-bademler',location='Bademler Sanat Köyü Bademler Caddesi No:8 Bademler Mahallesi Urla İzmir İzmir')
     assert card_location(event)=='Bademler Sanat Köyü'
     assert 'Caddesi' not in slide_body(event)
-    assert event['location'] in caption(event,headline(event,'announcement'))
+    value = caption(event,headline(event,'announcement'))
+    assert 'Bademler Sanat Köyü Bademler Caddesi No:8 Bademler Mahallesi Urla İzmir' in value
+    assert 'İzmir İzmir' not in value
+    assert event['location'].endswith('İzmir İzmir')  # Raw evidence stays intact.
     event['source_id']='other'
-    assert card_location(event)==event['location']
+    assert card_location(event)=='Bademler Sanat Köyü Bademler Caddesi No:8 Bademler Mahallesi Urla İzmir'
 
 
 def test_excerpts_are_short_marked_and_keep_full_caption_copy():
