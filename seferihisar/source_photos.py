@@ -93,7 +93,9 @@ def cleaned_photo(raw):
         with Image.open(io.BytesIO(raw)) as image:
             if (image.format not in ('JPEG','PNG','WEBP') or image.width*image.height>4_000_000
                     or image.width<640 or image.height<300 or not 1.4<=image.width/image.height<=2.6
-                    or getattr(image,'n_frames',1)!=1):
+                    or getattr(image,'n_frames',1)!=1 or image.getexif().get(274,1)!=1):
+                # Cleaning strips EXIF. Do not silently turn an orientation-
+                # dependent photograph sideways or change its displayed frame.
                 raise ValueError('Unsupported source photo dimensions')
     except Image.DecompressionBombError:
         raise ValueError('Oversized source photo') from None

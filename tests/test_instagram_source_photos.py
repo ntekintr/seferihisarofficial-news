@@ -105,6 +105,14 @@ def test_cdn_still_uses_global_dns_check(monkeypatch):
     with pytest.raises(ValueError):photos.cdn_url(CDN)
 
 
+@pytest.mark.parametrize('orientation',[2,3,6,8])
+def test_orientation_dependent_photo_does_not_become_sideways_after_metadata_strip(monkeypatch,orientation):
+    raw=io.BytesIO();exif=Image.Exif();exif[274]=orientation
+    Image.new('RGB',(1100,650),'#938566').save(raw,'JPEG',exif=exif)
+    monkeypatch.setattr(photos,'safe_url',lambda url,hosts:url)
+    with pytest.raises(ValueError):photos.download(CDN,image_client(raw.getvalue()))
+
+
 @pytest.mark.parametrize('status,mime,raw',[(302,'image/jpeg',b''),(403,'image/jpeg',b''),
     (200,'text/html',b'<html>'),(200,'video/mp4',b'x'),(200,'image/jpeg',b'x'*2_000_001)],
     ids=['redirect','forbidden','html','video','oversized'])
