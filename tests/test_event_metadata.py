@@ -133,6 +133,20 @@ def test_bad_calendar_slide_cannot_be_approved_from_its_own_hash(store, yoga):
     assert publication_copy_reason(digest, {item['id']: item}) == 'event_metadata_stale'
 
 
+def test_calendar_allows_distinct_verified_sessions_sharing_one_ticket_page(store, yoga):
+    at = parse_date('2026-10-18T08:30:00+03:00')
+    store.upsert(yoga, at.isoformat())
+    other = {**yoga, 'identity': yoga['identity']+'#next-session',
+             'start': '2026-10-19T10:00:00+03:00', 'end': '2026-10-19T11:30:00+03:00'}
+    store.upsert(other, at.isoformat()); prepare(store, at)
+    items = {i['id']: i for i in store.items()}
+    digest = next(p for p in store.posts() if p['kind'] == 'monthly')
+    assert len(digest['source_urls']) == 2 and digest['source_urls'][0] == digest['source_urls'][1]
+    assert publication_copy_reason(digest, items) is None
+    digest['slides'][2]['body'] += '\nDüzenleyen: Bubilet'
+    assert publication_copy_reason(digest, items) == 'event_metadata_stale'
+
+
 def test_export_holds_old_bad_event_metadata_instead_of_rendering_a_ready_card(store, yoga, tmp_path):
     at = parse_date('2026-10-18T08:30:00+03:00')
     source = next(s for s in json.loads(Path('config/sources.json').read_text(encoding='utf-8'))

@@ -72,7 +72,7 @@ def publication_copy_reason(post: dict, items: dict) -> str | None:
                        and url in i.get('sources', []) + [i.get('url')]]
             if any(event_metadata.needs_review(i) for i in matches):
                 if (len(slides) != len(urls) + 1
-                        or any(slides[index].get('body') != slide_body(i) for i in matches)):
+                        or not any(slides[index].get('body') == slide_body(i) for i in matches)):
                     return 'event_metadata_stale'
     if post.get('kind') != 'news':
         return None
