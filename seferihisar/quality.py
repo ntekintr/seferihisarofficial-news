@@ -56,6 +56,24 @@ def news_editorial_reason(item: dict) -> str | None:
 
 def publication_copy_reason(post: dict, items: dict) -> str | None:
     """Recheck the frozen draft at the actual destination, before any claim."""
+    from . import event_metadata
+    from .editor import caption
+    from .schedule import slide_body
+    item = items.get(post.get('item_id'), {})
+    if item.get('kind') == 'event' and item.get('category') != 'outage' and event_metadata.needs_review(item):
+        if (post.get('caption') != caption(item, post.get('title', ''))
+                or post.get('slides') != [{'title': post.get('title'), 'body': slide_body(item)}]):
+            return 'event_metadata_stale'
+    if post.get('kind') in ('weekly', 'monthly'):
+        urls = post.get('source_urls', [])
+        slides = post.get('slides', [])
+        for index, url in enumerate(urls, 1):
+            matches = [i for i in items.values() if i.get('kind') == 'event'
+                       and url in i.get('sources', []) + [i.get('url')]]
+            if any(event_metadata.needs_review(i) for i in matches):
+                if (len(slides) != len(urls) + 1
+                        or any(slides[index].get('body') != slide_body(i) for i in matches)):
+                    return 'event_metadata_stale'
     if post.get('kind') != 'news':
         return None
     item = items.get(post.get('item_id'),{})

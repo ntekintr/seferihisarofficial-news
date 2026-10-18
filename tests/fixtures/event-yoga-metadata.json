@@ -1,0 +1,24 @@
+{
+  "category": "event",
+  "currency": "TRY",
+  "description": "Etkinlik duyurusu. Canan Tutal İle Hatha Yoga",
+  "end": "2026-10-18T11:30:00+03:00",
+  "free": null,
+  "identity": "https://www.bubilet.com.tr/izmir/etkinlik/canan-tutal-ile-hatha-yoga/seans/290533",
+  "kind": "event",
+  "location": "Bademler Sanat Köyü Bademler Caddesi No:8 Bademler Mahallesi Urla İzmir İzmir",
+  "organizer": "Bubilet",
+  "previous_start": null,
+  "price": "560",
+  "source_id": "bubilet-bademler",
+  "source_name": "Bademler Sanat Köyü — Bubilet etkinlikleri",
+  "sources": [
+    "https://www.bubilet.com.tr/izmir/etkinlik/canan-tutal-ile-hatha-yoga/seans/290533"
+  ],
+  "start": "2026-10-18T10:00:00+03:00",
+  "status": "scheduled",
+  "ticket_url": "https://www.bubilet.com.tr/izmir/etkinlik/canan-tutal-ile-hatha-yoga/seans/290533",
+  "time_known": true,
+  "title": "Canan Tutal İle Hatha Yoga",
+  "url": "https://www.bubilet.com.tr/izmir/etkinlik/canan-tutal-ile-hatha-yoga/seans/290533"
+}

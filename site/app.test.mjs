@@ -34,6 +34,7 @@ test('publication waits, missing media and uncertainty have separate safe labels
  assert.match(context.publicationLabel('visual_review_unavailable'),/erişilemiyor/);
  assert.match(context.publicationLabel('editorial_review_required'),/Haber başlığı/);
  assert.match(context.publicationLabel('editorial_copy_stale'),/güncel kart/);
+ assert.match(context.publicationLabel('event_metadata_stale'),/düzenleyicisi veya adresi/);
 });
 
 test('editorial holds show only known safe reasons and integer counts',()=>{

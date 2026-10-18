@@ -13,12 +13,12 @@ STATUSES = frozenset(('complete', 'published', 'already_published', 'outside_win
     'media_not_deployed', 'already_claimed', 'awaiting_resolution', 'uncertain',
     'story_pending', 'blocked_source', 'account_mismatch', 'check_failed',
     'visual_review_missing', 'visual_review_stale', 'visual_review_unavailable',
-    'editorial_review_required', 'editorial_copy_stale'))
+    'editorial_review_required', 'editorial_copy_stale', 'event_metadata_stale'))
 RESULT_FIELDS = frozenset(('status', 'feed', 'story', 'facebook'))
 FAILURES = frozenset(('media_missing', 'media_not_deployed', 'awaiting_resolution',
     'uncertain', 'account_mismatch', 'check_failed',
     'visual_review_missing', 'visual_review_stale', 'visual_review_unavailable',
-    'editorial_review_required', 'editorial_copy_stale'))
+    'editorial_review_required', 'editorial_copy_stale', 'event_metadata_stale'))
 
 
 def safe_result(result):
