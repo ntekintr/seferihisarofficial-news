@@ -1,25 +1,52 @@
-# SeferihisarOfficial fixed card identity
+# Sabit kart kimliği ve görsel politikası
 
-Feed cards are 1080×1350 JPEG; story cards are 1080×1920 JPEG. Both use the original approved logo asset and the same navy, mandarin-orange and turquoise header/category/footer strips. Turkish headlines use dotted capital İ correctly. Attribution has a reserved footer line; overly long titles/excerpts visibly end with an ellipsis, with full source information retained in the caption.
+Gönderiler 1080×1350, story kartları 1080×1920 JPEG'dir. Onaylı logo, lacivert,
+mandalina turuncusu ve turkuaz şeritler ortaktır. Şeritler yüksek çözünürlükte
+çizilip küçültülür; çapraz çizgide belirgin basamak oluşması engellenir.
+Türkçe büyük İ ve kullanılan bütün karakterlerin fontta bulunması kontrol edilir.
+Başlık ve metin okunabilir biçimde yerleşmeli; kritik bilgi veya kelime
+kesilerek anlama zarar verilmemelidir. Tam metin açıklamada kalır.
 
-The illustration is a separate per-item input. `render_post(post, public_dir, illustrations={0: Path(...)})` assigns an illustration to exactly one slide and reuses it for that slide's feed/story formats. Source/detail slides do not inherit the image automatically. Each supplied illustration is labelled `Temsili çizim`. The renderer makes no network requests and includes no shared harbour or category-wide stock scene.
+Kaynak adı ve adresi **yalnız açıklamadadır**. Karta otomatik kaynak veya
+“Temsili çizim” etiketi eklenmez. Açıklamaya eski otomatik yapay zekâ üretim
+notu konmaz. Bu, kaynağın haber konusu olarak AI'dan bahseden gerçek metnini
+silme kuralı değildir. Etiketler küçük harfli ve içerikle ilgili olmalıdır.
 
-Without a matching illustration, the renderer produces a branded abstract/text card. This is a fallback, not the user's requested final AI-illustration automation.
+## Haber, etkinlik ve yedek kart
 
-## Free cloud illustrations
+- Haber için genel kategoriye göre uydurulmuş olay fotoğrafı kullanılmaz.
+  Toplantı, trafik ve su baskını haberlerinde [web kaynak fotoğrafı](source-news-photos.md)
+  veya [isteğe bağlı Instagram fotoğrafı](instagram-source-photos.md) kendi kaynak,
+  başlık, tarih, dosya ve konu kontrolleriyle değerlendirilebilir.
+- Haberle bağı doğrulanamayan veya desteklenmeyen görselde sabit kimlikli
+  bilgi kartı kullanılır. Kategoriye ait herhangi bir fotoğraf yeterli değildir.
+- Etkinlikte konuya uygun, gerçek bir olayın gerçekleştiğini göstermeyen boş
+  sahne/nesne görselleri kullanılabilir. OCR ve sabit yerel sahne modeli gerçek
+  kart yerleşimleri üzerinde çalışır. Yoga matı, çini tezgâhı veya tiyatro sahnesi
+  gibi belirgin nesneler başlıkla uyuşmalıdır. Kontrol yoksa/reddederse bilgi kartı.
+- Takvim kapağı ve kaynak/ayrıntı slaytları başka slaydın fotoğrafını otomatik
+  devralmaz. Her fotoğraf açık bir slayt bağıyla atanır.
 
-The research workflow uses Cloudflare Workers AI `@cf/black-forest-labs/flux-1-schnell` with four steps. The user-approved account is on Workers Free; its shared allowance is 10,000 Neurons per UTC day, and quota exhaustion fails instead of automatically upgrading. This repository does not create a paid plan or enable Instagram publication.
+Üretilmiş etkinlik görselleri mevcut Cloudflare bağlantısıyla araştırma işinde
+hazırlanabilir; bu belge güncel servis fiyatı veya kota vaadi değildir.
+Uygulama sınırı tur başına iki ve UTC gününde yirmi görsel üretim girişimidir.
+Günlük sınır Türkiye saati 03:00'te yenilenir. Yerel salyangoz sahnelerinden
+hazırlanan hava kartı günlük görsel üretim çağrısı yapmaz.
 
-The bot reads `CLOUDFLARE_API_TOKEN` from GitHub Actions Secrets and `CLOUDFLARE_ACCOUNT_ID` from Actions Variables. They are passed only to the content preparation step. `ILLUSTRATIONS_ENABLED=true` enables generation; demos ignore it and make no image-provider calls. Missing credentials or a rejected request produces the branded text-card fallback.
+## Dondurulmuş içerik
 
-Each verified item/revision has its own illustration, shared across feed, story, announcement, reminders and matching calendar slides. Calendar covers and source/detail appendices remain text cards. A changed factual revision receives a new cache key. Provider imagery is symbolic, visibly labelled `Temsili çizim`, and never substitutes for source verification.
+Fotoğraf/çizim dosyaları temiz JPEG olarak sınırlı önbelleklerde tutulur. Kaynak
+metni, model skoru ve temiz JPEG birbirinin yerine kanıt değildir. Provider yanıtı,
+geçici imzalı CDN adresi ve gizli anahtar kamu çıktısına yazılmaz; Meta tesliminden
+yalnız güvenli kimlik/durum alanları kalıcı kayda girer. Çizim ve kaynak fotoğrafı
+önbelleklerinin her biri 80 görsel / 12 MiB ile sınırlı; tek JPEG en çok 768px ve
+512 KiB'dir.
 
-Prepared posts retain explicit per-slide cache-key bindings. Published/publishing/uncertain posts reuse only their own retained binding, so a later source revision cannot silently replace an already-published card's illustration. Older posts with no binding keep the text fallback.
+Hazırlanan kart içerik, kaynak revizyonları ve gerçek JPEG özetleriyle sürümlü
+bir klasöre bağlanır. Başlamış, yayımlanmış veya belirsiz gönderiler kendi önceki
+bağlarını korur. Sonradan değişen kaynak veya yeni tasarım eski gönderinin
+görselini değiştiremez. Yayıncı yeni görsel üretmez veya kaynak fotoğrafı indirmez;
+yayından önce canlı manifest ve gerçek dosya özeti kontrolü yapar.
 
-The cache travels inside the existing public-safe SQLite database on `automation-state`, so a fresh runner reuses previous images. Only re-encoded baseline JPEG pixels are retained; prompts, provider responses, EXIF, comments and credentials are not persisted. The state validator checks image framing and metadata without requiring Pillow in the isolated writer job. Cache bounds: 80 images and 12 MiB; individual images are at most 768×768 and 512 KiB. Revoked/unverified items' cached images are removed from active state.
-
-Generation is limited to two attempts per run and twenty per UTC day, claimed in SQLite before the request. Handled errors/timeouts are retained through the normal state writer and wait until the next UTC day, with a maximum of two attempts per item/revision. An abrupt runner termination before that writer can lose new claims or generated images; Cloudflare's Free-plan quota still prevents paid overage. A provider error stops further requests in that run. Public `data.json` exposes only generation/reuse/failure/deferred counts for troubleshooting. Source/date verification and all publication gates remain in force.
-
-The manually dispatched `Test free cloud illustration (no publication)` workflow checks one generated illustration in a fresh GitHub runner and uploads only labelled feed/story example JPEGs as a two-day artifact. It does not restore or modify production state, deploy Pages, access Instagram credentials or publish a social post. Its sample is explicitly a design test, not a real event.
-
-Official references: https://developers.cloudflare.com/workers-ai/platform/pricing/ and https://developers.cloudflare.com/workers-ai/models/flux-1-schnell/.
+Detaylar: [görsel kontrolü](content-visual-control.md),
+[yazı güvenliği](illustration-text-safety.md), [günlük hava story'si](daily-weather-story.md).
