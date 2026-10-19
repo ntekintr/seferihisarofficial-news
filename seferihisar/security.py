@@ -12,7 +12,7 @@ ITEM_FIELDS = {"kind", "title", "description", "url", "source_id", "source_name"
                "identity", "start", "end", "time_known", "location", "organizer", "free", "price", "currency", "ticket_url", "status", "previous_start", "valid_until"}
 PUBLIC_ITEM_FIELDS = ITEM_FIELDS - {"identity"}
 POST_FIELDS = {"id", "item_id", "revision", "kind", "due_at", "title", "caption", "category", "source_urls", "slides", "created_at", "formats",
-               "publish_format", "parent_post_id", "story_asset", "story_index", "published_at", "status", "container_id", "media_id", "illustration_keys", "source_photo_keys", "visual_review", "card_layout"}
+               "publish_format", "parent_post_id", "story_asset", "story_index", "published_at", "status", "container_id", "media_id", "illustration_keys", "source_photo_keys", "visual_review", "card_layout", "brand_version"}
 SECRET_PATTERN = re.compile(
     r"AIza[\w-]{35}|(?:gh[pousr]_[A-Za-z0-9]{20,})|github_pat_[A-Za-z0-9_]{20,}|EAA[A-Za-z0-9]{50,}|"
     r"-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----|"
@@ -212,18 +212,25 @@ def validate_state(path: Path):
                         from .card_layout import VERSION
                         if payload['card_layout']!=VERSION:
                             raise ValueError('Invalid card layout policy')
+                    if table=='posts' and 'brand_version' in payload:
+                        from .brand import logo_path
+                        logo_path(payload['brand_version'])
     finally:
         db.close()
 
 
 def validate_public(path: Path):
+    from .brand import PUBLIC_ASSET, logo_path
     allowed_files = {"index.html", "style.css", "app.js", "data.json", "events.ics", ".nojekyll"}
     for entry in path.rglob("*"):
         if entry.is_symlink():
             raise ValueError("Public output must not contain symlinks")
         if entry.is_file():
             relative = entry.relative_to(path)
-            if len(relative.parts) == 1 and relative.name in allowed_files:
+            if relative.as_posix() == PUBLIC_ASSET:
+                if entry.read_bytes() != logo_path().read_bytes():
+                    raise ValueError('Unexpected public brand asset')
+            elif len(relative.parts) == 1 and relative.name in allowed_files:
                 assert_no_secrets(entry.read_text(encoding="utf-8"))
             elif len(relative.parts) == 3 and relative.parts[0] == "media" and re.fullmatch(r"[a-f0-9]{24}", relative.parts[1]) and re.fullmatch(r"(?:feed|story)-\d+\.jpg", relative.name):
                 continue

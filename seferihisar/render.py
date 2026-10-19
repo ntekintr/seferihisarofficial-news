@@ -11,6 +11,7 @@ from .domain import CATEGORIES
 from .editor import event_activity, event_type_label, news_type_label
 from .text_quality import TextRenderError, plain_display, ensure_glyphs
 from .card_layout import CAPTION_NOTE, inline_note
+from .brand import VERSION as BRAND_VERSION, logo_path, version_for
 
 NAVY, IVORY, ORANGE, TURQUOISE = '#06244a', '#f4efe4', '#f58220', '#20b8c9'
 ASSETS = Path(__file__).with_name('assets')
@@ -167,7 +168,7 @@ def card(title: str, body: str, category: str, target: Path, story: bool = False
          index: str = '', illustration: Path | None = None, preview: bool = False,
          event_details: bool = False, photo_centering: tuple[float, float] = (0.5, 0.5), compact: bool = False,
          legacy_outage: bool = False, story_details: bool = False, text_review: bool = False, source_photo: bool = False,
-         caption_note: bool = False):
+         caption_note: bool = False, brand_version: str = BRAND_VERSION):
     """Fixed branding and a per-item illustration, never a shared news scene."""
     width, height = 1080, 1920 if story else 1350
     block = partial(text_block, strict=text_review)
@@ -179,7 +180,7 @@ def card(title: str, body: str, category: str, target: Path, story: bool = False
     draw.text((margin, top + 35), 'SEFERİHİSAR', font=font(34, True), fill=IVORY, anchor='lt')
     draw.text((margin, top + 80), 'OFFICIAL', font=font(24), fill=TURQUOISE, anchor='lt')
     logo_size, logo_xy = 116, (right - 116, top + 12)
-    with Image.open(ASSETS / 'logo.png') as original:
+    with Image.open(logo_path(brand_version)) as original:
         logo = ImageOps.fit(original.convert('RGB'), (logo_size, logo_size), method=Image.Resampling.LANCZOS)
     mask = Image.new('L', (logo_size, logo_size), 0)
     ImageDraw.Draw(mask).ellipse((0, 0, logo_size - 1, logo_size - 1), fill=255)
@@ -301,7 +302,7 @@ def render_post(post: dict, public_dir: Path, illustrations: dict[int, Path] | N
                  story_details=(review.get('version') in ('content-visual-v2','content-visual-v3') or mutable and not review),
                  text_review=review.get('version') == 'content-visual-v3' or mutable and not review,
                  source_photo=bool(post.get('source_photo_keys',{}).get(str(i))),
-                 caption_note=note and i==0)
+                 caption_note=note and i==0, brand_version=version_for(post))
             assets[fmt].append(relative)
     return assets
 

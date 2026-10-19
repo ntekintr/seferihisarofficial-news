@@ -11,6 +11,7 @@ from .render import ASSETS, NAVY, ORANGE, TURQUOISE, font, readable_date_line, w
 from .weather_data import asset_id, validate_forecast
 from .weather_copy import WeatherTextError, display_condition, reviewed
 from .text_quality import TextRenderError, ensure_glyphs
+from .brand import LEGACY, logo_path
 
 
 def scene_for(condition):
@@ -61,7 +62,7 @@ def render_weather(forecast, public_dir: Path):
     def line(points, color, width=3):
         draw.line([(int(x*scale),int(y*scale)) for x,y in points], fill=color, width=width*scale)
 
-    with Image.open(ASSETS/'logo.png') as original:
+    with Image.open(logo_path(forecast.get('brand_version', LEGACY))) as original:
         logo = ImageOps.fit(original.convert('RGB'), (96*scale,96*scale), method=Image.Resampling.LANCZOS)
     mask = Image.new('L',logo.size,0)
     ImageDraw.Draw(mask).ellipse((0,0,logo.width-1,logo.height-1),fill=255)

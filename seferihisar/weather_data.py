@@ -7,6 +7,7 @@ from datetime import date, datetime, time, timedelta
 
 from .domain import TZ, digest
 from .weather_copy import VERSION as DISPLAY_VERSION
+from .brand import logo_path
 
 SOURCE = 'https://www.mgm.gov.tr/tahmin/gunluk-tahmin.aspx?b=3'
 SITE = 'https://ntekintr.github.io/seferihisarofficial-news'
@@ -20,10 +21,13 @@ STATES = {'prepared', 'blocked', 'publishing', 'published', 'uncertain'}
 
 
 def validate_forecast(value):
-    if not isinstance(value, dict) or set(value) not in (FIELDS, FIELDS | {'display_version'}):
+    if (not isinstance(value, dict) or not FIELDS <= set(value)
+            or not set(value) <= FIELDS | {'display_version', 'brand_version'}):
         raise ValueError('Invalid forecast fields')
     if 'display_version' in value and value['display_version'] != DISPLAY_VERSION:
         raise ValueError('Unknown forecast display version')
+    if 'brand_version' in value:
+        logo_path(value['brand_version'])
     day = date.fromisoformat(value['date'])
     if day.isoformat() != value['date'] or value['place'] != 'Seferihisar' or value['source_url'] != SOURCE:
         raise ValueError('Invalid forecast identity')

@@ -165,6 +165,8 @@ def _export(store: Store, public_dir: Path, sources: list[dict], at: datetime, d
     root = Path(__file__).resolve().parents[1]
     for filename in ("index.html", "style.css", "app.js"):
         shutil.copy2(root / "site" / filename, public_dir / filename)
+    from .brand import VERSION as BRAND_VERSION, PUBLIC_ASSET, logo_path
+    shutil.copy2(logo_path(), public_dir / PUBLIC_ASSET)
     source_map = {s["id"]: s for s in sources}
     safe_items = [i for i in store.items() if verify({k: v for k, v in i.items() if k in ITEM_FIELDS}, source_map.get(i["source_id"], {}), at) is None]
     safe_urls = {url for i in safe_items for url in i.get("sources", []) + [i["url"]]}
@@ -198,6 +200,8 @@ def _export(store: Store, public_dir: Path, sources: list[dict], at: datetime, d
                     continue
                 from .card_layout import prepare as prepare_card_layout
                 prepare_card_layout(post)
+                from .brand import prepare as prepare_brand
+                prepare_brand(post)
             illustrations = illustrator.for_post(post, item_map)
             illustrations.update(photos.for_post(post,item_map))
             if post["status"] == "prepared":
@@ -250,6 +254,7 @@ def _export(store: Store, public_dir: Path, sources: list[dict], at: datetime, d
                      "caption": p["caption"], "assets": assets.get(p["id"], {}), "category": p["category"],
                      **({'visual_review':p['visual_review']} if 'visual_review' in p else {})} for p in parents]
     snapshot = {"schema_version": 1, "generated_at": at.isoformat(), "demo": demo,
+                "brand": {"version": BRAND_VERSION, "logo": PUBLIC_ASSET},
                 "publishing_enabled": not demo and os.getenv('PUBLISHING_CONFIGURED') == 'true', "illustrations": illustrator.stats,
                 "news": news, "events": events, "posts": public_posts,
                 "withheld_count": store.db.execute("SELECT COUNT(*) FROM withheld").fetchone()[0],
