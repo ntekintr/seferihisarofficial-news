@@ -1,23 +1,26 @@
 # Seferihisar Official
 
-Seferihisar, Sığacık, Ürkmez, Doğanbey, Akarca, Ulamış ve Orhanlı için kaynaklı yerel haber ve **gelecek etkinlik** otomasyonu. Bu ilk sürüm; araştırma motoru, kalıcı etkinlik takvimi, kaynak odaklı Türkçe içerik hazırlığı, Instagram görselleri, mobil izleme paneli ve kapalı Meta yayın altyapısını birlikte sunar.
+Seferihisar, Sığacık, Ürkmez, Doğanbey, Akarca, Ulamış ve Orhanlı için kaynaklı yerel haber ve **gelecek etkinlik** otomasyonu. Araştırma motoru, kalıcı etkinlik takvimi, kaynak odaklı Türkçe içerik hazırlığı, görsel denetimi, mobil izleme paneli ve ayrı Instagram/Facebook yayın işlerinden oluşur. Bilgisayarın açık olması gerekmez.
 
 Güzelbahçe, Urla, Yelki ve Özdere'deki konser, festival, tiyatro, sinema ve diğer etkinlikler de kapsamdadır. Çevre yerleşimlerde ulaşım, kesinti, hava uyarısı ve benzeri önemli kamu gelişmeleri alınır; her gündelik haber akışa eklenmez.
 
-**Gerçek Instagram yayını varsayılan olarak kapalıdır.** Belediye veya kamu kurumu adına yayın yapmaz. Önizlemedeki örnekler gerçek haber ve etkinlik değildir.
+**Yeni kurulumda gerçek yayın varsayılan olarak kapalıdır.** Bu deponun mevcut üretimi kullanıcı yetkisiyle etkinleştirilmiştir; demo ve üretim birbirinden ayrıdır. Belediye veya kamu kurumu adına yayın yapmaz. Demo önizlemesindeki örnekler gerçek haber ve etkinlik değildir.
 
-## İlk sürümde çalışan özellikler
+[Sistem rehberi ve öğrenilenler](docs/system-handbook.md), güncel kod haritasını, yayın sınırlarını, kanıt türlerini ve geçmiş hatalardan çıkan kuralları bir araya getirir. Canlı durum, [panel](https://ntekintr.github.io/seferihisarofficial-news/) ve tarihli üretim kanıtından okunur; bir kurulum örneğindeki kapalı varsayılan canlı ayarın yerine yazılmaz.
+
+## Çalışan özellikler ve sınırlar
 
 - RSS / Atom, schema.org JSON-LD ve tarih bilgisi açık HTML haberlerinden toplama; yıl dahil açıkça etiketlenmiş Türkçe etkinlik tarihleri, robots.txt kontrolü, hız sınırı ve kaynak başına sınırlı tarama.
-- 19 içerik kategorisi; yerellik, kaynak, tarih ve hassas konu denetimi. Eski veya doğrulanmamış haberler dışarıda tutulur.
+- Konu kategorileri, yerellik, kaynak, tarih ve hassas konu denetimi. Haber yaşı ve olayın gerçek geçerliliği yayın anında yeniden kontrol edilir.
 - Etkinlik adı, tarih/saat, konum, organizatör, ücret, bilet ve kaynak alanları. Açıklanmayan bilgiler açıkça eksik gösterilir; tarihler tahmin edilmez.
 - Gelecek etkinliklerin eski kaynak sayfalarını yeniden ziyaret etme, kalıcı kimlikle tarih değişikliği/iptal takibi, eski kartların geçersizleşmesi ve tekrar önleme.
 - 7 / 30 gün görünümü, üç gün kala / etkinlik günü hatırlatmaları, haftalık ve aylık seçkiler, indirilebilir `.ics` takvim.
-- 1080 × 1350 gönderi / kaydırmalı gönderi ve 1080 × 1920 story serileri. Özgün grafik şablonları; gerçek olay fotoğrafı izlenimi veren yapay görsel kullanılmaz.
+- 1080 × 1350 gönderi / kaydırmalı gönderi ve 1080 × 1920 story kartları. Sabit logo/şeritler, kaynak bilgisi yalnız açıklamada. Gerçek haber fotoğrafı için kaynak ve konu eşleşmesi gerekir; kanıtlanamayan haber görseli yerine bilgi kartı kullanılır. Etkinlik görselleri ayrıca yazı ve sahne kontrolünden geçer.
 - Türkçe açıklamalar, kaynak atfı, etiketler ve şablon başlıklar. Gemini anahtarı varsa isteğe bağlı önem sıralaması; AI hiçbir olguyu veya yayın onayını değiştiremez.
 - GitHub Pages için statik panel: haberler, etkinlikler, indirilebilir görseller/açıklamalar, hazırlık ve yayın geçmişi, kaynaklar, çalışma geçmişi ve hatalar.
 - 15 dakikalık GitHub Actions zamanlaması (gecikme/düşme ihtimali vardır), ayrı `automation-state` dalında SQLite, eşzamanlı çalışmaları sıraya alma, bütünlük kontrolü ve çakışmalarda veri kaybetmek yerine durma.
 - Resmî Meta API: JPEG gönderi, carousel, tek story ve ayrı kalıcı işlerden oluşan story serisi. Yayın öncesi görsellerin erişilebilirliğini kontrol etme; belirsiz yayın sonucunda otomatik tekrar gönderimini engelleme.
+- Otomatik haber akışında günde en fazla iki gönderi ve her birine ilk eşleşen story; Facebook teslimleri aynı içeriğe bağlı ayrı kaydedilir. Türkiye saati 08:00 hedefli günlük hava story'si bağımsızdır ve bu haber sayacını tüketmez. Zamanlayıcı gecikmesi ve dış servis erişimi nedeniyle kesin dakika/kesintisiz çalışma garantisi verilmez.
 
 ## Çalıştırma
 
@@ -54,7 +57,7 @@ CI ve tüm checkout adımlarında `persist-credentials: false` kullanılır. Dep
 
 ## Kaynak erişimi ve doğrulama sınırı
 
-`config/sources.json` içinde 29 bağlantı tanımlı, 24 okuyucu etkindir. Belediye haberleri/duyuruları, üç kaymakamlık, yerel ve ulusal basın, İzmir Art etkinlik takvimi, İlçe Millî Eğitim, Halk Eğitimi Merkezi, esnaf odası ve TeosFest kaynakları birlikte taranır. Ayrıntılı kapsam ve eksikler [kaynak kapsama raporunda](docs/source-coverage.md), incelenmiş diğer adresler `config/source_catalog.json` içindedir.
+Güncel etkin/güvenilir kaynak listesi `config/sources.json`, incelenmiş diğer adresler `config/source_catalog.json` içindedir. Belediye ve kamu duyuruları, yerel/ulusal basın, kültür/etkinlik, eğitim, meslek kuruluşu, hizmet ve izinli Instagram kaynakları birlikte değerlendirilir. Yapılandırılmış okuyucu sayısı çalışan kaynak sayısı değildir. Kaynağın son `ok`, `empty`, `partial` veya `failed` sonucu paneldeki tarihli sağlık verisinden okunur. [Kaynak kapsama raporu](docs/source-coverage.md) tarihli araştırma kaydıdır; bütün ilçenin eksiksiz kapsandığı anlamına gelmez.
 
 İzmir Art'ın sitenin kullandığı kamuya açık etkinlik JSON'u, her seansın açık UTC tarihlerini ve gerçek mekân adresini kullanır. Bazı gezici etkinliklerde yanlış kalan ilçe kimliği esas alınmaz. Tarih/saat çelişkisi, eksik seans kimliği veya bölge dışı adres varsa kayıt alınmaz. Ücret ve iptal bilgisi yalnız açık kaynak alanlarından okunur. Menderes'in genel RSS'i idarî belgeler içerdiğinden gerçek WordPress haber/duyuru koleksiyonları kullanılır; test haber koleksiyonu kullanılmaz. Bu koleksiyonun boş olması okuyucu hatası değildir.
 
@@ -64,11 +67,11 @@ Yeni Haber, Gündem, Habertürk, DHA, İzmir Büyükşehir ve İZSU için her al
 
 Gündem'in kendi sitesinde sunduğu RSS yayını, ana sayfasını ve her eski haber detayını ayrıca yüklemeden okunur. RSS içeriğinde yılıyla birlikte açıkça etiketlenmiş etkinlik tarihi varsa takvime alınabilir. Daha önce kaydedilmiş gelecek etkinliklerin detayları iptal/tarih değişikliği kontrolü için yine ziyaret edilir.
 
-Robots kontrolü her çalışma sırasında yapılır. Kamuya açık sayfaları incelenmiş Seferihisar Belediyesi, İzmir Büyükşehir Belediyesi, Seferihisar Yeni Haber ve DHA için yalnız `robots.txt` dosyasının 404/410 yanıtı vermesine kaynak bazında istisna tanımlıdır. Açık bir engelleme kuralı, 403/429/5xx yanıtı veya ağ hatası bu istisnayla aşılmaz. ESHOT tarihli duyuru/haber okuyucusu ve İZSU yeni adresteki kurum haberleri etkindir; tarihsiz ESHOT duyuruları ve canlı su kesintileri henüz kapsam dışıdır. ESHOT için de incelenmiş robots 404/410 istisnası vardır. GDZ, AFAD, Meteoroloji ve bilet platformlarının özel okuyucuları doğrulanana kadar kapalıdır. Sosyal kaynaklar izinli API ve hesap yetkilendirmesi gerektirir. Giriş, CAPTCHA, ücret duvarı veya erişim kuralı aşılmaz.
+Robots kontrolü web kaynaklarının her çalışmasında yapılır. Bazı incelenmiş kaynaklarda yalnız `robots.txt` dosyasının 404/410 yanıtına özel istisna vardır; açık engelleme kuralı, 403/429/5xx veya ağ hatası aşılmaz. ESHOT tarihli duyuru/haberleri, İZSU kurum haberleri, GDZ planlı kesintileri, AFAD, MGM uyarıları ve yapılandırılmış bilet/etkinlik okuyucuları kendi doğrulanabilir tarih/alanlarını kullanır. Her kaynağın anlık erişimi ayrıca kontrol edilir. Tarihsiz duyuru ve doğrulanmamış canlı hizmet bilgisi tahminle tamamlanmaz. Sosyal kaynaklar izinli API ve mevcut hesap yetkisi gerektirir. Giriş, CAPTCHA, ücret duvarı veya erişim kuralı aşılmaz.
 
 Yeni RSS ve organizatör/medya bağlantıları aday olarak bulunur. Adayların güvenilirliği ve kullanım koşulları kendiliğinden onaylanmaz; uygunluk incelemesinden sonra yapılandırmaya eklenir. Sosyal platformların API erişimleri için hesap yetkilendirmesi gerekir.
 
-**11 Ekim 2026'da kamuya açık canlı haber listeleri, RSS akışları ve örnek haber sayfaları kontrol edilmiştir.** Kaynakların tümünden her çalışmada güncel ve uygun içerik çıkması garanti değildir; RSS akışları sınırlı bir son haber penceresi sunar ve Seferihisar Gündem'in yanıtlarında zaman aşımı görülmüştür. İncelenen formatlar ve sınırlar [kaynak doğrulama notlarında](docs/source-validation.md) kayıtlıdır. Canlı Meta yayını ve kapalı bilet kaynakları doğrulanmamıştır. Yapılandırılmış tarihi olmayan etkinlik, yalnız afiş görselinde bulunan tarih ve dinamik/bilet sitesi özel API'leri ilk sürümde çıkarılmaz. Sayfa kaybolması iptal sayılmaz; iptal veya erteleme için açık kaynak bilgisi gerekir.
+İlk kaynak kontrolleri 11 Ekim 2026'da başlamış, daha sonraki sürümlerde kaynak ve gerçek Meta teslim kontrolleri eklenmiştir. [Kaynak doğrulama notları](docs/source-validation.md) ve [sistem rehberi](docs/system-handbook.md) tarihli kanıtı mevcut yetenekten ayırır. Her taramada yeni uygun içerik çıkması garanti değildir; RSS/API sonuçları sınırlı bir pencere sunar. Etkinlik tarihi kaynak haberin yayım tarihinden veya yalnız afiş görüntüsünden tahmin edilmez. Sayfa kaybolması iptal sayılmaz; iptal/erteleme için açık kaynak bilgisi gerekir.
 
 Güvenilir olarak yapılandırılan birincil kaynağın duyurusu kanıt olarak kullanılır; bu, bağımsız birden fazla kaynakla bütün iddiaların doğrulandığı anlamına gelmez. Yeterli bilgi yoksa içerik yayın kuyruğuna alınmaz. AI editörü bu sürümde serbest haber yeniden yazımı yapmaz; haber metni kaynağa atıflı alıntı ve deterministik şablonlardan hazırlanır. İsteğe bağlı AI yalnız önem puanı üretir.
 

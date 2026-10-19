@@ -9,16 +9,19 @@ istem üretmek ve OCR ile yazı aramak bu hataları engellemiyordu.
 1. `visual_subject.subject` yalnız doğrulanmış etkinlik türlerini ve başlıkta
    açık yoga/çini/atölye faaliyetini fotoğraf adayı yapar. Tarihli kesintiler
    etkinlik değildir. Haber kategorileri çok geniştir: yeni haberlerde mevcut
-   genel üretilmiş fotoğraflar kullanılmaz. Toplantı/sel gibi gerçek bir olayın
-   doğrulanmış fotoğrafını alan bir kaynak-fotoğraf hattı henüz yoktur; bu
-   haberler logolu, okunaklı bilgi kartıyla çıkar. Olay fotoğrafı uydurulmaz.
+   genel üretilmiş fotoğraflar kullanılmaz. Toplantı/trafik/su baskını için ayrı
+   [web kaynak fotoğrafı](source-news-photos.md) ve isteğe bağlı
+   [Instagram fotoğrafı](instagram-source-photos.md) yolları vardır. Kaynak/başlık/
+   tarih/dosya eşleşmesi ve yerel konu kontrolü doğrulanamazsa logolu bilgi
+   kartı kullanılır. Diğer haberlerde de olay fotoğrafı uydurulmaz.
 2. Mevcut OCR kontrolünden sonra, **gerçek JPEG pikselleri** yerel CLIP modeliyle
    sabit İngilizce nesne/sahne tanımlarına karşı karşılaştırılır. Kullanıcı
    başlığı modele istem olarak verilmez. Trafik, boş salon, manzara, toplantı,
    su baskını ve düz renk alternatifleri de karşılaştırmaya dahildir.
 3. Kare kaynağı kabul etmek yetmez. Gönderinin 1080×436 ve story'nin 1080×506
    gerçek fotoğraf kırpmaları geçmelidir; eski 1080×586 çerçeve kontrolü de
-   ihtiyatlı bir ek ret filtresi olarak sürer. Yoga kırpması alttaki
+   ihtiyatlı bir ek ret filtresi olarak sürer. Kaynak haber fotoğrafları bu
+   yerleşimlerde kırpılmadan tam çerçeveyle değerlendirilir. Yoga kırpması alttaki
    matları korur. En az 0,24 kosinüs benzerliği ve diğer tüm sınıflardan en az
    0,015 fark gerekir. Bunlar olasılık veya doğruluk yüzdesi değildir.
    Belirsiz, ilgisiz veya çalıştırılamayan kontrol **bilgi kartına döner**.
