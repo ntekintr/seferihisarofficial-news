@@ -64,6 +64,13 @@ o yanıt penceresinde uygun kayıt yok; `partial`: bazı ayrıntılar okunamadı
 
 Onaylı logo, lacivert/turuncu/turkuaz şeritler ve okunabilir Türkçe tipografi
 korunur. Kaynak adı/adresi yalnız açıklamada; otomatik AI üretim notu yoktur.
+19 Ekim 2026 kullanıcı seçimi: S'nin üst kıvrımına yerleşen 3D salyangozlu
+logo ana kimliktir. `brand_version: snail-s-v1` yeni haber/etkinlik/takvim
+hazırlığının görsel onayına ve yeni hava tahmininin dosya kimliğine bağlanır.
+Panel/favikon aynı onaylı PNG'yi kullanır. İşaretsiz eski iddialar ve bugüne
+kadar yayımlanmış hava kartları `logo-legacy.png` ile korunur. Profil fotoğrafı,
+reklam dosyası ve üretim dağıtımı ayrı ayrı doğrulanır; tek birinin değişmesi
+her yerde tamamlandığı anlamına gelmez.
 Hashtagler küçük harfli ve konuyla ilgili olur; keşfet/erişim garantisi verilmez.
 19 Ekim kullanıcı kuralıyla “Detaylar açıklamada.” notu haber/etkinlik akışındaki
 ilk kartın içerik metninin hemen altındadır; bu not için ayrı kart eklenmez.

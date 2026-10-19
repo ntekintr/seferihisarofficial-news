@@ -4,6 +4,18 @@ Gönderiler 1080×1350, story kartları 1080×1920 JPEG'dir. Onaylı logo, laciv
 mandalina turuncusu ve turkuaz şeritler ortaktır. Şeritler yüksek çözünürlükte
 çizilip küçültülür; çapraz çizgide belirgin basamak oluşması engellenir.
 Türkçe büyük İ ve kullanılan bütün karakterlerin fontta bulunması kontrol edilir.
+19 Ekim 2026'da kullanıcı, üst kıvrımında 3D salyangoz bulunan S logosunu ana
+kimlik olarak seçti. `assets/logo.png` bu onaylı özgün PNG'dir; haber, etkinlik,
+takvim ve hava kartlarında yeniden çizilmeden kullanılır. Web paneli başlığı
+ve favicon da aynı dosyanın `logo-snail-s-v1.png` kopyasını kullanır.
+
+Yeni hazırlık `brand_version: snail-s-v1` taşır. Bu alan görsel onayına ve
+etkinlik/haber dosya klasörüne bağlanır; eski logolu hazırlığın onayı yeni logoya
+kanıt sayılamaz. Hava tahmininde aynı işaret yeni asset kimliği üretir. Başlamış,
+yayımlanmış veya belirsiz eski iddialar işaretsiz kalır ve `logo-legacy.png`
+ile önceki görsellerini korur; yeni işaretli iddialar yayımlandıktan sonra da
+seçilmiş logoyu tutar. Sosyal hesap profil fotoğrafı güncellemesi ayrı platform
+işlemidir; kod dağıtımı tek başına bunun yapıldığını kanıtlamaz.
 Başlık ve metin okunabilir biçimde yerleşmeli; kritik bilgi veya kelime
 kesilerek anlama zarar verilmemelidir. Tam metin açıklamada kalır.
 

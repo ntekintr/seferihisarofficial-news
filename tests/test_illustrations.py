@@ -85,7 +85,10 @@ def test_no_secret_or_provider_metadata_in_cache_or_public(store, event, at, tmp
     assert len(list((tmp_path/'public').rglob('*.jpg'))) >= 2
     assert 'SYNTHETIC_CLOUDFLARE' not in json.dumps(data)
     assert b'SYNTHETIC_CLOUDFLARE' not in store.path.read_bytes()
-    assert not list((tmp_path/'public').rglob('*.png'))
+    # Only the exact approved brand PNG is public; provider PNGs stay private.
+    from seferihisar.brand import PUBLIC_ASSET, logo_path
+    assert list((tmp_path/'public').rglob('*.png')) == [tmp_path/'public'/PUBLIC_ASSET]
+    assert (tmp_path/'public'/PUBLIC_ASSET).read_bytes() == logo_path().read_bytes()
 
 
 def test_demo_and_disabled_mode_never_call_provider(store, event, at, tmp_path, configured, monkeypatch):

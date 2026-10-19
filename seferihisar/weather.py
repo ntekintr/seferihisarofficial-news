@@ -13,6 +13,7 @@ import requests
 from .domain import TZ, now
 from .weather_data import SITE, SOURCE, asset_id, fresh, validate_forecast
 from .weather_copy import VERSION as DISPLAY_VERSION, WeatherTextError, display_condition, reviewed
+from .brand import VERSION as BRAND_VERSION
 
 
 class ForecastError(ValueError):
@@ -61,7 +62,7 @@ def parse_forecast(html, at):
         raise ForecastError('forecast_temperature_missing')
     result = {'date':at.astimezone(TZ).date().isoformat(),'place':'Seferihisar','condition':condition,
               'low':temperatures[0],'high':temperatures[1],**values,'fetched_at':at.isoformat(),'source_url':SOURCE,
-              'display_version':DISPLAY_VERSION}
+              'display_version':DISPLAY_VERSION,'brand_version':BRAND_VERSION}
     validate_forecast(result)
     display_condition(result)
     from .security import assert_no_secrets
