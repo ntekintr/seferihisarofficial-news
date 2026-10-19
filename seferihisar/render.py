@@ -10,6 +10,7 @@ from PIL import Image, ImageDraw, ImageFont, ImageOps
 from .domain import CATEGORIES
 from .editor import event_activity, event_type_label, news_type_label
 from .text_quality import TextRenderError, plain_display, ensure_glyphs
+from .card_layout import CAPTION_NOTE, inline_note
 
 NAVY, IVORY, ORANGE, TURQUOISE = '#06244a', '#f4efe4', '#f58220', '#20b8c9'
 ASSETS = Path(__file__).with_name('assets')
@@ -165,7 +166,8 @@ def graphic_title(title: str, category: str, event_details: bool = False):
 def card(title: str, body: str, category: str, target: Path, story: bool = False,
          index: str = '', illustration: Path | None = None, preview: bool = False,
          event_details: bool = False, photo_centering: tuple[float, float] = (0.5, 0.5), compact: bool = False,
-         legacy_outage: bool = False, story_details: bool = False, text_review: bool = False, source_photo: bool = False):
+         legacy_outage: bool = False, story_details: bool = False, text_review: bool = False, source_photo: bool = False,
+         caption_note: bool = False):
     """Fixed branding and a per-item illustration, never a shared news scene."""
     width, height = 1080, 1920 if story else 1350
     block = partial(text_block, strict=text_review)
@@ -227,10 +229,13 @@ def card(title: str, body: str, category: str, target: Path, story: bool = False
     # the caption; never paint it or a fallback source label on the graphic.
     content = graphic_body(body, display_title)
     brand_top = bottom - 70
+    content_bottom = brand_top - 24 - (64 if caption_note else 0)
+    content_end = title_end
     if event_details:
         date_line, _, rest = content.partition('\n')
-        date_end = block(draw, readable_date_line(date_line), (margin, title_end + 28, right, min(brand_top - 24, title_end + 136)),
+        date_end = block(draw, readable_date_line(date_line), (margin, title_end + 28, right, min(content_bottom, title_end + 136)),
                               (42, 38, 34, 30), True, color=ORANGE, complete=True)
+        content_end = date_end
         compact = re.sub(r'\n\s*\n', '\n', rest.strip())
         if detail_photo:
             # Preserve the useful date/venue/price summary before optional
@@ -241,16 +246,21 @@ def card(title: str, body: str, category: str, target: Path, story: bool = False
             organizers = [line for line in lines if line.startswith('Düzenleyen:')]
             y = date_end + 20
             if venues:
-                y = block(draw, '\n'.join(venues), (margin, y, right, min(y+80, brand_top-24)), (34,32,30,28), color='#d8e7eb') + 12
+                content_end = block(draw, '\n'.join(venues), (margin, y, right, min(y+80, content_bottom)), (34,32,30,28), color='#d8e7eb')
+                y = content_end + 12
             if prices:
-                y = block(draw, prices[0], (margin, y, right, min(y+48, brand_top-24)), (34,32,30,28), color=ORANGE, complete=True) + 12
+                content_end = block(draw, prices[0], (margin, y, right, min(y+48, content_bottom)), (34,32,30,28), color=ORANGE, complete=True)
+                y = content_end + 12
             if organizers:
-                block(draw, '\n'.join(organizers), (margin, y, right, brand_top-24), (32,30,28), color='#d8e7eb')
+                content_end = block(draw, '\n'.join(organizers), (margin, y, right, content_bottom), (32,30,28), color='#d8e7eb')
         else:
-            block(draw, compact, (margin, date_end + 28, right, brand_top - 24), (34, 32, 30, 28), color='#d8e7eb')
+            content_end = block(draw, compact, (margin, date_end + 28, right, content_bottom), (34, 32, 30, 28), color='#d8e7eb')
     else:
-        block(draw, content, (margin, title_end + 20, right, brand_top - 24),
+        content_end = block(draw, content, (margin, title_end + 20, right, content_bottom),
                    (46, 42, 38, 34, 30, 28, 26) if information_card else (30, 28, 26), color='#d8e7eb')
+    if caption_note:
+        block(draw, CAPTION_NOTE, (margin, content_end + 12, right, brand_top - 24),
+              (28,26,24), color=TURQUOISE, complete=True)
     draw.line((margin, brand_top - 8, right, brand_top - 8), fill=TURQUOISE, width=2)
     draw.text((margin, brand_top + 23), '@seferihisarofficial', font=font(23, True), fill=IVORY, anchor='lt')
     if index:
@@ -265,7 +275,8 @@ def render_post(post: dict, public_dir: Path, illustrations: dict[int, Path] | N
     """Explicit slide-to-illustration mapping, with no category-wide stock scene."""
     assets = {'feed': [], 'story': []}
     slides = post['slides']
-    if post['kind'] in ('announcement', 'reminder_3d', 'reminder_day', 'update', 'cancellation'):
+    note = inline_note(post)
+    if not note and post['kind'] in ('announcement', 'reminder_3d', 'reminder_day', 'update', 'cancellation'):
         # Keep stable frame indexes for existing story jobs; source links and
         # names stay in the caption instead of this supplementary frame.
         slides = slides + [{'title': 'Ayrıntılar açıklamada',
@@ -289,7 +300,8 @@ def render_post(post: dict, public_dir: Path, illustrations: dict[int, Path] | N
                  legacy_outage=category == 'outage' and not mutable and not review,
                  story_details=(review.get('version') in ('content-visual-v2','content-visual-v3') or mutable and not review),
                  text_review=review.get('version') == 'content-visual-v3' or mutable and not review,
-                 source_photo=bool(post.get('source_photo_keys',{}).get(str(i))))
+                 source_photo=bool(post.get('source_photo_keys',{}).get(str(i))),
+                 caption_note=note and i==0)
             assets[fmt].append(relative)
     return assets
 

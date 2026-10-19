@@ -196,6 +196,8 @@ def _export(store: Store, public_dir: Path, sources: list[dict], at: datetime, d
                         store.db.execute("UPDATE posts SET status='blocked_source' WHERE id=? AND status='prepared'",(post['id'],))
                     post['status']='blocked_source'
                     continue
+                from .card_layout import prepare as prepare_card_layout
+                prepare_card_layout(post)
             illustrations = illustrator.for_post(post, item_map)
             illustrations.update(photos.for_post(post,item_map))
             if post["status"] == "prepared":

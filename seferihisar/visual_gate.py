@@ -26,6 +26,7 @@ def content_key(post):
     values={k:post.get(k) for k in CONTENT_FIELDS}
     # Leave every pre-existing frozen edition's fingerprint unchanged.
     if 'source_photo_keys' in post:values['source_photo_keys']=post['source_photo_keys']
+    if 'card_layout' in post:values['card_layout']=post['card_layout']
     return digest(json.dumps(values, ensure_ascii=False, sort_keys=True))
 
 

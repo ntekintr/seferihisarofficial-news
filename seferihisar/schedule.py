@@ -136,6 +136,8 @@ def queue_item(store: Store, item: dict, kind: str, due: datetime, at: datetime)
         post["illustration_keys"] = previous["illustration_keys"]
     if 'source_photo_keys' in previous:
         post['source_photo_keys']=deepcopy(previous['source_photo_keys'])
+    if 'card_layout' in previous:
+        post['card_layout']=previous['card_layout']
     if "visual_review" in previous:
         post['visual_review'] = deepcopy(previous['visual_review'])
     post["caption"] = generated_image_caption(post["caption"], bool(post.get("illustration_keys")))
