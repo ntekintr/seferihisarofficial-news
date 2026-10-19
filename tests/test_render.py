@@ -60,8 +60,8 @@ def test_illustration_is_assigned_to_its_slide_only(tmp_path, monkeypatch):
             'source_urls': ['https://seferihisar.bel.tr/etkinlik']}
     selected = Path('only-this-item.png')
     assets = render.render_post(post, tmp_path, {0: selected})
-    assert calls == [selected, None, selected, None]
-    assert len(assets['feed']) == len(assets['story']) == 2
+    assert calls == [selected, selected]
+    assert len(assets['feed']) == len(assets['story']) == 1
 
 
 def test_turkish_uppercase_keeps_dotted_i():

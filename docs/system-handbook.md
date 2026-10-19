@@ -65,6 +65,10 @@ o yanıt penceresinde uygun kayıt yok; `partial`: bazı ayrıntılar okunamadı
 Onaylı logo, lacivert/turuncu/turkuaz şeritler ve okunabilir Türkçe tipografi
 korunur. Kaynak adı/adresi yalnız açıklamada; otomatik AI üretim notu yoktur.
 Hashtagler küçük harfli ve konuyla ilgili olur; keşfet/erişim garantisi verilmez.
+19 Ekim kullanıcı kuralıyla “Detaylar açıklamada.” notu haber/etkinlik akışındaki
+ilk kartın içerik metninin hemen altındadır; bu not için ayrı kart eklenmez.
+Gerçek içerik slaytları kalır. `card_layout: caption-note-v1`, bu düzeni görsel
+özetine bağlar; eski dondurulmuş kartlar önceki düzenlerini korur.
 
 Gerçek haberin fotoğrafı yalnız kaynakla ve konuyla doğrulanırsa kullanılır.
 İlk kapalı konu kümesi toplantı, trafik, su baskınıdır. Web fotoğrafı kendi
@@ -93,6 +97,7 @@ SQL'de kalması, eski günlük kartın aynı Pages adresinde tutulduğu anlamın
 | Hava işinin erken bitmesi ve sonraki işin kaçması | Geçerli hazır kartla 08:00'a sınırlı bekleme; tek günlük iddia | `weather.run_weather` |
 | Eski küçük örnekle yetinip yeni iddiaları kaçırma | Güncel bazın bütün donmuş SQL satırları ve değişiklikten etkilenen canlı JPEG'ler | Tarihli üretim karşılaştırması |
 | README'de ilk sürüm sayılarının/kapalı kaynakların kalması | Kurulum varsayılanı, kod yeteneği ve tarihli canlı sonuç ayrılır | README ve bu rehber |
+| “Ayrıntılar açıklamada” için gereksiz ikinci görsel | Not ilk kartta metnin altında; gerçek içerik dışındaki ek kart üretilmez. Yeni düzen sürümlü işaretle dondurulur. | `card_layout`, `render`, `visual_gate` |
 | Yerel/bulut yeni JPEG özetinin farklı çıkması | Önce font/işletim sistemi farkını kontrol et; yeni Windows render'ını Linux çıktısıyla birebir aynı varsayma. Mevcut canlı dosyanın değişiklik öncesi/sonrası karşılaştırması ayrı kanıttır. | `render.font`, tarihli JPEG incelemesi |
 
 Yeni bulguyu bu tabloya yalnız gözlem, neden ve doğrulanan kontrolle ekleyin.

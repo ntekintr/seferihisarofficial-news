@@ -12,6 +12,19 @@ Kaynak adı ve adresi **yalnız açıklamadadır**. Karta otomatik kaynak veya
 notu konmaz. Bu, kaynağın haber konusu olarak AI'dan bahseden gerçek metnini
 silme kuralı değildir. Etiketler küçük harfli ve içerikle ilgili olmalıdır.
 
+19 Ekim 2026 kullanıcı kuralı: haber, etkinlik, kesinti, hatırlatma/güncelleme ve
+takvim gönderilerinde **“Detaylar açıklamada.” ilk kartın içerik metninin hemen
+altında** yer alır. Bu mesaj için ayrı bir görsel/slayt oluşturulmaz. Gerçek
+program/etkinlik içeren sonraki kartlar korunur; not yalnız ilk karta eklenir.
+Gönderi ve eşleşen story yerleşimlerinde not için alan ayrılır; tarih/mekân/ücret
+üzerine yazılmaz. Bağımsız hava story'si kendi tek kartlı tasarımını kullanır.
+
+Yeni hazırlık `card_layout: caption-note-v1` işaretiyle görsel onay özetine
+bağlanır; eski manifest veya ek kartlı dosya listesi yeni düzenin kanıtı olamaz.
+Yeni düzenle yayımlanan kart işaretini korur. Önceden başlamış/yayımlanmış/belirsiz
+iddialar kendi önceki dosya sayısını ve görsellerini tutar; geçmiş paylaşım
+düzenlenmez veya yeni düzene geçirmek için yeniden yayımlanmaz.
+
 ## Haber, etkinlik ve yedek kart
 
 - Haber için genel kategoriye göre uydurulmuş olay fotoğrafı kullanılmaz.
