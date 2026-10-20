@@ -643,7 +643,7 @@ def discover(html: str, base: str) -> list[dict]:
     for anchor in soup.select('a[href]')[:300]:
         label = text(anchor)
         url = canonical(urljoin(base, anchor["href"]))
-        if urlsplit(url).scheme == "https" and urlsplit(url).hostname != urlsplit(base).hostname and any(w in label.casefold() for w in ("bilet", "organizatör", "gazete", "kültür", "dernek")):
+        if urlsplit(url).scheme == "https" and urlsplit(url).hostname != urlsplit(base).hostname and any(w in label.casefold() for w in ("bilet", "organizatör", "gazete", "kültür", "dernek", "haber", "belediye", "kaymakam", "etkinlik", "vakıf")):
             found.append({"id": digest(url), "name": label[:100], "url": url, "kind": "html",
                           "enabled": False, "trusted": False, "access": "review_required", "discovered_from": base})
     return found[:30]

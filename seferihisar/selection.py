@@ -28,6 +28,11 @@ def prioritize(store, posts, at):
     """
     at = at.astimezone(TZ)
     items = {item['id']: item for item in store.items()}
+    from .learning import profile
+    learned = profile(store, at)['weights']
+    recent = [p for p in store.posts() if p['status'] == 'published'
+              and not p.get('publish_format') and p.get('published_at')]
+    recent.sort(key=lambda p: p['published_at'], reverse=True)
     announced = {}
     for claim in store.posts():
         if claim['status'] == 'published' and not claim.get('publish_format') and claim.get('item_id'):
@@ -57,6 +62,11 @@ def prioritize(store, posts, at):
         # same occurrence. Keep source identities; do not merge dates/venues here.
         wording = {'cancellation': 0, 'update': 1, 'reminder_day': 2,
                    'reminder_3d': 3, 'announcement': 4}.get(post['kind'], 5)
-        return tier, locality(item), timing, stamp, wording, parse_date(post['due_at']), post['id']
+        # Feedback cannot outrank warnings/corrections, geography or immediacy.
+        # Reserve exploration: a topic repeated in the last two feeds gains no
+        # extra preference, so an early winner cannot monopolize the queue.
+        repeated = len(recent) >= 2 and all(p['category'] == post['category'] for p in recent[:2])
+        preference = learned.get(post['category'], 0) if tier != 0 and not repeated else 0
+        return tier, locality(item), timing, -preference, stamp, wording, parse_date(post['due_at']), post['id']
 
     return sorted(posts, key=key)
