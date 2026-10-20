@@ -31,11 +31,16 @@ program/etkinlik içeren sonraki kartlar korunur; not yalnız ilk karta eklenir.
 Gönderi ve eşleşen story yerleşimlerinde not için alan ayrılır; tarih/mekân/ücret
 üzerine yazılmaz. Bağımsız hava story'si kendi tek kartlı tasarımını kullanır.
 
-Yeni hazırlık `card_layout: caption-note-v1` işaretiyle görsel onay özetine
+21 Ekim 2026'da kullanıcı krem zeminli, lacivert–koyu turkuaz başlıklı örneği
+yeni haber/etkinlik kartları için seçti. Yeni hazırlık
+`card_layout: editorial-cream-v1` işaretiyle görsel onay özetine
 bağlanır; eski manifest veya ek kartlı dosya listesi yeni düzenin kanıtı olamaz.
 Yeni düzenle yayımlanan kart işaretini korur. Önceden başlamış/yayımlanmış/belirsiz
 iddialar kendi önceki dosya sayısını ve görsellerini tutar; geçmiş paylaşım
 düzenlenmez veya yeni düzene geçirmek için yeniden yayımlanmaz.
+Önceki `caption-note-v1` sürümü kalıcı durumda geçerlidir; onun eski dosyaları
+ve içerik özetleri değişmez. [Başlık ve içerik alanları](editorial-card-layout.md)
+yeni düzenin taşma, gerçek yazı sınırı ve okunabilirlik denetimlerini açıklar.
 
 ## Haber, etkinlik ve yedek kart
 

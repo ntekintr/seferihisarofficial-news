@@ -121,7 +121,7 @@ def test_compact_information_card_has_no_empty_hero_or_duplicate_category(tmp_pa
     post={'id':'a'*24,'kind':'announcement','category':'outage','status':'prepared',
           'slides':[{'title':'Urla’da planlı elektrik kesintisi','body':'17.10.2026 · 09:30 – 17:30\n\nAltıntaş, İçmeler'}]}
     render_post(post,tmp_path)
-    title=next(xy for xy,text in seen if text.startswith('URLA'))
+    title=next(xy for xy,text in seen if text.startswith('Urla'))
     assert title[1]<350
     assert any(text=='ELEKTRİK KESİNTİSİ' for _,text in seen)
     assert not any(text=='ETKİNLİK' for _,text in seen)
