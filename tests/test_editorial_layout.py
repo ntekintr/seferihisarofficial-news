@@ -124,3 +124,18 @@ def test_single_card_has_no_redundant_counter_and_carousel_counter_clears_ribbon
         assert drawn == []
     else:
         assert len(drawn) == 1 and drawn[0][3] < 1350 - 98
+
+
+@pytest.mark.parametrize('title', ['Hatha Yoga', 'Kralın Çiçekleri', 'Yeni Yol'])
+def test_short_two_color_heading_keeps_word_spacing_with_real_font_bearings(tmp_path, monkeypatch, title):
+    drawn = []
+    original = TextFields.line
+    def capture(self, value, x, y, size, color, role, box, bold=False):
+        original(self, value, x, y, size, color, role, box, bold)
+        if role == 'heading': drawn.append((value, self.bounds[-1][0], color))
+    monkeypatch.setattr(TextFields, 'line', capture)
+    editorial_card(title, 'Ayrıntılar duyuruldu.', 'news', tmp_path/'card.jpg')
+    assert len(drawn) == 2
+    assert ' '.join(text for text, _, _ in drawn) == title
+    assert drawn[0][1][2] < drawn[1][1][0]
+    assert {color for _, _, color in drawn} == {render.NAVY, TEAL}

@@ -76,10 +76,14 @@ class TextFields:
                 # Split only at a word boundary, without adding/rewording text.
                 words = line.split(' ')
                 split = max(1, len(words) // 2)
-                first = ' '.join(words[:split]) + ' '
+                first = ' '.join(words[:split])
                 last = ' '.join(words[split:])
                 self.line(first, box[0], box[1], size, NAVY, role, box, bold)
-                self.line(last, box[0] + self.draw.textlength(first, font=face), box[1], size, TEAL, role, box, bold)
+                # A trailing space contributes advance but is not heading ink.
+                # DejaVu's next capital may have a negative bearing; measuring
+                # the space as ink falsely reports two adjacent words overlap.
+                advance = self.draw.textlength(first + ' ', font=face)
+                self.line(last, box[0] + advance, box[1], size, TEAL, role, box, bold)
                 continue
             self.line(line, box[0], box[1] + i * step, size, ink, role, box, bold)
         return box[1] + len(visible) * step
