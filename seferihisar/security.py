@@ -231,8 +231,8 @@ def validate_state(path: Path):
                         if not valid_bindings(payload['source_photo_keys']):
                             raise ValueError('Invalid source photo bindings')
                     if table=='posts' and 'card_layout' in payload:
-                        from .card_layout import VERSION
-                        if payload['card_layout']!=VERSION:
+                        from .card_layout import SUPPORTED
+                        if payload['card_layout'] not in SUPPORTED:
                             raise ValueError('Invalid card layout policy')
                     if table=='posts' and 'brand_version' in payload:
                         from .brand import logo_path

@@ -1,6 +1,6 @@
 # Sistem rehberi ve öğrenilenler
 
-Son gözden geçirme: **19 Ekim 2026**. Bu dosya kod haritası ve kalıcı çalışma
+Son gözden geçirme: **21 Ekim 2026**. Bu dosya kod haritası ve kalıcı çalışma
 notudur. Anlık sağlık/teslim kanıtı zaman damgalı çıktılardan alınır; burada bir
 kez başarılı olması sonraki ay kesintisiz çalışacağı anlamına gelmez.
 
@@ -15,6 +15,15 @@ aynı güvenilir kökende veya iki referanslı yeni resmî kurumda üç günlük
 ve diğer dış sitelerin karantinasını açıklar.
 Yeni tablo eklemek eski yayınları yeniden yazma izni değildir. Yeni canlı sonuç
 gözlenene kadar kod yeteneği ile doğrulanmış üretim sonucu ayrı raporlanır.
+
+### 21 Ekim: onaylanan başlık renkleri ve ayrı metin alanları
+
+Kullanıcı krem karttaki lacivert–koyu turkuaz başlığı kalıcı düzen olarak seçti.
+`editorial-cream-v1`, yalnız yeni/henüz sahiplenilmemiş haber, etkinlik ve takvim
+hazırlıklarına uygulanır. [Kart yerleşimi](editorial-card-layout.md) kodun
+gerçek yazı sınırlarıyla başlık, tarih, içerik ve açıklama notunu ayırmasını
+açıklar. Eski `caption-note-v1` dahil bütün başlamış/yayımlanmış/belirsiz kartlar
+önceki sürüm ve dosyalarını korur. Günlük hava kartı bu değişikliğe dahil değildir.
 
 ## Akış ve kod haritası
 
@@ -83,11 +92,17 @@ Panel/favikon aynı onaylı PNG'yi kullanır. İşaretsiz eski iddialar ve bugü
 kadar yayımlanmış hava kartları `logo-legacy.png` ile korunur. Profil fotoğrafı,
 reklam dosyası ve üretim dağıtımı ayrı ayrı doğrulanır; tek birinin değişmesi
 her yerde tamamlandığı anlamına gelmez.
+Yeni akış kartlarının içerik zemini krem, ilk başlık satırı lacivert ve devamı
+koyu turkuazdır. Kısa tek satırlı başlıkta renk ayrımı sözcük sınırında yapılır.
+Gövde ayrı alan ve renkte, açıklama notu onun hemen altındadır. Fontun negatif
+sol taşıması (örneğin kalın y) gerçek yazı sınırına göre hizalanır; metni kenardan
+keserek veya taşma denetimini gevşeterek çözülmez.
 Hashtagler küçük harfli ve konuyla ilgili olur; keşfet/erişim garantisi verilmez.
 19 Ekim kullanıcı kuralıyla “Detaylar açıklamada.” notu haber/etkinlik akışındaki
 ilk kartın içerik metninin hemen altındadır; bu not için ayrı kart eklenmez.
-Gerçek içerik slaytları kalır. `card_layout: caption-note-v1`, bu düzeni görsel
-özetine bağlar; eski dondurulmuş kartlar önceki düzenlerini korur.
+Gerçek içerik slaytları kalır. Yeni `card_layout: editorial-cream-v1` bu düzeni
+görsel özetine bağlar; eski `caption-note-v1` dahil dondurulmuş kartlar önceki
+düzenlerini korur.
 
 Gerçek haberin fotoğrafı yalnız kaynakla ve konuyla doğrulanırsa kullanılır.
 İlk kapalı konu kümesi toplantı, trafik, su baskınıdır. Web fotoğrafı kendi

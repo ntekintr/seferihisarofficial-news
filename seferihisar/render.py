@@ -10,7 +10,7 @@ from PIL import Image, ImageDraw, ImageFont, ImageOps
 from .domain import CATEGORIES
 from .editor import event_activity, event_type_label, news_type_label
 from .text_quality import TextRenderError, plain_display, ensure_glyphs
-from .card_layout import CAPTION_NOTE, inline_note
+from .card_layout import CAPTION_NOTE, inline_note, editorial
 from .brand import VERSION as BRAND_VERSION, logo_path, version_for
 
 NAVY, IVORY, ORANGE, TURQUOISE = '#06244a', '#f4efe4', '#f58220', '#20b8c9'
@@ -168,8 +168,14 @@ def card(title: str, body: str, category: str, target: Path, story: bool = False
          index: str = '', illustration: Path | None = None, preview: bool = False,
          event_details: bool = False, photo_centering: tuple[float, float] = (0.5, 0.5), compact: bool = False,
          legacy_outage: bool = False, story_details: bool = False, text_review: bool = False, source_photo: bool = False,
-         caption_note: bool = False, brand_version: str = BRAND_VERSION):
+         caption_note: bool = False, brand_version: str = BRAND_VERSION, editorial_layout: bool = False):
     """Fixed branding and a per-item illustration, never a shared news scene."""
+    if editorial_layout:
+        from .editorial_render import editorial_card
+        return editorial_card(title, body, category, target, story=story, index=index,
+                              illustration=illustration, preview=preview, event_details=event_details,
+                              photo_centering=photo_centering, story_details=story_details,
+                              source_photo=source_photo, caption_note=caption_note, brand_version=brand_version)
     width, height = 1080, 1920 if story else 1350
     block = partial(text_block, strict=text_review)
     top, bottom = (260, 1600) if story else (0, 1260)
@@ -302,7 +308,7 @@ def render_post(post: dict, public_dir: Path, illustrations: dict[int, Path] | N
                  story_details=(review.get('version') in ('content-visual-v2','content-visual-v3') or mutable and not review),
                  text_review=review.get('version') == 'content-visual-v3' or mutable and not review,
                  source_photo=bool(post.get('source_photo_keys',{}).get(str(i))),
-                 caption_note=note and i==0, brand_version=version_for(post))
+                 caption_note=note and i==0, brand_version=version_for(post), editorial_layout=editorial(post))
             assets[fmt].append(relative)
     return assets
 
