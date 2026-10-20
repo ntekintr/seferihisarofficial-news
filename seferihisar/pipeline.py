@@ -45,6 +45,9 @@ def run(db_path: Path, public_dir: Path, sources_path: Path, at: datetime | None
     sources = json.loads(sources_path.read_text())
     source_map = {s["id"]: s for s in sources}
     store = Store(db_path)
+    from .source_discovery import active_sources, register, refresh as refresh_discovery
+    sources = active_sources(store, sources)
+    source_map = {s['id']: s for s in sources}
     errors = []
     collected = 0
     health = {}
@@ -88,18 +91,9 @@ def run(db_path: Path, public_dir: Path, sources_path: Path, at: datetime | None
                     # Only controlled codes are retained; URLs/exceptions can contain tokens.
                     errors.append({"source_id": source["id"], "code": source_error_code(exc)})
                     health[source['id']] = {'checked_at':now().isoformat(), 'status':'failed', 'parsed':0, 'accepted':0, 'error_count':1, 'latest_published_at':None}
-        for candidate in candidates:
-            # Candidate labels/URLs are untrusted and might contain private query data.
-            from urllib.parse import urlsplit
-            split = urlsplit(candidate["url"])
-            candidate_url = f"https://{split.hostname}{split.path if candidate.get('kind') == 'rss' else '/'}"
-            if not public_url(candidate_url):
-                continue
-            from .domain import digest
-            candidate = {"id": digest(candidate_url), "url": candidate_url, "name": split.hostname,
-                         "kind": candidate["kind"], "enabled": False, "trusted": False, "access": "review_required"}
-            with store.db:
-                store.db.execute("INSERT OR IGNORE INTO candidates VALUES (?,?)", (candidate["id"], json.dumps(candidate)))
+        register(store, candidates, sources, at)
+        if not fixture:
+            refresh_discovery(store, sources, at)
         incoming = [with_validity(item) for item in incoming]
         for item in incoming:
             source = source_map.get(item.get("source_id"), {})
@@ -144,6 +138,8 @@ def run(db_path: Path, public_dir: Path, sources_path: Path, at: datetime | None
 def export(store: Store, public_dir: Path, sources: list[dict], at: datetime, demo=False, *, instagram_manifest=None) -> dict:
     # Build a clean, validated staging directory. Never carry arbitrary old files
     # (.env, a database, logs or stale private media) into the Pages artifact.
+    from .source_discovery import active_sources
+    sources = active_sources(store, sources)
     root = Path(__file__).resolve().parents[1]
     resolved = public_dir.resolve()
     protected = [root, root / "site", root / "seferihisar", root / "config", root / "tests", root / ".git", root / ".github", root / "docs", store.path]
@@ -265,6 +261,8 @@ def _export(store: Store, public_dir: Path, sources: list[dict], at: datetime, d
     catalogue_path = Path(__file__).resolve().parents[1] / 'config/source_catalog.json'
     from .operations import summary
     snapshot['operations'] = summary(store, at)
+    from .factory import summary as factory_summary
+    snapshot['factory'] = factory_summary(store, at)
     if not demo:
         from .weather import export_weather
         snapshot['weather_story'] = export_weather(store, public_dir, at)

@@ -302,8 +302,22 @@ def _combine_tags(places: list[str], topics: list[str]) -> list[str]:
 
 
 def hashtags(item: dict) -> list[str]:
-    """Choose up to five lowercase tags from verified location and category."""
-    return _combine_tags(_place_tags(item), _topic_tags(item))
+    """Aim for five supported lowercase tags; never invent a location/genre."""
+    return complete_tags(_combine_tags(_place_tags(item), _topic_tags(item)),
+                         _place_tags(item), item.get('kind') == 'event', item.get('category'))
+
+
+def complete_tags(tags, places, event, category=None):
+    chosen = [t for t in tags if t != '#seferihisarofficial']
+    # Every recognized place above is in İzmir. No inferred geography when
+    # the source only contains a brand, URL or hashtag campaign.
+    broader = '#kamuduyurusu' if category in ('outage', 'weather', 'public') or (event and category == 'transport') else '#etkinlik' if event else '#yerelhaber'
+    for tag in ([broader, '#izmir'] if places else [broader]):
+        if len(chosen) >= 4:
+            break
+        if tag not in chosen:
+            chosen.append(tag)
+    return chosen[:4] + ['#seferihisarofficial']
 
 
 def digest_hashtags(items: list[dict]) -> list[str]:
@@ -312,7 +326,7 @@ def digest_hashtags(items: list[dict]) -> list[str]:
     topics = [_topic_tags(item) for item in items]
     # Prioritize category diversity before secondary tags for one event.
     candidates = [tags[0] for tags in topics] + [tag for tags in topics for tag in tags[1:]]
-    return _combine_tags(places, candidates)
+    return complete_tags(_combine_tags(places, candidates), places, True)
 
 
 def caption_with_hashtags(content: str, tags: list[str], *, footer: str = "", limit: int = 2200) -> str:

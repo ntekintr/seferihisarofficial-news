@@ -4,6 +4,17 @@ Son gözden geçirme: **19 Ekim 2026**. Bu dosya kod haritası ve kalıcı çal�
 notudur. Anlık sağlık/teslim kanıtı zaman damgalı çıktılardan alınır; burada bir
 kez başarılı olması sonraki ay kesintisiz çalışacağı anlamına gelmez.
 
+### 20 Ekim: otonom üretim kapsamı
+
+Kullanıcı rutin üretim için ayrıca kontrol/teyit beklenmemesini; performanstan
+öğrenme ve sürekli yeni kaynak aramasını istedi. `learning.py`,
+`source_discovery.py`, `factory.py` ve `audience-feedback.yml` bu akışı mevcut
+üretim kilidiyle tamamlar. [Otonom üretim sözleşmesi](autonomous-factory.md)
+asgari örneklem, ham özel ölçümlerin saklanmaması, kontrollü konu tercihi,
+aynı güvenilir kökende üç günlük RSS kabulü ve dış sitelerin karantinasını açıklar.
+Yeni tablo eklemek eski yayınları yeniden yazma izni değildir. Yeni canlı sonuç
+gözlenene kadar kod yeteneği ile doğrulanmış üretim sonucu ayrı raporlanır.
+
 ## Akış ve kod haritası
 
 | Adım | Kod / ayar | Görevi ve sınırı |

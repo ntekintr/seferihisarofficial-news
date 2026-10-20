@@ -74,9 +74,31 @@ def validate_state(path: Path):
     db = sqlite3.connect(f"file:{path.resolve()}?mode=ro", uri=True)
     try:
         tables = {r[0] for r in db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
-        if not tables <= {"items", "posts", "withheld", "runs", "candidates", "annotations", "illustrations", "illustration_days", "source_photos", "source_health", "facebook_deliveries", "publication_checks", "weather_stories"}:
+        if not tables <= {"items", "posts", "withheld", "runs", "candidates", "annotations", "illustrations", "illustration_days", "source_photos", "source_health", "facebook_deliveries", "publication_checks", "weather_stories", "learning_profile", "source_checks"}:
             raise ValueError("Unexpected state tables")
         for table in sorted(tables):
+            if table == 'learning_profile':
+                from .learning import validate_profile
+                if [r[1] for r in db.execute('PRAGMA table_info(learning_profile)')] != ['id', 'payload']:
+                    raise ValueError('Unexpected learning fields')
+                if db.execute('SELECT COUNT(*) FROM learning_profile').fetchone()[0] > 1:
+                    raise ValueError('Unexpected learning history')
+                for key, payload in db.execute('SELECT * FROM learning_profile'):
+                    assert_no_secrets(payload)
+                    if key != 'instagram':
+                        raise ValueError('Invalid learning identity')
+                    validate_profile(json.loads(payload))
+                continue
+            if table == 'source_checks':
+                from .source_discovery import MAX_CANDIDATES, validate_check
+                if [r[1] for r in db.execute('PRAGMA table_info(source_checks)')] != ['candidate_id', 'checked_at', 'result', 'successes', 'source']:
+                    raise ValueError('Unexpected source check fields')
+                if db.execute('SELECT COUNT(*) FROM source_checks').fetchone()[0] > MAX_CANDIDATES:
+                    raise ValueError('Source check limit exceeded')
+                for row in db.execute('SELECT * FROM source_checks'):
+                    assert_no_secrets(row)
+                    validate_check(row)
+                continue
             if table=='source_photos':
                 from .source_photo_data import validate_record,MAX_CACHE_BYTES,MAX_CACHED_IMAGES
                 if [r[1] for r in db.execute('PRAGMA table_info(source_photos)')]!=['id','item_id','revision','payload','image']:

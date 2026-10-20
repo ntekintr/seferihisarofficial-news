@@ -38,6 +38,11 @@ class Store:
               id TEXT PRIMARY KEY, payload TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS annotations (
               item_id TEXT PRIMARY KEY, priority INTEGER NOT NULL, reviewed_at TEXT NOT NULL);
+            CREATE TABLE IF NOT EXISTS learning_profile (
+              id TEXT PRIMARY KEY, payload TEXT NOT NULL);
+            CREATE TABLE IF NOT EXISTS source_checks (
+              candidate_id TEXT PRIMARY KEY, checked_at TEXT NOT NULL,
+              result TEXT NOT NULL, successes INTEGER NOT NULL, source TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS illustrations (
               id TEXT PRIMARY KEY, item_id TEXT NOT NULL, status TEXT NOT NULL,
               image BLOB, attempts INTEGER NOT NULL, retry_at TEXT NOT NULL,
