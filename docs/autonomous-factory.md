@@ -32,8 +32,11 @@ yanıtı tekrar gönderilmez. Yeşil hazırlık işi gerçek teslim kanıtı de�
 
 ## Performanstan öğrenme
 
-`audience-feedback.yml` 04:11 Türkiye saatinde, aynı saatin başarılı araştırma
-işi yedeğiyle ve üretim kilidini paylaşarak çalışır. Günlük tekrar kilidi vardır.
+Ölçüm işi `automation.yml` içinde, günün ilk başarılı araştırma ve durum
+kalıcılaştırmasından sonra, aynı üretim kilidi altında çalışır. Günlük tekrar
+kilidi vardır; araştırma yalnız zamanının gelip gelmediğini anahtarsız kontrol eder.
+Ölçüm işi ayrı bir workflow olarak kuyrukta beklemediğinden yeni araştırmanın
+onu başlamadan düşürmesi önlenir. Ölçüm hatası haber işinin başarısını bozmaz.
 Mevcut hesabın kimliğini, kendi medya listesini ve otomatik gönderilere ait
 insights değerlerini yalnız GET ile okur. Yeni izin veya token oluşturmaz.
 Erişim yoksa hata kontrollü kaydedilir; haber üretimi mevcut sıralamayla sürer.

@@ -195,9 +195,13 @@ def test_five_relevant_tags_without_false_geography_or_event_category(event):
 
 
 def test_feedback_workflow_is_serialized_get_only_and_does_not_reauthorize():
-    workflow = yaml.load(Path('.github/workflows/audience-feedback.yml').read_text(encoding='utf-8'), Loader=yaml.BaseLoader)
+    workflow = yaml.load(Path('.github/workflows/automation.yml').read_text(encoding='utf-8'), Loader=yaml.BaseLoader)
     assert workflow['concurrency'] == {'group': 'seferihisar-production', 'cancel-in-progress': 'false'}
     steps = workflow['jobs']['feedback']['steps']
+    assert workflow['jobs']['feedback']['needs'] == ['research', 'persist']
+    assert workflow['jobs']['feedback']['continue-on-error'] == 'true'
+    assert 'feedback_due' in workflow['jobs']['research']['outputs']
+    assert not Path('.github/workflows/audience-feedback.yml').exists()
     assert steps[0]['with']['ref'] == 'main'
     text = str(steps)
     assert 'cli publish' not in text and 'CLOUDFLARE_API_TOKEN' not in text

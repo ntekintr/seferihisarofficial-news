@@ -109,14 +109,20 @@ def weights_for(samples):
     return {category: int(score(rows) >= baseline * 1.25) for category, rows in eligible.items()}
 
 
-def refresh(store, at=None, *, environ=None, session=None):
-    at = at or now()
+def due(store, at):
     previous = store.rows("SELECT payload FROM learning_profile WHERE id='instagram'")
     if previous:
         value = validate_profile(json.loads(previous[0]['payload']))
         stamp = parse_date(value['checked_at'])
         if timedelta(0) <= at - stamp and (at.date() == stamp.astimezone(at.tzinfo).date() or at - stamp < timedelta(hours=20)):
-            return value  # Research-run backups do not repeat today's reads.
+            return False
+    return True
+
+
+def refresh(store, at=None, *, environ=None, session=None):
+    at = at or now()
+    if not due(store, at):
+        return profile(store, at)  # Research-run backups do not repeat today's reads.
     env = os.environ if environ is None else environ
     token, account = env.get('INSTAGRAM_ACCESS_TOKEN', ''), env.get('INSTAGRAM_USER_ID', '')
     version = env.get('META_GRAPH_VERSION', 'v26.0')
