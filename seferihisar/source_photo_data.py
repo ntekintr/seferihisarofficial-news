@@ -11,7 +11,7 @@ VERSION='source-photo-v1'
 INSTAGRAM_VERSION='source-photo-instagram-v1'
 FIELDS={'version','source_id','source_url','image_url','title','published_at','checked_at','subject','sha256'}
 INSTAGRAM_FIELDS=(FIELDS-{'image_url'})|{'media_id'}
-SUBJECTS=('meeting','flood','traffic')
+SUBJECTS=('meeting','flood','traffic','citrus_harvest')
 
 
 def key(item_id,revision,evidence):

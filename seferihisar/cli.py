@@ -20,7 +20,13 @@ def main():
     parser.add_argument("--site-url", default="")
     parser.add_argument("--story", action="store_true")
     parser.add_argument("--automatic", action="store_true", help="Two daily feed/story pairs in configured Turkish time windows")
+    parser.add_argument("--post-id", help="Explicitly requested parent; keep daily budget and all publication checks")
     args = parser.parse_args()
+    if args.post_id:
+        import re
+        if (args.command != 'publish' or args.automatic or args.story
+                or not re.fullmatch(r'[a-f0-9]{24}', args.post_id)):
+            parser.error('--post-id requires publish and one valid parent identity, without other format flags')
     at = parse_date(args.at) if args.at else now()
     if not at:
         parser.error("Invalid --at timestamp")
@@ -34,7 +40,7 @@ def main():
     elif args.command == "run":
         result = run(args.db, args.public, args.sources, at, args.fixture, args.instagram_manifest)
     else:
-        from .instagram import publish_one, publish_automatic
+        from .instagram import publish_one, publish_automatic, publish_requested
         from .store import Store
         import os
         store = Store(args.db)
@@ -47,11 +53,13 @@ def main():
             if os.getenv("STATE_GIT_CHECKPOINT") == "true":
                 from .state_git import persist
                 checkpoint = lambda: persist(args.db)
-            result = (publish_automatic(store, at, args.site_url, assets, checkpoint=checkpoint, require_visual_review=True) if args.automatic
+            result = (publish_requested(store, at, args.site_url, assets, args.post_id, checkpoint=checkpoint, require_visual_review=True) if args.post_id else
+                      publish_automatic(store, at, args.site_url, assets, checkpoint=checkpoint, require_visual_review=True) if args.automatic
                       else publish_one(store, at, args.site_url, assets, args.story, checkpoint=checkpoint, require_visual_review=True))
-            if args.automatic:
+            if args.automatic or args.post_id:
                 from .facebook import publish_recent
-                result['facebook'] = publish_recent(store, at, args.site_url, assets, checkpoint=checkpoint, require_visual_review=True)
+                result['facebook'] = publish_recent(store, at, args.site_url, assets, checkpoint=checkpoint, require_visual_review=True,
+                                                    target_id=args.post_id)
             from .operations import record_check, write_job_summary, failed
             observation = record_check(store, result, at, 'automatic' if args.automatic else 'story' if args.story else 'feed')
             write_job_summary(observation)

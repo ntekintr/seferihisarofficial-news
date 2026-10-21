@@ -141,12 +141,13 @@ def deliver(store, post, at, site_url, paths, story, api, checkpoint, *, require
         return 'uncertain'
 
 
-def publish_recent(store: Store, at: datetime, site_url, assets, adapter=None, checkpoint=None, *, require_visual_review=False):
+def publish_recent(store: Store, at: datetime, site_url, assets, adapter=None, checkpoint=None, *, require_visual_review=False, target_id=None):
     api = adapter or Facebook()
     if not api.enabled():
         return {'status': 'disabled'}
     at = at.astimezone(TZ)
     parents = sorted((p for p in store.posts() if p['status'] == 'published' and not p.get('publish_format')
+        and (target_id is None or p['id'] == target_id)
         and p.get('published_at') and at - timedelta(hours=1) <= parse_date(p['published_at']) <= at
         and parse_date(p['published_at']).astimezone(TZ).date() == at.date()), key=lambda p: p['published_at'])
     if not parents:

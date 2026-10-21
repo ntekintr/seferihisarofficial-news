@@ -13,11 +13,20 @@ def words(title):
     return set(value.split()) - {'ve', 'ile', 'bir'}
 
 
+def harvest_start(title):
+    """The same local season opening, not any later citrus development."""
+    value = normalized(title)
+    return (bool(re.search(r'\bseferihisar\w*\b|\bsatsuma\b', value))
+            and bool(re.search(r'\bmandalina\w*\b|\bsatsuma\b', value))
+            and bool(re.search(r'\bhasat\w*\b', value))
+            and bool(re.search(r'\bbaşladi\b', value)))
+
+
 def repeat(store, post):
     if post.get('kind') != 'news' or post.get('publish_format'):
         return False
     tokens = words(post.get('title', ''))
-    if len(tokens) < 6 or re.search(r'\b(?:düzeltme|güncelleme|iptal)\b', normalized(post.get('title', ''))):
+    if (len(tokens) < 6 and not harvest_start(post.get('title', ''))) or re.search(r'\b(?:düzeltme|güncelleme|iptal)\b', normalized(post.get('title', ''))):
         return False
     current = {i['id']: i for i in store.items()}
     item = current.get(post.get('item_id'), {})
@@ -30,6 +39,10 @@ def repeat(store, post):
         if not stamp or not previous or abs(stamp - previous) > timedelta(hours=72):
             continue
         other = words(old.get('title', ''))
+        if (harvest_start(post.get('title', '')) and harvest_start(old.get('title', ''))
+                and 'seferihisar' in normalized(item.get('title', '') + ' ' + item.get('description', ''))
+                and 'seferihisar' in normalized(old.get('caption', ''))):
+            return True
         if {t for t in tokens if t.isdigit()} != {t for t in other if t.isdigit()}:
             continue
         if len(tokens & other) >= 6 and len(tokens & other) / len(tokens | other) >= .92:

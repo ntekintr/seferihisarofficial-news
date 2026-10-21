@@ -15,6 +15,10 @@ on:
         type: choice
         options: [automatic, feed, story]
         default: automatic
+      post_id:
+        description: 'Optional exact parent ID explicitly requested by the account owner; daily limit still applies'
+        type: string
+        required: false
 permissions:
   contents: read
 concurrency:
@@ -74,8 +78,11 @@ jobs:
           STATE_GIT_CHECKPOINT: 'true'
           STATE_WRITE_TOKEN: ${{ github.token }}
           PUBLISH_FORMAT: ${{ github.event_name == 'workflow_run' && 'automatic' || inputs.format }}
+          REQUESTED_POST_ID: ${{ github.event_name == 'workflow_dispatch' && inputs.post_id || '' }}
         run: |
-          if [ "$PUBLISH_FORMAT" = "automatic" ]; then
+          if [ -n "$REQUESTED_POST_ID" ]; then
+            python -m seferihisar.cli publish --site-url "$SITE_URL" --post-id "$REQUESTED_POST_ID"
+          elif [ "$PUBLISH_FORMAT" = "automatic" ]; then
             python -m seferihisar.cli publish --site-url "$SITE_URL" --automatic
           elif [ "$PUBLISH_FORMAT" = "story" ]; then
             python -m seferihisar.cli publish --site-url "$SITE_URL" --story

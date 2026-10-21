@@ -42,6 +42,7 @@ LABELS = {
     'meeting': 'a photograph of people in a meeting around a table',
     'flood': 'a photograph of a flooded street covered in water',
     'blank': 'a blank solid colour image without objects',
+    'citrus_harvest': 'a photograph of a person harvesting tangerines from a citrus tree in an orchard',
 }
 
 
@@ -133,7 +134,7 @@ def accepted(result: dict[str, float], expected: str) -> bool:
 
 
 def validate_match(data: bytes, expected: str) -> dict:
-    if expected not in LABELS or expected in ('traffic', 'empty_hall', 'landscape', 'meeting', 'flood', 'blank'):
+    if expected not in LABELS or expected in ('traffic', 'empty_hall', 'landscape', 'meeting', 'flood', 'blank', 'citrus_harvest'):
         raise MatchRejected('Unsupported visual subject')
     return _validate_crops(data,expected)
 
@@ -141,7 +142,7 @@ def validate_match(data: bytes, expected: str) -> dict:
 def validate_news_photo(data: bytes, expected: str) -> dict:
     # These remain forbidden generated scenes. Only a separately verified,
     # article-bound source photograph may reach this narrow news taxonomy.
-    if expected not in ('traffic','meeting','flood'):
+    if expected not in ('traffic','meeting','flood','citrus_harvest'):
         raise MatchRejected('Unsupported news photograph')
     return _validate_crops(data,expected,source_photo=True)
 
