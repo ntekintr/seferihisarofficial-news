@@ -261,6 +261,12 @@ def publication_date(soup, source: dict):
                 return None
             m, d, y, h, minute = match.groups()
             second = None
+        elif source.get('published_date_format') == 'dotted_slash':
+            match = re.fullmatch(r'\s*(\d{1,2})\.(\d{1,2})\.(20\d{2})\s*/\s*', value)
+            if not match:
+                return None
+            d, m, y = match.groups()
+            h, minute, second = None, None, None
         elif source.get('published_date_format') == 'turkish':
             match = re.fullmatch(r'\s*(\d{1,2})\s+(' + '|'.join(MONTHS) + r')\s+(20\d{2})\s*', value, re.I)
             if not match:
@@ -282,13 +288,18 @@ def publication_date(soup, source: dict):
 def structured(html: str, url: str, source: dict) -> list[dict]:
     soup = BeautifulSoup(html, "html.parser")
     article = soup.select_one(source.get("article_selector", 'article .entry-content, article .article-content, article, .news-detail, .haber-detay'))
+    if (source.get('strict_article_fields') and source.get('detail_url_pattern')
+            and re.search(source['detail_url_pattern'], urlsplit(url).path)
+            and (article is None or soup.select_one(source['title_selector']) is None
+                 or publication_date(soup, source) is None)):
+        raise ValueError('Reviewed article fields missing')
     if article is None and source.get("article_selector"):
         article = soup.select_one('article, .news-detail, .haber-detay')
     article_text = " ".join(text(p) for p in article.select("p") if len(text(p)) > 30)[:3000] if article else ""
     if not article_text and article and source.get('body_text_fallback'):
         article_text = text(article)[:3000]
     results = []
-    for script in soup.select('script[type="application/ld+json"]'):
+    for script in ([] if source.get('strict_article_fields') else soup.select('script[type="application/ld+json"]')):
         try:
             raw = script.string or script.get_text()
             if source.get("repair_json_trailing_commas"):
@@ -677,14 +688,31 @@ def source_listing(source: dict, fetcher: Fetcher, listing: str):
             items.extend(structured(body, base, source))
         candidates.extend(discover(body, base))
         soup = BeautifulSoup(body, "html.parser")
-        for anchor in soup.select(source.get("link_selector", "article a[href], a[href*='haber'], a[href*='etkinlik']")):
+        anchors = list(soup.select(source.get("link_selector", "article a[href], a[href*='haber'], a[href*='etkinlik']")))
+        if source.get('embedded_link_format') == 'ogm_view':
+            if urlsplit(base).hostname != 'www.ogm.gov.tr' or not urlsplit(base).path.startswith('/izmirobm'):
+                raise ValueError('Unapproved embedded view origin')
+            # Public React view links are literal strings in server-rendered HTML.
+            # Decode JSON string literals only; never execute JavaScript or API calls.
+            for script in soup.select('script:not([src])'):
+                for match in re.finditer(r'\bLink:\s*("(?:[^"\\]|\\.)*")', script.get_text()):
+                    try:
+                        href = json.loads(match[1])
+                    except ValueError:
+                        continue
+                    if not isinstance(href, str) or not re.fullmatch(r'/izmirobm/(?:haberler|duyurular)/[a-z0-9-]+', href):
+                        continue
+                    anchor = soup.new_tag('a', href=href)
+                    anchors.append(anchor)
+        for anchor in anchors:
             if not anchor.get("href"):
                 continue
             link = page_url(urljoin(base, anchor["href"]))
             pattern = source.get("detail_url_pattern")
             if pattern and not re.search(pattern, urlsplit(link).path):
                 continue
-            if source.get("local_links_only") and not local(text(anchor) + " " + link.replace("-", " ")):
+            if source.get("local_links_only") and not local(text(anchor) + " " +
+                    (anchor.get("title", "") if source.get("listing_title_attribute") else "") + " " + link.replace("-", " ")):
                 continue
             identity = canonical(link)
             if urlsplit(link).hostname == urlsplit(base).hostname and identity != canonical(base) and identity not in seen:

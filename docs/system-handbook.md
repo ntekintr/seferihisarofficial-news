@@ -203,6 +203,12 @@ geçerliliği, #45–47 görsel/editoryal kontrol, #48 etkinlik meta bilgisi,
 
 ## Alt sistem ayrıntıları
 
+[Resmî hizmet kaynakları](public-service-sources.md): 21 Ekim eklemesiyle 55
+okuyucu (46 web/özel, 9 Instagram). Tarım, Orman ve İl Sağlık tamamlayıcı
+kapsamdır; Eczacı Odası 403 nedeniyle etkinleştirilmedi. Kaynak tarihi ve
+şablon alanları kesin okunmadan yeni içerik kabul edilmez.
+
+
 [Benzer yaş ölçümü ve yerel seriler](cohort-local-series.md), 24–30 saat/7 gün
 gruplarını, ham ölçümsüz kaba kayıtları, tamamlanmamış reklam ayrımını ve mevcut
 iki gönderi bütçesindeki cuma hafta sonu/salı ücretsiz etkinlik seçkilerini açıklar.
