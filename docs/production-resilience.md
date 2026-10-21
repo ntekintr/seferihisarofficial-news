@@ -31,8 +31,12 @@ bir turda en fazla 16 GET yapılır. Üçüncü taraf video/hesap taraması ekle
 - Instagram gönderisi: kaydedilmiş medya ID, dondurulmuş açıklama ve makul zaman.
 - Aktif Instagram story/hava: kendi hesabının story listesinde kaydedilmiş ID.
 - Facebook gönderisi: kayıtlı ID, dondurulmuş açıklama ve zaman.
-- Facebook story: Page anahtarıyla kayıtlı nesnenin okunabilirliği; sahibi,
-  açıklaması veya gerçek görseli ayrıca doğrulanmış sayılmaz.
+- Facebook story: kendi Page `/stories` listesinde kaydedilmiş `post_id`,
+  `published` durumu ve makul oluşturulma zamanı. Yayın yanıtındaki `post_id`
+  doğrudan GET yapılabilen bir nesne ID'si kabul edilmez. İlgili liste tur
+  başına bir kez okunur; başarısız okuma da önbelleğe alınır. Önceki v1'in
+  `read_failed`/`object_readable` sonucu yeni yolla bir kez yenilenir;
+  sonraki başarısız okumalara da altı saat bekleme uygulanır.
 - 23 saati geçen story ilk kez gözlenecekse `expired_not_checked`; önceden
   görülmüş story süresi doldu diye kayıp yapılmaz.
 
@@ -41,6 +45,13 @@ Medya adresi, caption, ham API yanıtı ve anahtar yeni tabloya yazılmaz. En fa
 hava sütunu değiştirilmez, kayıp kayıt tekrar gönderilmez. API nesnesi gözlemi
 doğrudan platform ekranı veya piksellerin incelenmesi değildir. Sadece son 24
 saatteki gözlem sorunları sağlık uyarısına katılır.
+
+21 Ekim canlı ilk v1 okumasında iki Facebook story `read_failed` verdi.
+Yayın iddiaları başarılı kalmıştı; bu sonuç silinmiş paylaşım kanıtı değildi.
+Meta'nın resmî SDK'sındaki [Page.get_stories](https://github.com/facebook/facebook-python-business-sdk/blob/main/facebook_business/adobjects/page.py)
+ve [Stories alanları](https://github.com/facebook/facebook-python-business-sdk/blob/main/facebook_business/adobjects/stories.py)
+esas alınarak v2 okuması sahip listesine taşındı. Yeni canlı GET sonucu ayrıca
+doğrulanır; piksel veya platform ekranı kontrolü yapılmış sayılmaz.
 
 ## İkinci kopya ve geri yükleme
 

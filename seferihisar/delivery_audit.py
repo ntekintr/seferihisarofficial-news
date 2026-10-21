@@ -11,7 +11,8 @@ from .domain import digest, now, parse_date
 
 STATUSES = {'present', 'object_readable', 'caption_mismatch', 'timestamp_mismatch',
             'not_visible', 'read_failed', 'permission_required', 'credential_invalid',
-            'settings_missing', 'account_mismatch', 'expired_not_checked', 'rate_limited'}
+            'settings_missing', 'account_mismatch', 'expired_not_checked', 'rate_limited',
+            'story_read_unavailable'}
 FAILURES = STATUSES - {'present', 'object_readable', 'expired_not_checked'}
 MAX_ROWS = 500
 MAX_GETS = 16
@@ -74,6 +75,30 @@ def feed_result(value, media, caption, claimed, field):
     return 'present'
 
 
+def facebook_story_result(rows, media, claimed):
+    """Page /stories returns post_id, not a directly addressable Graph node ID."""
+    if not isinstance(rows, list) or any(not isinstance(r, dict)
+            or not re.fullmatch(r'\d{1,32}', str(r.get('post_id', '')))
+            or not isinstance(r.get('status'), str) for r in rows):
+        raise ReadError('story_read_unavailable')
+    matches = [r for r in rows if str(r.get('post_id', '')) == media]
+    if len(matches) != 1:
+        return 'not_visible'
+    row = matches[0]
+    if str(row.get('status', '')).casefold() != 'published':
+        return 'not_visible'
+    value = row.get('creation_time')
+    try:
+        # Meta's Stories field is a Unix timestamp; tolerate an ISO date too.
+        stamp = (datetime.fromtimestamp(int(value), tz=claimed.tzinfo)
+                 if re.fullmatch(r'\d{1,12}', str(value)) else parse_date(value))
+    except (ValueError, OverflowError, OSError):
+        stamp = None
+    if not stamp or not claimed - timedelta(minutes=5) <= stamp <= claimed + timedelta(minutes=30):
+        return 'timestamp_mismatch'
+    return 'present'
+
+
 def refresh(store, at=None, *, environ=None, session=None):
     import requests
     at = at or now()
@@ -102,12 +127,16 @@ def refresh(store, at=None, *, environ=None, session=None):
             tasks.append((digest('weather:' + r['day']), 'instagram', 'weather', r['media_id'], stamp, ''))
     # A successful observation is retained after a story expires. Expiry is not a deletion alarm.
     tasks.sort(key=lambda x: x[4], reverse=True)
-    identities, story_ids, updates = {}, None, []
+    identities, story_ids, facebook_stories, updates = {}, None, None, []
     for key, channel, kind, media, stamp, caption in tasks[:40]:
         if at - stamp < timedelta(minutes=3):
             continue  # Allow provider list/caption propagation; a receipt is not a readback.
         old = previous.get(key)
-        if old and at - parse_date(old['checked_at']) < timedelta(hours=6):
+        # v1 treated Facebook story post_id as a Graph object. Recheck that old
+        # result once via the documented owner edge; new failures keep cooldown.
+        legacy_story = (old and channel == 'facebook' and kind == 'story'
+                        and old['status'] in ('read_failed', 'object_readable'))
+        if old and not legacy_story and at - parse_date(old['checked_at']) < timedelta(hours=6):
             continue
         if kind != 'feed' and at - stamp >= timedelta(hours=23):
             if not old:
@@ -140,16 +169,26 @@ def refresh(store, at=None, *, environ=None, session=None):
                     story_ids = {r['id'] for r in rows}
                 result = 'present' if media in story_ids else 'not_visible'
             elif channel == 'facebook' and kind == 'story':
-                # The Page token can read the recorded object. This is deliberately
-                # weaker than a verified caption, owner-list match or image inspection.
-                value = reader.get(media, token, 'id')
-                result = 'object_readable' if value.get('id') == media else 'not_visible'
+                if facebook_stories is None:
+                    try:
+                        facebook_stories = reader.get(account + '/stories', token,
+                            'post_id,status,creation_time').get('data')
+                        if not isinstance(facebook_stories, list):
+                            raise ReadError('story_read_unavailable')
+                    except ReadError as exc:
+                        # Cache one failed edge read for this run as well.
+                        facebook_stories = str(exc)
+                if isinstance(facebook_stories, str):
+                    raise ReadError(facebook_stories)
+                result = facebook_story_result(facebook_stories, media, stamp)
             else:
                 field = 'caption' if channel == 'instagram' else 'message'
                 value = reader.get(media, token, 'id,' + field + (',timestamp' if channel == 'instagram' else ',created_time'))
                 result = feed_result(value, media, caption, stamp, field)
         except ReadError as exc:
             result = str(exc)
+            if channel == 'facebook' and kind == 'story' and result == 'read_failed':
+                result = 'story_read_unavailable'
             if result in ('credential_invalid', 'permission_required', 'account_mismatch'):
                 identities[channel] = result
         updates.append((key, channel, kind, at.isoformat(), result))
@@ -164,10 +203,10 @@ def refresh(store, at=None, *, environ=None, session=None):
 def summary(store, at=None):
     at = at or now()
     rows = store.rows('SELECT * FROM delivery_audits')
-    return {'version': 'delivery-audit-v1', 'checked_at': max((r['checked_at'] for r in rows), default=None),
+    return {'version': 'delivery-audit-v2', 'checked_at': max((r['checked_at'] for r in rows), default=None),
             'results': dict(Counter(r['status'] for r in rows)),
             'recent_failures': sum(r['status'] in FAILURES and at - timedelta(days=1) <= parse_date(r['checked_at']) <= at for r in rows),
-            'scope': 'GET-only recorded media IDs; feed caption/time and active Instagram story membership; Facebook story object readability only',
+            'scope': 'GET-only recorded media IDs; feed caption/time; active Instagram story membership; Facebook Page story post_id/status/time',
             'image_pixels_inspected': False, 'republishing_allowed': False}
 
 

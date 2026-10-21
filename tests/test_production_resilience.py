@@ -7,7 +7,7 @@ from unittest.mock import Mock
 import pytest
 import requests
 
-from seferihisar.delivery_audit import feed_result, refresh, validate_row, summary
+from seferihisar.delivery_audit import feed_result, facebook_story_result, refresh, validate_row, summary, ReadError
 from seferihisar.domain import digest
 from seferihisar.ops_watch import evaluate, notify, MARKER
 from seferihisar.security import validate_state
@@ -109,7 +109,7 @@ def test_first_three_minutes_wait_for_provider_propagation(store, at):
     session.get.assert_not_called()
 
 
-def test_facebook_story_readability_is_not_a_caption_or_image_verification(store, at):
+def test_facebook_story_matches_own_page_post_id_status_and_time_without_replay(store, at):
     p = claim(store, at)
     store.db.execute('INSERT INTO facebook_deliveries VALUES (?,?,?,?,?,?,?,?,?)',
         (digest('fb-story'), p['id'], '555', 'story', 'published', at.isoformat(), at.isoformat(), '[]', '777'))
@@ -119,15 +119,58 @@ def test_facebook_story_readability_is_not_a_caption_or_image_verification(store
     session.get.side_effect = [response({'id': '123', 'username': 'seferihisarofficial'}),
                               response({'id': '111', 'caption': p['caption'], 'timestamp': at.isoformat()}),
                               response({'id': '555', 'instagram_business_account': {'id': '123'}}),
-                              response({'id': '777'})]
+                              response({'data': [{'post_id': '777', 'status': 'published', 'creation_time': str(int(at.timestamp()))}]})]
     value = refresh(store, at + timedelta(minutes=3), session=session,
         environ={'INSTAGRAM_USER_ID': '123', 'INSTAGRAM_ACCESS_TOKEN': 'synthetic',
                  'FACEBOOK_PUBLISH_ENABLED': 'true', 'FACEBOOK_PAGE_ID': '555', 'FACEBOOK_PAGE_ACCESS_TOKEN': 'synthetic-page'})
-    assert value['results'] == {'present': 1, 'object_readable': 1}
+    assert value['results'] == {'present': 2}
     assert value['image_pixels_inspected'] is False and value['republishing_allowed'] is False
     assert store.rows('SELECT * FROM facebook_deliveries') == before
     assert session.get.call_count == 4
+    assert session.get.call_args.args[0].endswith('/555/stories')
+    assert session.get.call_args.kwargs['params']['fields'] == 'post_id,status,creation_time'
     session.post.assert_not_called()
+
+
+@pytest.mark.parametrize('row,result', [
+    ({'id': '777', 'post_id': '888', 'status': 'published'}, 'not_visible'),
+    ({'post_id': '777', 'status': 'ARCHIVED'}, 'not_visible'),
+    ({'post_id': '777', 'status': 'published', 'creation_time': None}, 'timestamp_mismatch'),
+    ({'post_id': '777', 'status': 'published', 'creation_time': '999999999999'}, 'timestamp_mismatch'),
+    ({'post_id': '777', 'status': 'published', 'creation_time': '2025-01-01T10:00:00Z'}, 'timestamp_mismatch'),
+])
+def test_facebook_story_never_confuses_object_id_old_or_unpublished_story(at, row, result):
+    assert facebook_story_result([row], '777', at) == result
+
+
+def test_facebook_story_invalid_provider_list_is_unavailable_not_missing(at):
+    for rows in ({'post_id': '777'}, [{'id': '777'}], [None]):
+        with pytest.raises(ReadError, match='story_read_unavailable'):
+            facebook_story_result(rows, '777', at)
+
+
+def test_legacy_story_failure_is_rechecked_once_and_edge_failure_keeps_cooldown(store, at):
+    p = claim(store, at)
+    for key in (digest('fb-story'), digest('fb-story-2')):
+        store.db.execute('INSERT INTO facebook_deliveries VALUES (?,?,?,?,?,?,?,?,?)',
+            (key, p['id'], '555', 'story', 'published', at.isoformat(), at.isoformat(), '[]', '777'))
+        store.db.execute('INSERT INTO delivery_audits VALUES (?,?,?,?,?)',
+            (digest('facebook:' + key), 'facebook', 'story', at.isoformat(), 'read_failed'))
+    store.db.execute('INSERT INTO delivery_audits VALUES (?,?,?,?,?)',
+        (digest('instagram:' + p['id']), 'instagram', 'feed', at.isoformat(), 'present'))
+    store.db.commit()
+    session = Mock()
+    session.get.side_effect = [response({'id': '555', 'instagram_business_account': {'id': '123'}}),
+                              response({'error': {'code': 100}}, 400)]
+    env = {'INSTAGRAM_USER_ID': '123', 'FACEBOOK_PUBLISH_ENABLED': 'true',
+           'FACEBOOK_PAGE_ID': '555', 'FACEBOOK_PAGE_ACCESS_TOKEN': 'synthetic'}
+    result = refresh(store, at + timedelta(minutes=10), session=session, environ=env)
+    assert result['results'] == {'present': 1, 'story_read_unavailable': 2}
+    assert session.get.call_count == 2
+    refresh(store, at + timedelta(minutes=30), session=session, environ=env)
+    assert session.get.call_count == 2
+    session.post.assert_not_called()
+    validate_state(store.path)
 
 
 def healthy(at):
