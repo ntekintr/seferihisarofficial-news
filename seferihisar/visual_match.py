@@ -147,6 +147,13 @@ def validate_news_photo(data: bytes, expected: str) -> dict:
     return _validate_crops(data,expected,source_photo=True)
 
 
+def validate_event_photo(data: bytes, expected: str) -> dict:
+    from .source_photo_data import EVENT_SUBJECTS
+    if expected not in EVENT_SUBJECTS:
+        raise MatchRejected('Unsupported event photograph')
+    return _validate_crops(data,expected,source_photo=True)
+
+
 def _validate_crops(data: bytes, expected: str, *, source_photo=False) -> dict:
     try:
         with Image.open(io.BytesIO(data)) as image:

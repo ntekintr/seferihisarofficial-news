@@ -39,3 +39,7 @@ birleştirmez; kaynak kayıtları ve eski yayın SQL alanları değiştirilmez.
 
 Canlı kaynak sağlığı, hazırlanmış kart ve Meta teslimi ayrı ayrı tarihli kanıt
 ile raporlanır. Yerel test başarısı canlı paylaşım kanıtı değildir.
+
+21 Ekim sonraki kullanıcı tercihiyle mandalina hasadı fotoğrafı diğer güvenilir
+kaynaklara da aynı doğrulamalarla açıldı; ilk Gerçek İzmir teslimi değişmez.
+[İlgili görsel politikası](relevant-visual-first.md) yeni kapsamı açıklar.

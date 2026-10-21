@@ -14,9 +14,10 @@ from .collect import Fetcher,structured
 from .domain import canonical,normalized,parse_date
 from .illustrations import clean_image
 from .security import public_url,contains_secret
-from .source_photo_data import VERSION,key,validate_record,valid_bindings,MAX_CACHE_BYTES,MAX_CACHED_IMAGES
+from .source_photo_data import VERSION,EVENT_VERSION,key,validate_record,valid_bindings,MAX_CACHE_BYTES,MAX_CACHED_IMAGES
 from .visual_gate import fingerprint
 from .visual_match import validate_news_photo,MatchRejected,MatchUnavailable
+from .image_safety import IllustrationCheckUnavailable
 
 MAX_READS=2
 ARCHIVE=re.compile(r'\b(?:ar[şs]iv\w*|temsili\w*|illustration\w*|ill[uü]strasyon\w*|stok|stock|yapay zek[aâ]\w*|ai generated)\b')
@@ -30,8 +31,7 @@ def news_subject(item):
     if re.search(r'\b(?:uyari\w*|beklen\w*|risk\w*|iptal\w*|planlan\w*|yarin|yapilacak|gerçekleşecek|önlenecek)\b',title):
         return None
     if re.search(r'\b(?:sel|su baskini|göle döndü|sular altinda)\b',title):return 'flood'
-    if (item.get('source_id') == 'gercek-izmir'
-            and re.search(r'\b(?:mandalina\w*|satsuma)\b', title)
+    if (re.search(r'\b(?:mandalina\w*|satsuma)\b', title)
             and re.search(r'\bhasat\w*\b', title)
             and re.search(r'\b(?:başladi|sürüyor|yapiliyor)\b', title)):
         return 'citrus_harvest'
@@ -40,12 +40,29 @@ def news_subject(item):
     return None
 
 
+def photo_subject(item):
+    if item.get('kind') == 'event':
+        if item.get('status') not in ('scheduled','rescheduled'):
+            return None
+        from .visual_subject import subject
+        return subject(item)
+    return news_subject(item)
+
+
+def identity_dates(item):
+    return {k:item.get(k) for k in (('start','end') if item.get('kind')=='event' else ('published_at',))}
+
+
 def candidate(html,final_url,item,source):
     """Same article URL, headline and publication date, plus an in-article image."""
     if canonical(final_url)!=canonical(item['url']):raise ValueError('Article redirected')
-    matches=[row for row in structured(html,final_url,source) if row['kind']=='news'
+    matches=[row for row in structured(html,final_url,source) if row['kind']==item.get('kind')
+             and canonical(row['url'])==canonical(item['url'])
              and normalized(row['title'])==normalized(item['title'])
-             and parse_date(row.get('published_at'))==parse_date(item.get('published_at'))]
+             and all(parse_date(row.get(k))==parse_date(v) and parse_date(v) is not None
+                     for k,v in identity_dates(item).items())
+             and (item.get('kind')!='event' or all(row.get(k)==item.get(k)
+                  for k in ('location','status','time_known')))]
     if len(matches)!=1:raise ValueError('Article identity mismatch')
     soup=BeautifulSoup(html,'html.parser')
     canonical_node=soup.select_one('link[rel="canonical"][href]')
@@ -92,12 +109,13 @@ def candidate(html,final_url,item,source):
     return next(iter(images))
 
 
-def cleaned_photo(raw):
+def cleaned_photo(raw, *, poster=False):
     if len(raw)>2_000_000:raise ValueError('Oversized source photo')
     try:
         with Image.open(io.BytesIO(raw)) as image:
             if (image.format not in ('JPEG','PNG','WEBP') or image.width*image.height>4_000_000
-                    or image.width<640 or image.height<300 or not 1.4<=image.width/image.height<=2.6
+                    or not ((image.width>=640 and image.height>=300 and 1.4<=image.width/image.height<=2.6)
+                            or (poster and image.width>=480 and image.height>=640 and .5<=image.width/image.height<1.4))
                     or getattr(image,'n_frames',1)!=1 or image.getexif().get(274,1)!=1):
                 # Cleaning strips EXIF. Do not silently turn an orientation-
                 # dependent photograph sideways or change its displayed frame.
@@ -118,9 +136,11 @@ def binding_reason(store,post,items,at):
         row=rows[0]
         try:value=validate_record(row['id'],row['item_id'],row['revision'],row['payload'],row['image'])
         except (ValueError,TypeError):return 'visual_review_stale'
-        if (post.get('kind')!='news' or row['item_id']!=item.get('id') or row['revision']!=item.get('revision')
+        event=value['version']==EVENT_VERSION
+        if ((item.get('kind')=='event')!=event or (not event and post.get('kind')!='news')
+                or row['item_id']!=item.get('id') or row['revision']!=item.get('revision')
                 or value['source_id']!=item.get('source_id') or value['source_url']!=item.get('url') or value['title']!=item.get('title')
-                or value['published_at']!=item.get('published_at') or value['subject']!=news_subject(item)
+                or any(value.get(k)!=v for k,v in identity_dates(item).items()) or value['subject']!=photo_subject(item)
                 or post.get('visual_review',{}).get('images',{}).get(index)!=value['sha256']):
             return 'visual_review_stale'
         if not at-timedelta(hours=1)<=parse_date(value['checked_at'])<=at+timedelta(minutes=5):
@@ -162,10 +182,11 @@ class SourcePhotos:
     def image(self,item):
         if item['id'] in self.results:return self.results[item['id']]
         self.results[item['id']]=None
-        source=self.sources.get(item['source_id']);expected=news_subject(item)
+        source=self.sources.get(item['source_id']);expected=photo_subject(item)
         if (not source or not expected or contains_secret(item) or not public_url(item['url'])
                 or urlsplit(item['url']).hostname!=urlsplit(source['url']).hostname):return None
         if source['kind']=='instagram_api':
+            if item.get('kind')!='news':return None
             result=self.instagram_photos.get(item['url'])
             if not result:return None
             if self.reads>=MAX_READS:self.stats['deferred']+=1;return None
@@ -186,7 +207,7 @@ class SourcePhotos:
         for row in rows:
             value=validate_record(row['id'],row['item_id'],row['revision'],row['payload'],row['image'])
             if (row['id'] not in self.frozen() and value['title']==item['title'] and value['source_url']==item['url']
-                    and value['source_id']==item['source_id'] and value['published_at']==item['published_at']
+                    and value['source_id']==item['source_id'] and all(value.get(k)==v for k,v in identity_dates(item).items())
                     and value['subject']==expected
                     and self.at-timedelta(minutes=15)<=parse_date(value['checked_at'])<=self.at+timedelta(minutes=5)):
                 self.stats['reused']+=1
@@ -201,18 +222,25 @@ class SourcePhotos:
             url=candidate(html,final,item,source)
             raw,final_image=self.fetcher.image(url)
             if final_image!=url:raise ValueError('Image redirected')
-            image=cleaned_photo(raw)
-            validate_news_photo(image,expected)
+            image=cleaned_photo(raw,poster=item.get('kind')=='event')
+            if item.get('kind')=='event':
+                from .event_image_text import validate as validate_event_text
+                with Image.open(io.BytesIO(image)) as pixels:portrait=pixels.width<pixels.height
+                validate_event_text(image,item,poster=portrait)
+                from .visual_match import validate_event_photo
+                validate_event_photo(image,expected)
+            else:
+                validate_news_photo(image,expected)
             sha=fingerprint(image)
             for previous in self.store.rows('SELECT item_id,payload FROM source_photos WHERE item_id!=?',(item['id'],)):
                 old=json.loads(previous['payload'])
                 if old.get('image_url')==url or old['sha256']==sha:
                     raise ValueError('Photograph reused by another article')
-            evidence={'version':VERSION,'source_id':item['source_id'],'source_url':item['url'],
-                      'image_url':url,'title':item['title'],'published_at':item['published_at'],
+            evidence={'version':EVENT_VERSION if item.get('kind')=='event' else VERSION,'source_id':item['source_id'],'source_url':item['url'],
+                      'image_url':url,'title':item['title'],**identity_dates(item),
                       'checked_at':self.at.isoformat(),'subject':expected,'sha256':sha}
             return self.save(item,evidence,image)
-        except MatchUnavailable:self.stats['unavailable']+=1
+        except (MatchUnavailable,IllustrationCheckUnavailable):self.stats['unavailable']+=1
         except (requests.RequestException,ValueError,TypeError,KeyError,OSError):self.stats['rejected']+=1
         return None
 
@@ -249,7 +277,7 @@ class SourcePhotos:
                 rows=self.store.rows('SELECT * FROM source_photos WHERE id=?',(photo,))
                 if rows:assignments[int(index)]=self.materialize(rows[0])
             return assignments
-        if not self.enabled or post['status']!='prepared' or post.get('kind')!='news':return assignments
+        if not self.enabled or post['status']!='prepared' or not post.get('item_id'):return assignments
         bindings={}
         item=items.get(post.get('item_id'))
         if item and item['revision']==post.get('revision') and (result:=self.image(item)):

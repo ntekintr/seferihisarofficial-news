@@ -184,7 +184,13 @@ def _export(store: Store, public_dir: Path, sources: list[dict], at: datetime, d
     illustrator.prune(set(item_map))
     # Public output always rebuilt; removed/sensitive/superseded images cannot linger.
     shutil.rmtree(public_dir / "media", ignore_errors=True)
-    for post in sorted(parents, key=lambda p: p['due_at']):
+    from .selection import prioritize
+    # Spend the unchanged two-attempt budgets on the next editorial candidates,
+    # before distant/old queue entries. Frozen cards retain their stored bytes.
+    pending = [p for p in parents if p['status']=='prepared']
+    ordered = prioritize(store,pending,at) + sorted(
+        (p for p in parents if p['status']!='prepared'),key=lambda p:p['due_at'])
+    for post in ordered:
         if post["status"] in ("prepared", "published", "publishing", "uncertain"):
             if post['status']=='prepared':
                 from .quality import publication_copy_reason
@@ -198,8 +204,9 @@ def _export(store: Store, public_dir: Path, sources: list[dict], at: datetime, d
                 prepare_card_layout(post)
                 from .brand import prepare as prepare_brand
                 prepare_brand(post)
-            illustrations = illustrator.for_post(post, item_map)
-            illustrations.update(photos.for_post(post,item_map))
+            source_images = photos.for_post(post,item_map)
+            illustrations = illustrator.for_post(post,item_map,skip_indices=source_images)
+            illustrations.update(source_images)
             if post["status"] == "prepared":
                 # Research records actual assignments. The publisher renders
                 # locally with generation disabled, but uses deployed Pages
