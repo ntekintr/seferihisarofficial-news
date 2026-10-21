@@ -675,5 +675,24 @@
     "local_links_only": false,
     "expected_venue": "Bademler Sanat Köyü",
     "recheck_parent_sessions": true
+  },
+  {
+    "id": "gercek-izmir",
+    "name": "Gerçek İzmir",
+    "url": "https://www.gercekizmir.com/",
+    "kind": "html",
+    "enabled": true,
+    "trusted": true,
+    "access": "robots",
+    "max_pages": 6,
+    "link_selector": "a[href^=\"/haber/\"]",
+    "detail_url_pattern": "^/haber/[^/]+/[0-9]+/?$",
+    "local_links_only": true,
+    "article_selector": "div:has(> #contextual)",
+    "title_selector": "#haberdetaybaslik h1",
+    "summary_selector": "#haberdetaybaslik h2",
+    "published_date_selector": "meta[name=\"t_omni_pubdate\"]",
+    "published_date_format": "us_meta_datetime",
+    "prefer_headline_category": true
   }
 ]

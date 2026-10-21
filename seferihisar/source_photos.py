@@ -30,6 +30,11 @@ def news_subject(item):
     if re.search(r'\b(?:uyari\w*|beklen\w*|risk\w*|iptal\w*|planlan\w*|yarin|yapilacak|gerçekleşecek|önlenecek)\b',title):
         return None
     if re.search(r'\b(?:sel|su baskini|göle döndü|sular altinda)\b',title):return 'flood'
+    if (item.get('source_id') == 'gercek-izmir'
+            and re.search(r'\b(?:mandalina\w*|satsuma)\b', title)
+            and re.search(r'\bhasat\w*\b', title)
+            and re.search(r'\b(?:başladi|sürüyor|yapiliyor)\b', title)):
+        return 'citrus_harvest'
     if re.search(r'\b(?:toplanti\w*|bir araya gel\w*|buluştu|bulustu)\b',title):return 'meeting'
     if re.search(r'\b(?:trafik|çevre yolu|kavşak)\b',title):return 'traffic'
     return None

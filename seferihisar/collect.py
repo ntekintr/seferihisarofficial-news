@@ -250,9 +250,18 @@ def publication_date(soup, source: dict):
     for node in nodes:
         if source.get('published_date_parent'):
             node = node.parent
-        value = (' '.join(str(n) for n in node.contents if isinstance(n, NavigableString) and not isinstance(n, Comment))
+        value = (node.get('content', '') if source.get('published_date_format') == 'us_meta_datetime' else
+                 ' '.join(str(n) for n in node.contents if isinstance(n, NavigableString) and not isinstance(n, Comment))
                  if source.get('published_date_direct_text') else text(node))
-        if source.get('published_date_format') == 'turkish':
+        if source.get('published_date_format') == 'us_meta_datetime':
+            # Reviewed ASP publisher field, explicitly month/day/year and local
+            # time. Never interpret its date-only pub_date as a fresh timestamp.
+            match = re.fullmatch(r'(\d{2})/(\d{2})/(20\d{2}) (\d{2}):(\d{2})', value)
+            if not match:
+                return None
+            m, d, y, h, minute = match.groups()
+            second = None
+        elif source.get('published_date_format') == 'turkish':
             match = re.fullmatch(r'\s*(\d{1,2})\s+(' + '|'.join(MONTHS) + r')\s+(20\d{2})\s*', value, re.I)
             if not match:
                 return None
@@ -361,13 +370,17 @@ def structured(html: str, url: str, source: dict) -> list[dict]:
                 removable.decompose()
             paragraphs = [text(p) for p in article.select("p")]
             description = " ".join(p for p in paragraphs if len(p) > 30)[:3000]
+            if source.get('summary_selector'):
+                summary = soup.select_one(source['summary_selector'])
+                description = text(summary)[:3000] if summary else ''
             if not description and source.get('body_text_fallback'):
                 description = text(article)[:3000]
             if description and local(title + " " + description):
                 event = labelled_event(title, description, article, url, source)
+                topic = category(title) if source.get('prefer_headline_category') else 'news'
                 results.append(event or {"kind": "news", "title": title[:240], "description": description,
                                 "url": page_url(url), "identity": canonical(url), "source_id": source["id"], "source_name": source["name"],
-                                "category": category(title + " " + description), "published_at": date.isoformat(), "sources": [page_url(url)]})
+                                "category": topic if topic != 'news' else category(title + " " + description), "published_at": date.isoformat(), "sources": [page_url(url)]})
         elif article and title:
             description = text(article)[:3000]
             if local(title + " " + description):

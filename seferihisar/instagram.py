@@ -68,7 +68,7 @@ class Instagram:
         return value
 
 
-def publish_one(store: Store, at: datetime, site_url: str, assets: dict[str, dict], story: bool = False, adapter=None, checkpoint=None, *, target_id: str | None = None, paired_story: bool = False, exclude_event_ids: set[str] | None = None, editorial: bool = False, require_visual_review: bool = False) -> dict:
+def publish_one(store: Store, at: datetime, site_url: str, assets: dict[str, dict], story: bool = False, adapter=None, checkpoint=None, *, target_id: str | None = None, paired_story: bool = False, exclude_event_ids: set[str] | None = None, editorial: bool = False, require_visual_review: bool = False, requested: bool = False) -> dict:
     api = adapter or Instagram()
     if not api.enabled():
         return {"status": "disabled"}
@@ -81,7 +81,9 @@ def publish_one(store: Store, at: datetime, site_url: str, assets: dict[str, dic
     if story:
         prepare_story_jobs(store, assets)
         prepare(store, at, refresh_digests=False)  # Newly created frames also need fresh source evidence.
-    prepared = sorted((p for p in store.posts() if p["status"] == "prepared" and parse_date(p["due_at"]) <= at and (p.get("publish_format") == "story") == story), key=lambda p: p["due_at"])
+    prepared = sorted((p for p in store.posts() if p["status"] == "prepared" and
+                       (parse_date(p["due_at"]) <= at or (requested and target_id == p['id'] and (not story or paired_story)))
+                       and (p.get("publish_format") == "story") == story), key=lambda p: p["due_at"])
     # Automatic announcements/reminders must not consume both daily feed slots
     # for the same event. Explicit corrections and cancellation notices remain eligible.
     if exclude_event_ids and not story:
@@ -146,6 +148,54 @@ def publish_one(store: Store, at: datetime, site_url: str, assets: dict[str, dic
         if checkpoint:
             checkpoint()
         return {"status": "uncertain", "post_id": post["id"]}
+
+
+def publish_requested(store: Store, at: datetime, site_url: str, assets: dict[str, dict], target_id: str,
+                      adapter=None, checkpoint=None, *, require_visual_review=False) -> dict:
+    """One explicitly requested parent and first story, within the daily budget.
+
+    May precede its scheduled window; never chooses another item, bypasses
+    freshness/repeat/media checks, or replays an uncertain publication.
+    """
+    from .domain import TZ
+    from .schedule import prepare
+    if not isinstance(target_id, str) or not re.fullmatch(r'[a-f0-9]{24}', target_id):
+        raise ValueError('Invalid requested post identity')
+    api = adapter or Instagram()
+    if not api.enabled():
+        return {'status': 'disabled'}
+    at = at.astimezone(TZ)
+    prepare(store, at, refresh_digests=False)
+    parent = next((p for p in store.posts() if p['id'] == target_id and not p.get('publish_format')), None)
+    if not parent:
+        return {'status': 'empty'}
+    if parent['status'] in ('publishing', 'uncertain'):
+        return {'status': 'awaiting_resolution'}
+    if parent['status'] == 'published':
+        if not at - timedelta(hours=1) <= parse_date(parent['published_at']) <= at:
+            return {'status': 'already_published'}
+        feed = {'status': 'already_published'}
+    else:
+        if parent['status'] != 'prepared':
+            return {'status': 'blocked_source'}
+        today = [p for p in store.posts() if not p.get('publish_format') and
+                 p['status'] in ('published', 'publishing', 'uncertain') and p.get('published_at') and
+                 parse_date(p['published_at']).astimezone(TZ).date() == at.date()]
+        if len(today) >= 2:
+            return {'status': 'daily_limit'}
+        feed = publish_one(store, at, site_url, assets, adapter=api, checkpoint=checkpoint,
+                           target_id=target_id, requested=True, require_visual_review=require_visual_review)
+        if feed['status'] != 'published':
+            return {'status': feed['status']}
+    child_id = digest(target_id + ':story:0')
+    child = next((p for p in store.posts() if p['id'] == child_id), None)
+    if child and child['status'] in ('published', 'publishing', 'uncertain'):
+        return {'status': 'complete' if child['status'] == 'published' else 'awaiting_resolution',
+                'feed': feed['status'], 'story': child['status']}
+    story = publish_one(store, at, site_url, assets, story=True, adapter=api, checkpoint=checkpoint,
+                        target_id=child_id, paired_story=True, requested=True, require_visual_review=require_visual_review)
+    return {'status': 'complete' if story['status'] == 'published' else 'story_pending',
+            'feed': feed['status'], 'story': story['status']}
 
 
 def publish_automatic(store: Store, at: datetime, site_url: str, assets: dict[str, dict], adapter=None, checkpoint=None, *, require_visual_review: bool = False) -> dict:

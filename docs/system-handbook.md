@@ -25,6 +25,16 @@ gerçek yazı sınırlarıyla başlık, tarih, içerik ve açıklama notunu ayı
 açıklar. Eski `caption-note-v1` dahil bütün başlamış/yayımlanmış/belirsiz kartlar
 önceki sürüm ve dosyalarını korur. Günlük hava kartı bu değişikliğe dahil değildir.
 
+### 21 Ekim: kullanıcı tarafından eklenen Gerçek İzmir
+
+[Kaynak ve açık haber seçimi](gercek-izmir.md), ASP yayın tarihini, özeti,
+makaleye bağlı mandalina hasadı fotoğrafını ve kaynaklar arası sezon açılışı
+tekrarını açıklar. Yeni kaynakla yapılandırma 52 okuyucudur (43 web/özel ve 9
+Instagram); önceki 51 sayısı 19 Ekim'in tarihli durumudur. Hesap sahibinin belirli
+haber isteği `post_id` ile günlük bütçe ve bütün yayın öncesi kontroller korunarak
+uygulanır. Otomatik çalışma bu alanı dolduramaz; belirli kaynak önerisi tek
+başına eski haberleri toplu yayımlama veya günlük sınır artırma yetkisi değildir.
+
 ## Akış ve kod haritası
 
 | Adım | Kod / ayar | Görevi ve sınırı |
