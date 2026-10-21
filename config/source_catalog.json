@@ -121,7 +121,10 @@
     "group": "kamu",
     "status": "access_failed",
     "note": "14 Ekim kontrolünde sunucunun sertifikası alan adıyla eşleşmedi; doğrudan okuyucu bağlı değil. Kurumun kendi sertifika yapılandırması düzelmelidir. Valilik ve belediye ayrı, tamamlayıcı kaynaklardır; Kaymakamlığın tüm duyurularının yerine geçmez.",
-    "fallback_reader_ids": ["izmir-valilik", "guzelbahce-belediye"]
+    "fallback_reader_ids": [
+      "izmir-valilik",
+      "guzelbahce-belediye"
+    ]
   },
   {
     "id": "menderes-kaymakamlik",
@@ -261,7 +264,9 @@
     "group": "yerel_basın",
     "status": "access_failed",
     "note": "Resmî site @shgundem profilini doğruluyor. Bu hedef mevcut API bağlantısıyla okunamıyor; hesap türü veya kesin kısıt sebebi bilinmiyor. Diğer hedefler okunabildiğinde genel Meta izni yenilemek çözüm sayılmaz. Web akışı ayrı kaynaktır; yalnız Instagram’da yayımlanan içerikleri kapsamayabilir.",
-    "fallback_reader_ids": ["seferihisar-gundem"]
+    "fallback_reader_ids": [
+      "seferihisar-gundem"
+    ]
   },
   {
     "id": "instagram-life",
@@ -342,5 +347,13 @@
     "group": "etkinlik",
     "status": "connected",
     "note": "Mekânın bilet sağlayıcısındaki açık seans verileri okunur. Yalnız kendi kaydında Bademler Sanat Köyü ve Urla adresi bulunan, tam başlangıç/bitişi açıklanan etkinlikler alınır. Liste tarihinden veya biyografiden tarih/mekân çıkarılmaz."
+  },
+  {
+    "id": "gercek-izmir",
+    "name": "Gerçek İzmir",
+    "url": "https://www.gercekizmir.com/",
+    "group": "yerel_basın",
+    "status": "connected",
+    "note": "Kullanıcının 21 Ekim 2026 önerisiyle eklenen ASP okuyucu. Yerellik, açık yayın saati, özet ve makaleye bağlı fotoğraf ayrıca doğrulanır."
   }
 ]
