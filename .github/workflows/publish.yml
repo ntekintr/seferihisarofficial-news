@@ -89,6 +89,17 @@ jobs:
           else
             python -m seferihisar.cli publish --site-url "$SITE_URL"
           fi
+      - name: Observe recorded deliveries through GET only; never resend
+        if: always() && steps.restore.outcome == 'success'
+        continue-on-error: true
+        env:
+          INSTAGRAM_ACCESS_TOKEN: ${{ secrets.INSTAGRAM_ACCESS_TOKEN }}
+          INSTAGRAM_USER_ID: ${{ secrets.INSTAGRAM_USER_ID }}
+          FACEBOOK_PUBLISH_ENABLED: ${{ vars.FACEBOOK_PUBLISH_ENABLED }}
+          FACEBOOK_PAGE_ID: ${{ vars.FACEBOOK_PAGE_ID }}
+          FACEBOOK_PAGE_ACCESS_TOKEN: ${{ secrets.FACEBOOK_PAGE_ACCESS_TOKEN }}
+          META_GRAPH_VERSION: ${{ vars.META_GRAPH_VERSION || 'v26.0' }}
+        run: python -m seferihisar.delivery_audit
       - name: Persist publication outcome; never automatically retry uncertainty
         if: always() && steps.restore.outcome == 'success'
         env:

@@ -208,7 +208,8 @@ def test_workflow_is_cloud_scheduled_trusted_and_serialized():
     assert 'head_repository.full_name == github.repository' in job['if'] and "conclusion == 'success'" in job['if']
     assert job['steps'][0]['with']['ref']=='main'
     assert job['timeout-minutes']=='35'
-    assert job['steps'][-2]['run']=='python -m seferihisar.weather --wait-for-morning'
+    assert sum(s.get('run')=='python -m seferihisar.weather --wait-for-morning' for s in job['steps'])==1
+    assert job['steps'][-2]['run']=='python -m seferihisar.delivery_audit'
     assert 'FACEBOOK_PAGE_ACCESS_TOKEN' not in str(job)
     assert 'always()' in job['steps'][-1]['if']
     assert job['steps'][-1]['run']=='python -m seferihisar.state_git persist'

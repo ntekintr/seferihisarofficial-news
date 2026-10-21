@@ -25,7 +25,7 @@ def test_publication_requires_trusted_completed_research_or_explicit_dispatch():
     assert workflow['jobs']['publish']['steps'][0]['with']['ref']=='main'
     assert workflow['jobs']['publish']['environment']=='instagram-production'
     assert workflow['concurrency']['group']=='seferihisar-production'
-    facebook_steps=[s for s in workflow['jobs']['publish']['steps'] if 'FACEBOOK_PAGE_ACCESS_TOKEN' in s.get('env',{})]
+    facebook_steps=[s for s in workflow['jobs']['publish']['steps'] if 'FACEBOOK_PAGE_ACCESS_TOKEN' in s.get('env',{}) and 'seferihisar.cli publish' in s.get('run','')]
     assert len(facebook_steps)==1
     assert facebook_steps[0]['env']['FACEBOOK_PUBLISH_ENABLED']=='${{ vars.FACEBOOK_PUBLISH_ENABLED }}'
     assert facebook_steps[0]['env']['FACEBOOK_TESTS_COMPLETED']=='${{ vars.FACEBOOK_TESTS_COMPLETED }}'
