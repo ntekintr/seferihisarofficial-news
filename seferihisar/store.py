@@ -40,6 +40,10 @@ class Store:
               item_id TEXT PRIMARY KEY, priority INTEGER NOT NULL, reviewed_at TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS learning_profile (
               id TEXT PRIMARY KEY, payload TEXT NOT NULL);
+            CREATE TABLE IF NOT EXISTS learning_samples (
+              id TEXT PRIMARY KEY, post_id TEXT NOT NULL, category TEXT NOT NULL,
+              cohort TEXT NOT NULL, age_hours INTEGER NOT NULL, score_band INTEGER NOT NULL,
+              reach_gate INTEGER NOT NULL, checked_at TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS delivery_audits (
               id TEXT PRIMARY KEY, channel TEXT NOT NULL, format TEXT NOT NULL,
               checked_at TEXT NOT NULL, status TEXT NOT NULL);

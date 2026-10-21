@@ -41,16 +41,19 @@ Mevcut hesabın kimliğini, kendi medya listesini ve otomatik gönderilere ait
 insights değerlerini yalnız GET ile okur. Yeni izin veya token oluşturmaz.
 Erişim yoksa hata kontrollü kaydedilir; haber üretimi mevcut sıralamayla sürer.
 
-24 saat–14 gün yaşındaki en fazla 20 kendi gönderisinin birikimli erişim,
-etkileşim, kaydetme ve paylaşım sayıları bellekte değerlendirilir. Bunlar kesin
-24 saatlik/7 günlük sabit kohort sonuçları veya reklamdan arındırılmış organik
-ölçüm değildir. On farklı ölçülebilen gönderi, en az iki konuda üçer gönderi ve
-konu başına en az 100 erişim olmadan kazanan konu çıkarılmaz. Kaydetme/paylaşım
+21 Ekim v2 güncellemesinde en fazla 20 kendi gönderisi yalnız 24–30 saat veya
+168–174 saatlik yaş pencerelerinde ölçülür. Bu pencerede ölçülmemiş kayıt için
+normal araştırma ölçüm işini en fazla saatte bir uyandırabilir; kaçan geçmiş
+pencere doldurulmaz. Her grup kendi içinde en az 10 gönderi, en az iki konu ve
+her konuda 100 erişimi geçmiş en az üç gönderi gerektirir. Kaydetme/paylaşım
 etkileşim toplamına ayrıca ağırlık verir; ayrı tekil insanlar gibi toplanmaz.
 
 Ham ölçümler, erişim anahtarı ve özel hesap detayları herkese açık Git durumuna,
-Pages'e, loga veya artifact'e konmaz. Yalnız güncel kontrol sonucu ve 0/1 konu
-tercihleri saklanır. Üç günden eski tercihler geçersizdir. Bu tercihler yalnız
+Pages'e, loga veya artifact'e konmaz. Kontrol sonucu ve 0/1 konu tercihlerine ek,
+en fazla 400 kayıtlık kaba yaş grubu/skor sınıfı tutulur; ilk gözlem değişmez.
+Gerçek erişim/etkileşim sayısı tutulmaz. Reklam etkisi mevcut erişimle ayrılamaz;
+özet bunu açıkça belirtir ve organik sonuç iddia etmez. Ayrıntılar
+`cohort-local-series.md` içindedir. Üç günden eski tercihler geçersizdir. Bu tercihler yalnız
 zaten uygun içerikler arasında, yerellik/aciliyet/zaman sınıfından sonra
 kullanılır. Uyarı, iptal ve düzeltmeler önce gelir. Son iki haberin konusuna
 yeniden tercih puanı verilmez; başka içeriklerin keşfi korunur. Bu bir sınırlı

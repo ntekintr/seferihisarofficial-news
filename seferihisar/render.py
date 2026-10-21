@@ -293,7 +293,7 @@ def render_post(post: dict, public_dir: Path, illustrations: dict[int, Path] | N
             review = post.get('visual_review', {})
             edition = review.get('edition', post['id'])
             relative = f"media/{edition}/{fmt}-{i+1}.jpg"
-            is_event = post['kind'] in ('announcement', 'reminder_3d', 'reminder_day', 'update', 'cancellation') or (post['kind'] in ('weekly', 'monthly') and i > 0)
+            is_event = post['kind'] in ('announcement', 'reminder_3d', 'reminder_day', 'update', 'cancellation') or (post['kind'] in ('weekly', 'monthly', 'weekend', 'free_week') and i > 0)
             category = slide.get('category', post['category'])
             # Reviewed yoga scenes place mats/blocks on the floor. Preserve that
             # subject in wide cards; keep claimed media's original framing.

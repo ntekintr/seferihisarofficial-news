@@ -59,12 +59,16 @@ def publication_copy_reason(post: dict, items: dict) -> str | None:
     from . import event_metadata
     from .editor import caption
     from .schedule import slide_body
+    if post.get('kind') in ('weekend', 'free_week'):
+        from .local_series import current_copy
+        if not current_copy(post, items):
+            return 'event_metadata_stale'
     item = items.get(post.get('item_id'), {})
     if item.get('kind') == 'event' and item.get('category') != 'outage' and event_metadata.needs_review(item):
         if (post.get('caption') != caption(item, post.get('title', ''))
                 or post.get('slides') != [{'title': post.get('title'), 'body': slide_body(item)}]):
             return 'event_metadata_stale'
-    if post.get('kind') in ('weekly', 'monthly'):
+    if post.get('kind') in ('weekly', 'monthly', 'weekend', 'free_week'):
         urls = post.get('source_urls', [])
         slides = post.get('slides', [])
         for index, url in enumerate(urls, 1):

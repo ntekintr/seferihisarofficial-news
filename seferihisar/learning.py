@@ -1,4 +1,4 @@
-"""Daily GET-only feedback. Raw account measurements never enter public state."""
+"""Bounded GET-only fixed-age feedback; raw counters never enter public state."""
 from __future__ import annotations
 
 import json
@@ -9,7 +9,7 @@ from datetime import datetime, timedelta
 
 from .domain import CATEGORIES, now, parse_date
 
-VERSION = 'topic-feedback-v1'
+VERSION = 'topic-feedback-v2'
 STATUSES = {'ready', 'insufficient_data', 'settings_missing', 'credential_invalid',
             'permission_required', 'rate_limited', 'read_failed', 'account_mismatch'}
 METRICS = ('reach', 'saved', 'shares', 'total_interactions')
@@ -18,7 +18,7 @@ METRICS = ('reach', 'saved', 'shares', 'total_interactions')
 def validate_profile(value):
     if not isinstance(value, dict) or set(value) != {'version', 'checked_at', 'status', 'weights'}:
         raise ValueError('Invalid learning profile')
-    if value['version'] != VERSION or value['status'] not in STATUSES:
+    if value['version'] not in (VERSION, 'topic-feedback-v1') or value['status'] not in STATUSES:
         raise ValueError('Invalid learning result')
     if datetime.fromisoformat(value['checked_at']).tzinfo is None:
         raise ValueError('Invalid learning timestamp')
@@ -88,7 +88,7 @@ def measurements(value):
 
 
 def weights_for(samples):
-    """Conservative engagement/reach preference, never a claim of causation.
+    """Legacy aggregate diagnostic; production uses learning_cohorts.weights.
 
     At least ten distinct posts, two adequately represented topics and a
     minimum of three posts/100 reached accounts per topic. Small samples do
@@ -114,6 +114,9 @@ def due(store, at):
     if previous:
         value = validate_profile(json.loads(previous[0]['payload']))
         stamp = parse_date(value['checked_at'])
+        from .learning_cohorts import pending
+        if pending(store, at) and at - stamp >= timedelta(hours=1):
+            return True
         if timedelta(0) <= at - stamp and (at.date() == stamp.astimezone(at.tzinfo).date() or at - stamp < timedelta(hours=20)):
             return False
     return True
@@ -141,22 +144,15 @@ def refresh(store, at=None, *, environ=None, session=None):
             if not isinstance(rows, list) or any(not isinstance(r, dict) or not re.fullmatch(r'\d{1,32}', r.get('id', '')) for r in rows):
                 raise ReadError('read_failed')
             own_ids = {r['id'] for r in rows}
-            samples, seen = [], set()
-            claims = sorted(store.posts(), key=lambda p: p.get('published_at', ''), reverse=True)
-            for post in claims:
-                stamp = parse_date(post.get('published_at'))
+            from .learning_cohorts import pending, record, weights
+            for post, cohort in pending(store, at):
                 media = post.get('media_id')
-                if (post['status'] != 'published' or post.get('publish_format') or not post.get('item_id')
-                        or media not in own_ids or media in seen or not stamp
-                        or not timedelta(days=1) <= at - stamp <= timedelta(days=14)):
+                if media not in own_ids:
                     continue
-                seen.add(media)
                 value = read(session, base, media + '/insights', token,
                              {'metric': ','.join(METRICS), 'period': 'lifetime'})
-                samples.append((post['category'], measurements(value)))
-                if len(samples) >= 20:
-                    break
-            result['weights'] = weights_for(samples)
+                record(store, post, cohort, measurements(value), at)
+            result['weights'] = weights(store, at)
             result['status'] = 'ready' if result['weights'] else 'insufficient_data'
         except ReadError as exc:
             result.update(status=str(exc), weights={})

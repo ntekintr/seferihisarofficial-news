@@ -469,7 +469,7 @@ class Illustrator:
             return assignments
         if post.get('item_id'):
             references = [(0, items.get(post['item_id']))]
-        elif post['kind'] in ('weekly', 'monthly') and len(post['slides']) == len(post['source_urls']) + 1:
+        elif post['kind'] in ('weekly', 'monthly', 'weekend', 'free_week') and len(post['slides']) == len(post['source_urls']) + 1:
             by_url = {u: i for i in items.values() for u in i.get('sources', []) + [i['url']]}
             # Calendar cover remains a branded text card; event slides reuse
             # the exact illustration used for that event's announcement.

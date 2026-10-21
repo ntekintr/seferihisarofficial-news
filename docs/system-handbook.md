@@ -203,6 +203,10 @@ geçerliliği, #45–47 görsel/editoryal kontrol, #48 etkinlik meta bilgisi,
 
 ## Alt sistem ayrıntıları
 
+[Benzer yaş ölçümü ve yerel seriler](cohort-local-series.md), 24–30 saat/7 gün
+gruplarını, ham ölçümsüz kaba kayıtları, tamamlanmamış reklam ayrımını ve mevcut
+iki gönderi bütçesindeki cuma hafta sonu/salı ücretsiz etkinlik seçkilerini açıklar.
+
 [İşletim denetimi ve yedek](production-resilience.md): ayrı sağlık işi, kontrollü
 GitHub uyarıları, GET ile teslim gözlemi ve izole geri yükleme. Bu sürümün canlı
 dağıtımı ve yeni API okuma sonuçları tarihli kanıtla ayrıca doğrulanır; eski
