@@ -66,13 +66,14 @@ def test_exact_event_source_image_binds_start_end_revision_and_durable_pixels(st
     validate_state(store.path)
 
 
-@pytest.mark.parametrize('change',['date','venue','title','image_host'])
+@pytest.mark.parametrize('change',['date','venue','title','image_host','schema_url'])
 def test_source_poster_cannot_belong_to_another_event_date_venue_title_or_host(store,change):
     item,_=seed(store);body=event_html()
     if change=='date':body=event_html(start='2026-10-14T20:00:00+03:00')
     if change=='venue':body=event_html(location='Urla Başka Salon')
     if change=='title':body=body.replace(item['title'],'Seferihisar Başka Konser')
     if change=='image_host':body=body.replace(PHOTO,'https://unreviewed.example/a.jpg')
+    if change=='schema_url':body=body.replace('"@type": "Event"','"url":"https://news.example/other", "@type": "Event"')
     with pytest.raises(ValueError):candidate(body,URL,item,SOURCE)
 
 

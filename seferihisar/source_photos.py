@@ -57,6 +57,7 @@ def candidate(html,final_url,item,source):
     """Same article URL, headline and publication date, plus an in-article image."""
     if canonical(final_url)!=canonical(item['url']):raise ValueError('Article redirected')
     matches=[row for row in structured(html,final_url,source) if row['kind']==item.get('kind')
+             and canonical(row['url'])==canonical(item['url'])
              and normalized(row['title'])==normalized(item['title'])
              and all(parse_date(row.get(k))==parse_date(v) and parse_date(v) is not None
                      for k,v in identity_dates(item).items())
