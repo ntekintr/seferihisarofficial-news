@@ -43,7 +43,7 @@ def test_missing_or_malformed_metrics_are_unavailable(bad):
 
 def test_feedback_get_only_bound_to_account_and_public_state_has_no_raw_metrics(store, at):
     post = {'id': digest('post'), 'item_id': digest('item'), 'revision': 1, 'kind': 'news',
-            'due_at': at.isoformat(), 'published_at': (at - timedelta(days=2)).isoformat(),
+            'due_at': at.isoformat(), 'published_at': (at - timedelta(hours=26)).isoformat(),
             'category': 'sport'}
     store.queue(post)
     store.db.execute("UPDATE posts SET status='published',media_id='12345' WHERE id=?", (post['id'],))

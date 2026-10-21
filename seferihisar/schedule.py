@@ -103,6 +103,13 @@ def prepare(store: Store, at: datetime, *, refresh_digests: bool = True):
     if refresh_digests:
         prepare_digest(store, at, "weekly", 7)
         prepare_digest(store, at, "monthly", 30)
+        from .local_series import prepare as prepare_series
+        prepare_series(store, at)
+    from .local_series import expired as series_expired
+    with store.db:
+        for post in store.posts():
+            if post['status'] in ('prepared', 'blocked_source') and series_expired(post, at):
+                store.db.execute("UPDATE posts SET status='expired' WHERE id=?", (post['id'],))
     from .story_identity import repeat
     for post in store.posts():
         if post['status'] == 'prepared' and repeat(store, post):
