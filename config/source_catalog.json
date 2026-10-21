@@ -355,5 +355,40 @@
     "group": "yerel_basın",
     "status": "connected",
     "note": "Kullanıcının 21 Ekim 2026 önerisiyle eklenen ASP okuyucu. Yerellik, açık yayın saati, özet ve makaleye bağlı fotoğraf ayrıca doğrulanır."
+  },
+  {
+    "id": "izmir-tarim",
+    "reader_id": "izmir-tarim",
+    "name": "İzmir İl Tarım ve Orman Müdürlüğü",
+    "url": "https://izmir.tarimorman.gov.tr/",
+    "group": "kamu",
+    "status": "connected",
+    "note": "İncelenmiş kurum şablonu; görünür kaynak tarihi ve asıl içerik alanı ayrı okunur. Yerellik ve yayın geçerliliği ayrıca denetlenir; bütün kurum haberlerinin kapsandığı iddia edilmez."
+  },
+  {
+    "id": "izmir-orman",
+    "reader_id": "izmir-orman",
+    "name": "İzmir Orman Bölge Müdürlüğü",
+    "url": "https://www.ogm.gov.tr/izmirobm",
+    "group": "kamu",
+    "status": "connected",
+    "note": "İncelenmiş kurum şablonu; görünür kaynak tarihi ve asıl içerik alanı ayrı okunur. Yerellik ve yayın geçerliliği ayrıca denetlenir; bütün kurum haberlerinin kapsandığı iddia edilmez."
+  },
+  {
+    "id": "izmir-saglik",
+    "reader_id": "izmir-saglik",
+    "name": "İzmir İl Sağlık Müdürlüğü",
+    "url": "https://izmirism.saglik.gov.tr/",
+    "group": "kamu",
+    "status": "connected",
+    "note": "İncelenmiş kurum şablonu; görünür kaynak tarihi ve asıl içerik alanı ayrı okunur. Yerellik ve yayın geçerliliği ayrıca denetlenir; bütün kurum haberlerinin kapsandığı iddia edilmez."
+  },
+  {
+    "id": "izmir-eczaci",
+    "name": "İzmir Eczacı Odası — nöbetçi eczaneler",
+    "url": "https://www.izmireczaciodasi.org.tr/",
+    "group": "hizmet",
+    "status": "access_failed",
+    "note": "21 Ekim 2026 doğrudan izinli HTTP kontrolü 403 verdi. Okuyucu etkinleştirilmedi. Gün, başlangıç/bitiş ve ilçe bilgileri doğrulanmadan nöbetçi eczane yayını yapılmaz; koruma aşılmaz."
   }
 ]
