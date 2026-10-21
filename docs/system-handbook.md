@@ -35,6 +35,15 @@ haber isteği `post_id` ile günlük bütçe ve bütün yayın öncesi kontrolle
 uygulanır. Otomatik çalışma bu alanı dolduramaz; belirli kaynak önerisi tek
 başına eski haberleri toplu yayımlama veya günlük sınır artırma yetkisi değildir.
 
+### 21 Ekim: her paylaşımda ilgili görsel önceliği
+
+[İlgili görsel politikası](relevant-visual-first.md) kaynak görselini önce deneme,
+aynı slayt için gereksiz üretim çağrısını önleme, deneme bütçesini sıradaki
+editoryal adaylara ayırma ve güvenilir HTML/RSS etkinlik görselinde başlık/
+tarih/saat/OCR/konu kontrolünü açıklar. Desteklenmeyen kaynak/konu veya belirsiz
+görselde bilgi kartı sürer. “Görsel önceliği” her haberde kesin fotoğraf veya
+daha çok erişim garantisi değildir. Donmuş yayınlar ve hava stokları değişmez.
+
 ## Akış ve kod haritası
 
 | Adım | Kod / ayar | Görevi ve sınırı |

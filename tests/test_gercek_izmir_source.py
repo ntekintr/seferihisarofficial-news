@@ -75,5 +75,5 @@ def test_harvest_photo_cannot_escape_article_identity_checks(change):
 
 def test_future_harvest_notice_has_no_incident_photo_and_harvest_is_never_generated():
     assert news_subject({'kind': 'news', 'source_id':'gercek-izmir', 'title': 'Seferihisar mandalina hasadı başlayacak'}) is None
-    assert news_subject({'kind': 'news', 'source_id':'other', 'title':TITLE}) is None
+    assert news_subject({'kind': 'news', 'source_id':'other', 'title':TITLE}) == 'citrus_harvest'
     with pytest.raises(MatchRejected): validate_match(b'', 'citrus_harvest')

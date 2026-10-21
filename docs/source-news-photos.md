@@ -53,3 +53,11 @@ ve dağıtılmış JPEG parmak izlerine bağlanır. Yayıncı yeni kaynak isteğ
 Meta çağrısından önce kayıt/sürüm, fotoğraf kanıtı, bir saatlik tazelik, canlı
 manifest ve gerçek JPEG byte eşleşmesi yeniden denetlenir. Normal hazırlık bu
 bağlantıyı kaybetmez. Haber, ilk eşleşen story ve Facebook aynı kanıtı kullanır.
+
+21 Ekim genişlemesi: mandalina hasadı diğer güvenilir haber okuyucularında da
+aynı kaynak/konu kontrolünden geçebilir. HTML/RSS etkinlik görselleri ve afişleri
+ayrı tarihli `source-photo-event-v1` kanıtı ve ek OCR ile değerlendirilir;
+yukarıdaki ilk sürüm portre sınırı yalnız haber fotoğrafları için sürer.
+Güncel kapsam ve kalan dar sınırlar [ilgili görsel politikası](relevant-visual-first.md)
+belgesindedir. Mevcut isteğe bağlı tek Instagram haber fotoğrafı hattı ayrı
+[Instagram fotoğrafı](instagram-source-photos.md) kurallarını korur.

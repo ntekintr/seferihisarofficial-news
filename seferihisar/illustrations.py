@@ -441,7 +441,7 @@ class Illustrator:
         self.paths[key] = path
         return path
 
-    def for_post(self, post: dict, items: dict[str, dict]) -> dict[int, Path]:
+    def for_post(self, post: dict, items: dict[str, dict], *, skip_indices=()) -> dict[int, Path]:
         assignments = {}
         if not self.enabled:
             return assignments
@@ -478,6 +478,8 @@ class Illustrator:
             references = []
         bindings = {}
         for index, item in references:
+            if index in skip_indices:
+                continue  # Verified source image already fills this exact card.
             if item and (not post.get('item_id') or post.get('revision', item['revision']) == item['revision']) and (path := self.image(item, generate=True)):
                 assignments[index] = path
                 bindings[str(index)] = image_key(item)
