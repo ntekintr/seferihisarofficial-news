@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {checkResearch} from './cron-worker.mjs';
+import {checkResearch,checkOperations} from './cron-worker.mjs';
 const now=Date.parse('2026-10-12T10:00:00Z');
 const env={CRON_DISPATCH_ENABLED:'true',GITHUB_ACTIONS_TOKEN:'PRIVATE_FAKE_TEST_VALUE'};
 const state=age=>({demo:false,runs:[{finished_at:new Date(now-age*60000).toISOString()}]});
@@ -42,4 +42,26 @@ test('redirects stop without following or dispatching',async()=>{
     return calls===1?response(state(60)):{ok:false,status:302,headers:{get:()=> 'https://untrusted.invalid/'}};
   },now);
   assert.equal(result.status,'github_unreachable');assert.equal(calls,2);
+});
+test('healthy public state does not trigger operations or leak credentials',async()=>{
+  const data={...state(5),source_health:[{status:'empty'}],publishing_enabled:false};
+  let count=0;
+  const result=await checkOperations(env,async(url,options)=>{count++;assert.ok(!options.headers?.Authorization);return response(data);},now);
+  assert.deepEqual(result,{status:'healthy'});assert.equal(count,1);
+});
+test('unreachable public state uses a separate throttled observer, never a publication workflow',async()=>{
+  const calls=[];
+  const result=await checkOperations(env,async(url,options)=>{
+    calls.push({url,options});
+    return calls.length===1?{ok:false}:calls.length===2?response({workflow_runs:[]}):{status:204};
+  },now);
+  assert.equal(result.status,'observer_dispatched');
+  assert.ok(calls[2].url.endsWith('/operations-watch.yml/dispatches'));
+  assert.deepEqual(JSON.parse(calls[2].options.body),{ref:'main'});
+  assert.ok(calls.every(c=>c.options.redirect==='manual'));
+});
+test('observer is not requeued every fifteen minutes for the same persistent fault',async()=>{
+  let calls=0;
+  const result=await checkOperations(env,async()=>++calls===1?response(state(120)):response({workflow_runs:[{head_branch:'main',status:'completed',created_at:new Date(now-30*60000).toISOString()}]}),now);
+  assert.equal(result.status,'already_observed');assert.equal(calls,2);
 });

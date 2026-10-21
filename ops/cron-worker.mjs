@@ -36,9 +36,48 @@ export async function checkResearch(env, fetcher = fetch, now = Date.now()) {
   }
 }
 
+export async function checkOperations(env, fetcher = fetch, now = Date.now()) {
+  if (env.CRON_DISPATCH_ENABLED !== 'true' || !env.GITHUB_ACTIONS_TOKEN || env.OPERATIONS_WATCH_ENABLED === 'false') return {status:'disabled'};
+  let anomaly = false;
+  try {
+    const response = await fetcher(PANEL, {cache:'no-store', redirect:'manual'});
+    if (!response.ok) anomaly = true;
+    else {
+      const state = await response.json();
+      const finished = Date.parse(state.runs?.find(r=>r.finished_at)?.finished_at || '');
+      const health = state.source_health || [];
+      const broken = health.filter(r=>['failed','partial'].includes(r.status)).length;
+      const local = new Date(now + 3*3600000).toISOString();
+      const weather = state.weather_story || {};
+      const afterMorning = local.slice(11,16) >= '09:20';
+      anomaly = state.demo !== false || !Number.isFinite(finished) || finished > now + 300000 || now - finished > 90*60000 ||
+        (health.length > 0 && broken / health.length >= .4) ||
+        (state.publishing_enabled === true && afterMorning && (weather.day !== local.slice(0,10) || weather.status !== 'published')) ||
+        Object.values(state.operations?.unresolved || {}).some(v=>Number.isInteger(v)&&v>0) ||
+        (state.factory?.delivery_audit?.recent_failures || 0) > 0;
+    }
+  } catch { anomaly = true; }
+  if (!anomaly) return {status:'healthy'};
+  const workflow = WORKFLOW.replace('automation.yml','operations-watch.yml');
+  const headers = {'Authorization':'Bearer '+env.GITHUB_ACTIONS_TOKEN, 'Accept':'application/vnd.github+json',
+                   'User-Agent':'SeferihisarOfficialOperationsWatch', 'X-GitHub-Api-Version':'2022-11-28'};
+  try {
+    const response = await fetcher(workflow+'/runs?branch=main&per_page=5', {headers, redirect:'manual'});
+    if (!response.ok) return {status:'notification_service_unreachable'};
+    const runs = await response.json();
+    if (!Array.isArray(runs.workflow_runs)) return {status:'invalid_runs'};
+    if (runs.workflow_runs.some(r=>r.head_branch==='main' &&
+        (['queued','in_progress','waiting','requested','pending'].includes(r.status) || now-Date.parse(r.created_at)<55*60000))) return {status:'already_observed'};
+    const result = await fetcher(workflow+'/dispatches', {method:'POST', headers:{...headers,'Content-Type':'application/json'},
+                                      body:JSON.stringify({ref:'main'}), redirect:'manual'});
+    return {status:result.status===204?'observer_dispatched':'observer_dispatch_failed'};
+  } catch { return {status:'notification_service_unreachable'}; }
+}
+
 export default {
   async scheduled(controller, env, ctx) {
     ctx.waitUntil(checkResearch(env).then(result=>console.log(JSON.stringify(result))));
+    ctx.waitUntil(checkOperations(env).then(result=>console.log(JSON.stringify({operations:result.status}))));
   },
   async fetch() {
     return new Response('SeferihisarOfficial research check. Scheduled execution only.', {status:200});

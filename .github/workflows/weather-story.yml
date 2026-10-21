@@ -50,6 +50,14 @@ jobs:
           STATE_GIT_CHECKPOINT: 'true'
           STATE_WRITE_TOKEN: ${{ github.token }}
         run: python -m seferihisar.weather --wait-for-morning
+      - name: Observe this account's recorded stories using GET only
+        if: always() && steps.restore.outcome == 'success'
+        continue-on-error: true
+        env:
+          INSTAGRAM_ACCESS_TOKEN: ${{ secrets.INSTAGRAM_ACCESS_TOKEN }}
+          INSTAGRAM_USER_ID: ${{ secrets.INSTAGRAM_USER_ID }}
+          META_GRAPH_VERSION: ${{ vars.META_GRAPH_VERSION || 'v26.0' }}
+        run: python -m seferihisar.delivery_audit
       - name: Persist the result without replaying uncertain publications
         if: always() && steps.restore.outcome == 'success'
         env:

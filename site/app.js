@@ -51,6 +51,9 @@ function table(headings,rows) {const wrap=node('div','panel table-wrap'),el=node
 function renderOperations(container){
  const op=snapshot.operations;if(!op)return;
  const panel=node('div','panel');panel.append(node('h3','','Yayın ve görsel durumu'));
+ const audit=snapshot.factory?.delivery_audit;
+ if(audit){panel.append(node('h4','','Yayın sonrası okuma kontrolü'),node('p','',audit.checked_at?'Son gözlem: '+date(audit.checked_at,{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})+'. Son 24 saatte kontrol sorunu: '+audit.recent_failures+'.':'İlk yayın sonrası gözlem bekleniyor.'));panel.append(node('p','','Gönderi kimliği, açıklama ve zaman; aktif Instagram story listesi kontrol edilir. Facebook story kaydı için yalnız nesnenin okunabilirliği doğrulanır. Görselin platformdaki pikselleri incelenmiş sayılmaz; eksik sonuçta tekrar paylaşılmaz.'));}
+ panel.append(link('Bağımsız işletim kontrolü ↗','https://github.com/ntekintr/seferihisarofficial-news/actions/workflows/operations-watch.yml'),document.createTextNode(' · '),link('Yedek ve geri yükleme kontrolü ↗','https://github.com/ntekintr/seferihisarofficial-news/actions/workflows/state-backup.yml'));
  const editorial=editorialRows(op.editorial_holds);if(editorial.length)panel.append(node('h4','','İçerik kontrolünde bekleyenler'),table(['Kontrol','İçerik'],editorial));
  panel.append(node('p','','Bu özet '+date(op.as_of,{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})+' itibarıyladır. Yayın kontrolünün tamamlanması yeni paylaşım yapıldığı anlamına gelmez.'));
  const latest=op.checks?.[0];panel.append(node('p','','Son yayın kontrolü: '+(latest?publicationLabel(latest.result.status)+' · '+date(latest.checked_at,{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):'İlk kayıt bekleniyor')));

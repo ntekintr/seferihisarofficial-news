@@ -203,6 +203,11 @@ geçerliliği, #45–47 görsel/editoryal kontrol, #48 etkinlik meta bilgisi,
 
 ## Alt sistem ayrıntıları
 
+[İşletim denetimi ve yedek](production-resilience.md): ayrı sağlık işi, kontrollü
+GitHub uyarıları, GET ile teslim gözlemi ve izole geri yükleme. Bu sürümün canlı
+dağıtımı ve yeni API okuma sonuçları tarihli kanıtla ayrıca doğrulanır; eski
+yayınlar veya önceki testler yeni özelliğin canlı kanıtı değildir.
+
 [Yayın](automatic-publication.md), [işletim](operations.md),
 [Facebook](facebook-publication.md), [etkinlik alanları](event-metadata-control.md),
 [görsel kimlik](brand-cards.md), [görsel kapısı](content-visual-control.md),

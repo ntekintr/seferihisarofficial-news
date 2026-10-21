@@ -74,9 +74,19 @@ def validate_state(path: Path):
     db = sqlite3.connect(f"file:{path.resolve()}?mode=ro", uri=True)
     try:
         tables = {r[0] for r in db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
-        if not tables <= {"items", "posts", "withheld", "runs", "candidates", "annotations", "illustrations", "illustration_days", "source_photos", "source_health", "facebook_deliveries", "publication_checks", "weather_stories", "learning_profile", "source_checks"}:
+        if not tables <= {"items", "posts", "withheld", "runs", "candidates", "annotations", "illustrations", "illustration_days", "source_photos", "source_health", "facebook_deliveries", "publication_checks", "weather_stories", "learning_profile", "source_checks", "delivery_audits"}:
             raise ValueError("Unexpected state tables")
         for table in sorted(tables):
+            if table == 'delivery_audits':
+                from .delivery_audit import MAX_ROWS, validate_row
+                if [r[1] for r in db.execute('PRAGMA table_info(delivery_audits)')] != ['id', 'channel', 'format', 'checked_at', 'status']:
+                    raise ValueError('Unexpected delivery observation fields')
+                if db.execute('SELECT COUNT(*) FROM delivery_audits').fetchone()[0] > MAX_ROWS:
+                    raise ValueError('Delivery observation limit exceeded')
+                for row in db.execute('SELECT * FROM delivery_audits'):
+                    assert_no_secrets(row)
+                    validate_row(row)
+                continue
             if table == 'learning_profile':
                 from .learning import validate_profile
                 if [r[1] for r in db.execute('PRAGMA table_info(learning_profile)')] != ['id', 'payload']:
