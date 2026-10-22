@@ -8,6 +8,7 @@ from .brand import VERSION as BRAND, logo_path
 from .domain import TZ, digest
 
 VERSION = 'duty-pharmacy-v1'
+IZMIR_WEB = 'https://www.izmir.bel.tr/tr/NobetciEczane/27?bolge=SEFER%C4%B0H%C4%B0SAR'
 PROFILES = {
     'snail-s-v1': ('seferihisar', 'Seferihisar', 'seferihisarofficial',
         'ntekintr/seferihisarofficial-news', 'https://ntekintr.github.io/seferihisarofficial-news',
@@ -39,9 +40,12 @@ def background_hash():
 
 def validate_bulletin(value):
     p = profile()
+    sources = {p['source_url']}
+    if p['city'] == 'seferihisar':
+        sources.add(IZMIR_WEB)
     if (not isinstance(value,dict) or set(value) != FIELDS or value['version'] != VERSION
             or value['brand_version'] != BRAND or value['city'] != p['city']
-            or value['source_url'] != p['source_url'] or value['source_name'] != p['source_name']
+            or value['source_url'] not in sources or value['source_name'] != p['source_name']
             or not isinstance(value['background_sha256'],str)
             or not re.fullmatch(r'[a-f0-9]{64}',value['background_sha256'])):
         raise ValueError('Invalid pharmacy bulletin identity')
@@ -76,10 +80,10 @@ def validate_bulletin(value):
     return value
 
 
-def make_bulletin(entries, day, checked_at):
+def make_bulletin(entries, day, checked_at, *, source_url=None):
     p = profile()
     value = dict(version=VERSION,brand_version=BRAND,city=p['city'],date=day.isoformat(),
-                 source_url=p['source_url'],source_name=p['source_name'],checked_at=checked_at.isoformat(),
+                 source_url=source_url or p['source_url'],source_name=p['source_name'],checked_at=checked_at.isoformat(),
                  entries=sorted(entries,key=lambda e:(e['region'],e['name'])),background_sha256=background_hash())
     return validate_bulletin(value)
 

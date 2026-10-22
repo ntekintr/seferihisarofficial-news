@@ -88,3 +88,25 @@ Manuel Run workflow yalnız tek bir kaynak/3D kart önizlemesidir. Bu olay yayı
 işini çalıştıramaz; Meta anahtarı, durum veritabanı veya kalıcı durum dalı
 kullanmaz. Önizleme bağımsız kilitlidir; üretimin ortak veritabanı kilidi
 ayrılmaz. Gerçek bulut kaynak erişimi bu önizlemeyle ayrıca doğrulanabilir.
+
+## Bulut bağlantısı için tarihli resmî web yedeği
+
+22 Ekim bulut önizlemesinde API hostuna iki ayrı Azure bölgesinden bağlantı
+zaman aşımı gözlendi. Tek ek kontrol sonrasında aynı API elle tekrar denenmedi.
+Seferihisar Belediyesi'nin kendi liste sayfası açık nöbet tarihi içermediği için
+yedek kabul edilmedi. İzmir Büyükşehir'in tarihli bölge filtresi ise incelendi:
+https://www.izmir.bel.tr/tr/NobetciEczane/27?bolge=SEFER%C4%B0H%C4%B0SAR
+
+Yalnız ağ bağlantısı/zaman aşımı olduğunda bu ikinci resmî kaynak bir kez
+okunabilir. TLS hatası, HTTP 403 veya robots yasağı bu geçişi tetiklemez.
+Bu resmî hostun robots.txt yanıtı da açık 404 olarak incelendi; yalnız bu
+yokluk kabul edilir. Güvensiz bağlantı, proxy veya erişim koruması aşımı yoktur.
+
+Seçili bölgenin SEFERİHİSAR olması, bütün kartların adresinde ilçenin açıkça
+bulunması, sayfalanmanın olmaması ve her kartın kendi Başlangıç/Bitiş alanları
+zorunludur. Başlangıç nöbet günü bugündür; bitiş geçmiş olamaz. Yakındaki başka
+ilçe alınmaz. Sığacık/Ürkmez adresi dönerse aynı ilçe içindeki bölgesi korunur;
+dönmeyen kırsal satır uydurulmaz. Nöbetin henüz başlamayabileceği 17:00 kartında
+kaynağın gerçek saatleri ve Sığacık için 23:00 gibi kısıtlar aynen gösterilir.
+Kullanılan gerçek URL bültene/medya kimliğine yazılır; web sonucu API yanıtı
+gibi sunulmaz. Bulut erişiminin sonucu ayrıca önizleme kanıtıyla kaydedilir.

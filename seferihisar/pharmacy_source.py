@@ -3,9 +3,10 @@ from datetime import datetime
 import json
 import re
 from bs4 import BeautifulSoup
+import requests
 
 from .domain import TZ
-from .pharmacy_data import make_bulletin, profile
+from .pharmacy_data import IZMIR_WEB, make_bulletin, profile
 
 MONTHS = ('ocak','şubat','mart','nisan','mayıs','haziran','temmuz','ağustos','eylül','ekim','kasım','aralık')
 
@@ -78,20 +79,79 @@ def parse_isparta(body, at):
     return make_bulletin(entries,duty,at)
 
 
+def parse_izmir_web(body, at):
+    """Official filtered page: every pharmacy has an explicit start/end date."""
+    soup = BeautifulSoup(body, 'html.parser')
+    selected = soup.select('select[name="Bolgeler"] option[selected]')
+    if len(selected) != 1 or clean(selected[0].get_text()) != 'SEFERİHİSAR':
+        raise ValueError('Official region filter was not applied')
+    if any('page=' in a.get('href', '') for a in soup.select('a[href]')):
+        raise ValueError('Incomplete paginated official pharmacy list')
+    blocks = soup.select('.nobetci-eczane')
+    if not blocks or len(blocks) > 12:
+        raise ValueError('Missing official pharmacy cards')
+    entries = []
+    for block in blocks:
+        name = block.select_one('.nobetci-eczane-adress > h2')
+        address = block.select_one('.nobetci-eczane-place')
+        if not name or not address:
+            raise ValueError('Incomplete official pharmacy card')
+        address = clean(address.get_text(' ',strip=True))
+        if not address.endswith(' SEFERİHİSAR'):
+            raise ValueError('Outside the verified Seferihisar district')
+        dates = {}
+        for paragraph in block.select('.nobetci-eczane-adress > p'):
+            label = paragraph.find('strong',recursive=False)
+            if label:
+                key = clean(label.get_text()).rstrip(' :')
+                if key in ('Başlangıç','Bitiş'):
+                    if key in dates: raise ValueError('Ambiguous official duty dates')
+                    text = clean(' '.join(paragraph.find_all(string=True,recursive=False)))
+                    dates[key] = datetime.strptime(text,'%d-%m-%Y %H:%M:%S').replace(tzinfo=TZ)
+        if set(dates) != {'Başlangıç','Bitiş'}:
+            raise ValueError('Missing explicit official duty interval')
+        start,end = dates['Başlangıç'],dates['Bitiş']
+        if (start.date() != at.astimezone(TZ).date() or end <= start or end <= at
+                or (end-start).total_seconds() > 36*3600):
+            raise ValueError('Official duty interval is stale or invalid')
+        number = block.select_one('.eczane-tel')
+        number = phone(number.get('href','').removeprefix('tel:')) if number else ''
+        note = clean(' '.join(p.get_text(' ',strip=True) for p in block.select('.eczane-ozel-durum')))
+        hours = f"Nöbet: {start:%d.%m %H:%M} – {end:%d.%m %H:%M}"
+        area = ('SIĞACIK' if re.search(r'SIĞACIK|SIGACIK',address) else
+                'ÜRKMEZ' if re.search(r'BENGİLER|DOĞANBEY|ÜRKMEZ',address) else 'SEFERİHİSAR')
+        entries.append(dict(name=clean(name.get_text(' ',strip=True)),address=address,
+                            phone=number,region=area,note=hours+(' · '+note if note else '')))
+    return make_bulletin(entries,at.astimezone(TZ).date(),at,source_url=IZMIR_WEB)
+
+
 def fetch_bulletin(at, fetcher=None):
     p=profile()
     if fetcher is None:
         from .collect import Fetcher
         # Official anonymous API documentation was reviewed; its robots.txt is
         # explicitly absent (404). 403, TLS, server errors remain hard failures.
-        fetcher=Fetcher([{'url':p['source_url'],'enabled':True,
-                          'allow_missing_robots':p['city']=='seferihisar'}])
-    body,_=fetcher.get(p['source_url'])
+        sources=[{'url':p['source_url'],'enabled':True,
+                  'allow_missing_robots':p['city']=='seferihisar'}]
+        if p['city']=='seferihisar':
+            # This official public page also returned robots.txt 404 on review.
+            # Only explicit absence is allowed, never TLS/403/robots denials.
+            sources.append({'url':IZMIR_WEB,'enabled':True,'allow_missing_robots':True})
+        fetcher=Fetcher(sources)
+    parser = parse_izmir if p['city']=='seferihisar' else parse_isparta
+    try:
+        body,_=fetcher.get(p['source_url'])
+    except requests.exceptions.SSLError:
+        raise
+    except (requests.exceptions.Timeout,requests.exceptions.ConnectionError):
+        if p['city']!='seferihisar': raise
+        body,_=fetcher.get(IZMIR_WEB)
+        parser=parse_izmir_web
     from .domain import now
     checked=now()
     if checked.astimezone(TZ).date()!=at.astimezone(TZ).date():
         raise ValueError('Source read crossed duty date')
-    return (parse_izmir if p['city']=='seferihisar' else parse_isparta)(body,checked)
+    return parser(body,checked)
 
 
 def main():
