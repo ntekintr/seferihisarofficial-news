@@ -757,5 +757,17 @@
     "strict_article_fields": true,
     "prefer_headline_category": true,
     "listing_title_attribute": true
+  },
+  {
+    "id": "toplumsal-mandalina-review",
+    "name": "Toplumsal Haber",
+    "url": "https://www.toplumsal.com.tr/haber/seferihisar-mandalinasi-kabuklari-mamaya-yagi-aromaterapiye-donusecek_30774/",
+    "kind": "html",
+    "enabled": true,
+    "trusted": true,
+    "access": "robots",
+    "max_pages": 1,
+    "article_selector": "#content",
+    "requested_until": "2026-10-24T10:14:00+03:00"
   }
 ]

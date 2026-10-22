@@ -18,6 +18,10 @@ from . import event_metadata
 
 def verify(item: dict, source: dict, at: datetime) -> str | None:
     """A configured primary source is evidence, not an AI truth judgement."""
+    if source.get('id') == 'toplumsal-mandalina-review':
+        from .owner_curated import matches
+        if not matches(item):
+            return 'reviewed_article_changed'
     if not source.get("enabled") or not source.get("trusted") or source.get("access") not in ("robots", "api", "licensed"):
         return "unverified_source"
     if contains_secret(item):
@@ -131,6 +135,9 @@ _HOSPITAL_STAFF_TITLE = 'Seferihisar Necat Hepkon Devlet Hastanesi: Çalışan M
 
 
 def news_title(item: dict) -> str:
+    from .owner_curated import matches
+    if matches(item):
+        return 'Seferihisar mandalinası için mama ve yağ projesi'
     return neutral_title(_news_title(item)) if item.get('kind') == 'news' else item['title']
 
 

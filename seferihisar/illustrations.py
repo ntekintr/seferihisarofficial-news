@@ -140,6 +140,9 @@ def illustration_prompt(item: dict) -> str:
 
 
 def scene_version(item: dict) -> str:
+    from .owner_curated import matches, SUBJECT
+    if matches(item):
+        return SUBJECT
     if item.get('kind') == 'event' and event_activity(item.get('category'), item.get('title', '')):
         return ACTIVITY_SCENE_VERSION
     # Only the two revised briefs need new images. Other verified photographs
@@ -193,6 +196,11 @@ class Illustrator:
         self.stats.update({'subject_rejected': 0, 'subject_unavailable': 0, 'text_only': 0})
 
     def check_subject(self, key: str, data: bytes, expected: str):
+        from .owner_curated import SUBJECT, validate
+        if expected == SUBJECT:
+            # Exact reviewed pixels, not a model score or a general-news bypass.
+            validate(data)
+            return
         signature = (key, expected)
         if signature in self.match_checks:
             if not self.match_checks[signature]:
@@ -283,6 +291,18 @@ class Illustrator:
             self.stats['text_only'] += 1
             return None
         key = image_key(item)
+        from .owner_curated import matches, image_bytes
+        if matches(item) and not self.store.rows('SELECT id FROM illustrations WHERE id=?', (key,)):
+            try:
+                data = image_bytes()
+                self.check_image(key, data)  # Normal lettering/OCR gate remains mandatory.
+                self.check_subject(key, data, expected)
+            except (IllustrationCheckUnavailable, IllustrationTextRejected, ValueError):
+                self.stats['deferred'] += 1
+                return None
+            with self.store.db:
+                self.store.db.execute('INSERT OR IGNORE INTO illustrations VALUES(?,?,?,?,?,?,?)',
+                    (key, item['id'], 'ready', data, 1, self.retry_at, self.at.isoformat()))
         if key in self.paths:
             self.stats['reused'] += 1
             return self.paths[key]

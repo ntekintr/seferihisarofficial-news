@@ -53,13 +53,16 @@ def main():
             if os.getenv("STATE_GIT_CHECKPOINT") == "true":
                 from .state_git import persist
                 checkpoint = lambda: persist(args.db)
-            result = (publish_requested(store, at, args.site_url, assets, args.post_id, checkpoint=checkpoint, require_visual_review=True) if args.post_id else
+            from .owner_requests import publish as publish_owner_request, pending as pending_owner_request
+            owner_request = pending_owner_request(store, at) if args.automatic and not args.post_id else None
+            owner_result = publish_owner_request(store, at, args.site_url, assets, checkpoint) if args.automatic and not args.post_id else None
+            result = owner_result if owner_result is not None else (publish_requested(store, at, args.site_url, assets, args.post_id, checkpoint=checkpoint, require_visual_review=True) if args.post_id else
                       publish_automatic(store, at, args.site_url, assets, checkpoint=checkpoint, require_visual_review=True) if args.automatic
                       else publish_one(store, at, args.site_url, assets, args.story, checkpoint=checkpoint, require_visual_review=True))
             if args.automatic or args.post_id:
                 from .facebook import publish_recent
                 result['facebook'] = publish_recent(store, at, args.site_url, assets, checkpoint=checkpoint, require_visual_review=True,
-                                                    target_id=args.post_id)
+                                                    target_id=args.post_id or (owner_request['post_id'] if owner_result is not None and owner_request else None))
             from .operations import record_check, write_job_summary, failed
             observation = record_check(store, result, at, 'automatic' if args.automatic else 'story' if args.story else 'feed')
             write_job_summary(observation)

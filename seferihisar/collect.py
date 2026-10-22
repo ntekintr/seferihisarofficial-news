@@ -722,6 +722,8 @@ def source_listing(source: dict, fetcher: Fetcher, listing: str):
 
 
 def collect_source(source: dict, fetcher: Fetcher, known_events: list[dict]) -> tuple[list[dict], list[dict], list[dict]]:
+    if source.get('requested_until') and now() >= parse_date(source['requested_until']):
+        return [], [], []  # Finite reviewed article; no permanent extra crawl loop.
     from . import source_readers
     if source['kind']=='gdz_planned':
         return source_readers.collect_gdz_planned(source,fetcher,known_events)
