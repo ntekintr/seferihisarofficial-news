@@ -224,3 +224,5 @@ yayınlar veya önceki testler yeni özelliğin canlı kanıtı değildir.
 [web fotoğrafı](source-news-photos.md), [Instagram fotoğrafı](instagram-source-photos.md),
 [hava](daily-weather-story.md), [hava metni](weather-copy-control.md).
 Eski tarihli kaynak araştırması belgelerini güncel sağlık tablosunun yerine kullanmayın.
+
+22 Ekim 2026 tek kullanıcı isteği: [mandalina yan ürün projesi ve son tarihli yayın](owner-request-mandarin-reuse.md). Genel haber görsel kapıları açılmaz; kesin kaynak/piksel bağı, OCR, günlük bütçe ve tekrar koruması korunur. Hazır görsel gerçek Meta teslimi değildir.

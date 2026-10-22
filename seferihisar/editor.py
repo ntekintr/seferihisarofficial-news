@@ -131,6 +131,9 @@ _HOSPITAL_STAFF_TITLE = 'Seferihisar Necat Hepkon Devlet Hastanesi: Çalışan M
 
 
 def news_title(item: dict) -> str:
+    from .owner_curated import matches
+    if matches(item):
+        return 'Seferihisar mandalinası için mama ve yağ projesi'
     return neutral_title(_news_title(item)) if item.get('kind') == 'news' else item['title']
 
 

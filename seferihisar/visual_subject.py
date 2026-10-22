@@ -3,6 +3,9 @@ from .editor import event_activity
 
 
 def subject(item: dict) -> str | None:
+    from .owner_curated import matches, SUBJECT
+    if matches(item):
+        return SUBJECT
     # These require the actual source photograph. A plausible generated scene
     # cannot establish who met, what flooded, or where an incident happened.
     if item.get('category') == 'outage':
