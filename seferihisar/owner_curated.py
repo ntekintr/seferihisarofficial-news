@@ -18,6 +18,7 @@ def matches(item):
     return (item.get('kind') == 'news' and item.get('source_id') == 'toplumsal-mandalina-review'
             and item.get('url') == URL and item.get('title') == TITLE
             and item.get('published_at') == '2026-10-22T10:14:00+03:00'
+            and isinstance(item.get('description'), str)
             and hashlib.sha256(item.get('description', '').encode()).hexdigest() == TEXT_SHA)
 
 

@@ -31,6 +31,9 @@ def test_exact_source_and_exact_pixels_only():
         assert subject({**item,key:value}) is None
     data=image_bytes();validate(data)
     with pytest.raises(ValueError):validate(data[:-1])
+    from seferihisar.editor import verify
+    assert verify({**item,'description':'Güncellenmiş farklı bir metin.'},
+                  {'id':'toplumsal-mandalina-review'},AT)=='reviewed_article_changed'
 
 
 def test_curated_picture_uses_normal_ocr_and_no_provider_or_daily_quota(store,tmp_path,monkeypatch):

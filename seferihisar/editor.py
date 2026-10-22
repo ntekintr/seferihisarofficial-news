@@ -18,6 +18,10 @@ from . import event_metadata
 
 def verify(item: dict, source: dict, at: datetime) -> str | None:
     """A configured primary source is evidence, not an AI truth judgement."""
+    if source.get('id') == 'toplumsal-mandalina-review':
+        from .owner_curated import matches
+        if not matches(item):
+            return 'reviewed_article_changed'
     if not source.get("enabled") or not source.get("trusted") or source.get("access") not in ("robots", "api", "licensed"):
         return "unverified_source"
     if contains_secret(item):
