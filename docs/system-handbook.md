@@ -4,6 +4,15 @@ Son gözden geçirme: **21 Ekim 2026**. Bu dosya kod haritası ve kalıcı çal�
 notudur. Anlık sağlık/teslim kanıtı zaman damgalı çıktılardan alınır; burada bir
 kez başarılı olması sonraki ay kesintisiz çalışacağı anlamına gelmez.
 
+### 22 Ekim: günlük nöbetçi eczane listesi
+
+[Eczane story akışı](daily-pharmacy-story.md) ayrı günlük iddia, yalnız doğru
+günün resmî listesi, adres/işletme telefonu, kaynak saat notlarını kaybetmeme,
+17:00 hedefi, aynı saatle sınırlı yedekler ve doğrudan JPEG denetimini açıklar.
+Kullanıcı artı yerine kırmızı E, Seferihisar'da 3D salyangoz, Isparta'da açık
+gri/beyaz ve mevcut logo istedi. Hazır örnek doğal teslim değildir; geçmiş
+haber/FB/hava iddiaları değişmez. Yeni izin, token veya ücretli servis yoktur.
+
 ### 20 Ekim: otonom üretim kapsamı
 
 Kullanıcı rutin üretim için ayrıca kontrol/teyit beklenmemesini; performanstan

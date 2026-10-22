@@ -81,10 +81,19 @@ function renderWeather(container){
  const reason=weatherReason(weather.last_result);if(reason)panel.append(node('p','notice','Son kontrol: '+reason));
  container.append(panel);
 }
+function renderPharmacy(container){
+ const item=snapshot.pharmacy_story;if(!item)return;
+ const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Istanbul',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+ if(item.day!==today)return;
+ const states={prepared:'Kart hazır; paylaşım henüz doğrulanmadı',blocked:'Günün listesi doğrulanamadı',publishing:'Yayın sonucu bekleniyor',published:'Meta yayım yanıtı kaydedildi',uncertain:'Sonuç belirsiz; tekrar paylaşılmaz'};
+ const panel=node('div','panel');panel.append(node('h3','','Nöbetçi eczaneler · Günlük story'),node('p','','Her gün 17:00 Türkiye saati hedefi · '+(states[item.status]||'Kontrol bekleniyor')));
+ if(item.bulletin){panel.append(node('p','',item.bulletin.date+' nöbet listesi · '+item.bulletin.entries.length+' eczane'),link('Kaynak: '+item.bulletin.source_name+' ↗',item.bulletin.source_url));for(const [index,path] of (item.assets||[]).entries())if(/^media\/[a-f0-9]{24}\/story-[1-4]\.jpg$/.test(path))panel.append(link('Story kartı '+(index+1),path));}
+ panel.append(node('p','','İsim, adres ve varsa işletme telefonu. Gitmeden önce telefonla teyit edin.'));container.append(panel);
+}
 function render() {
  if(!snapshot)return;const container=$('content');container.replaceChildren();$('view-title').textContent=labels[view];
  document.querySelector('.controls').hidden=['sources','system'].includes(view);document.querySelector('.hero').hidden=view!=='overview';
- if(['posts','system'].includes(view))renderWeather(container);
+ if(['posts','system'].includes(view)){renderWeather(container);renderPharmacy(container);}
  if(view==='overview'){container.append(node('h3','section-label','Yaklaşan buluşmalar'),grid(events().slice(0,3),'event'),node('h3','section-label','Yerel gelişmeler'),grid(displayNews(snapshot,new Date(snapshot.demo?snapshot.generated_at:Date.now()).getTime()).filter(matches).slice(0,3),'news'));}
  else if(view==='events')container.append(grid(events(),'event'));
  else if(view==='news')container.append(grid(displayNews(snapshot,new Date(snapshot.demo?snapshot.generated_at:Date.now()).getTime()).filter(matches),'news'));

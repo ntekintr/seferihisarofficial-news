@@ -129,6 +129,8 @@ def run(db_path: Path, public_dir: Path, sources_path: Path, at: datetime | None
         if not fixture:
             from .weather import refresh_weather
             refresh_weather(store, at, fetcher)
+            from .pharmacy import refresh as refresh_pharmacy
+            refresh_pharmacy(store, at)
         result = export(store, public_dir, sources, at, demo=bool(fixture), instagram_manifest=instagram_manifest)
         return {"collected": collected, "prepared": len([p for p in store.posts() if p["status"] == "prepared"]), "errors": len(errors), "assets": result}
     finally:
@@ -273,6 +275,8 @@ def _export(store: Store, public_dir: Path, sources: list[dict], at: datetime, d
     if not demo:
         from .weather import export_weather
         snapshot['weather_story'] = export_weather(store, public_dir, at)
+        from .pharmacy import export as export_pharmacy
+        snapshot['pharmacy_story'] = export_pharmacy(store, public_dir, at)
     if catalogue_path.exists():
         from .source_catalog import public_catalog
         catalogue = json.loads(catalogue_path.read_text(encoding='utf-8'))
