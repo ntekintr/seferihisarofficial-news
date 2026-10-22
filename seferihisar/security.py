@@ -74,9 +74,16 @@ def validate_state(path: Path):
     db = sqlite3.connect(f"file:{path.resolve()}?mode=ro", uri=True)
     try:
         tables = {r[0] for r in db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
-        if not tables <= {"items", "posts", "withheld", "runs", "candidates", "annotations", "illustrations", "illustration_days", "source_photos", "source_health", "facebook_deliveries", "publication_checks", "weather_stories", "learning_profile", "source_checks", "delivery_audits", "learning_samples"}:
+        if not tables <= {"items", "posts", "withheld", "runs", "candidates", "annotations", "illustrations", "illustration_days", "source_photos", "source_health", "facebook_deliveries", "publication_checks", "weather_stories", "learning_profile", "source_checks", "delivery_audits", "learning_samples", "pharmacy_stories"}:
             raise ValueError("Unexpected state tables")
         for table in sorted(tables):
+            if table == 'pharmacy_stories':
+                from .pharmacy_data import validate_record
+                if [r[1] for r in db.execute('PRAGMA table_info(pharmacy_stories)')] != ['day','bulletin','status','checked_at','last_result','container_ids','media_ids','published_at']:
+                    raise ValueError('Unexpected pharmacy story fields')
+                for row in db.execute('SELECT * FROM pharmacy_stories'):
+                    validate_record(row)
+                continue
             if table == 'learning_samples':
                 from .learning_cohorts import MAX_ROWS, validate_row
                 if [r[1] for r in db.execute('PRAGMA table_info(learning_samples)')] != ['id', 'post_id', 'category', 'cohort', 'age_hours', 'score_band', 'reach_gate', 'checked_at']:

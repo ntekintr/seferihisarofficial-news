@@ -75,6 +75,10 @@ class Store:
               day TEXT PRIMARY KEY, forecast TEXT, status TEXT NOT NULL,
               checked_at TEXT NOT NULL, last_result TEXT NOT NULL,
               container_id TEXT, media_id TEXT, published_at TEXT);
+            CREATE TABLE IF NOT EXISTS pharmacy_stories (
+              day TEXT PRIMARY KEY, bulletin TEXT, status TEXT NOT NULL,
+              checked_at TEXT NOT NULL, last_result TEXT NOT NULL,
+              container_ids TEXT NOT NULL DEFAULT '[]', media_ids TEXT NOT NULL DEFAULT '[]', published_at TEXT);
         """)
         self.db.commit()
 

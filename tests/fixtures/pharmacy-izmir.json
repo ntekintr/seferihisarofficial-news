@@ -1,0 +1,44 @@
+[
+  {
+    "Tarih": "2026-10-22T08:00:00",
+    "LokasyonY": "27.195370",
+    "LokasyonX": "38.422834",
+    "BolgeAciklama": "24:00DEN SONRA- ÇAMDİBİ",
+    "Adi": "ECZANE EVREN ECZANESİ",
+    "Telefon": "02324691762",
+    "Adres": "SERİNTEPE MH. 4321 SK. NO:2/C",
+    "BolgeId": 4,
+    "Bolge": "ALTINDAĞ",
+    "UzaklikMetre": null,
+    "EczaneId": -1,
+    "IlceId": 0
+  },
+  {
+    "Tarih": "2026-10-22T08:00:00",
+    "LokasyonY": "26.838481",
+    "LokasyonX": "38.193899",
+    "BolgeAciklama": "",
+    "Adi": "CANSU ECZANESİ",
+    "Telefon": "02327434331",
+    "Adres": "HIDIRLIK MH. KURTULUŞ CD. NO:2",
+    "BolgeId": 71,
+    "Bolge": "SEFERİHİSAR",
+    "UzaklikMetre": null,
+    "EczaneId": -1,
+    "IlceId": 0
+  },
+  {
+    "Tarih": "2026-10-22T08:00:00",
+    "LokasyonY": "26.785834",
+    "LokasyonX": "38.192633",
+    "BolgeAciklama": "",
+    "Adi": "SIĞACIK ECZANESİ",
+    "Telefon": "02327432233",
+    "Adres": "SIĞACIK MAH. AKKUM CAD. NO:9/C",
+    "BolgeId": 112,
+    "Bolge": "SEFERİHİSAR-SIĞACIK BÖLGESİ",
+    "UzaklikMetre": null,
+    "EczaneId": -1,
+    "IlceId": 0
+  }
+]
