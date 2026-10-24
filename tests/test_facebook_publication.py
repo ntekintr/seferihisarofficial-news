@@ -133,7 +133,7 @@ def test_unpublished_instagram_story_waits_for_next_run(store,at):
 
 def test_daily_budget_counts_uncertain_attempts(store,at):
     assets,key=setup_content(store,at);adapter=api()
-    for i in range(2):
+    for i in range(3):
         with store.db:
             store.db.execute('INSERT INTO facebook_deliveries VALUES(?,?,?,?,?,?,?,?,NULL)',
                 (digest(f'claim-{i}'),digest(f'other-{i}'),adapter.page,'feed','uncertain',at.isoformat(),at.isoformat(),'[]'))

@@ -47,7 +47,9 @@ def prepare(store: Store, at: datetime, *, refresh_digests: bool = True):
             if post["status"] not in ("prepared", "blocked_source"):
                 continue
             references = [current.get(post["item_id"])] if post.get("item_id") else [by_url.get(url) for url in post["source_urls"]]
-            valid = bool(references) and all(item and source_current(item, at, failed) for item in references)
+            from .publication_policy import post_reason
+            valid = (bool(references) and all(item and source_current(item, at, failed) for item in references)
+                     and post_reason(store, post, at) is None)
             store.db.execute("UPDATE posts SET status=? WHERE id=?", ("prepared" if valid else "blocked_source", post["id"]))
     for item in store.items():
         from .quality import news_editorial_reason
@@ -111,11 +113,16 @@ def prepare(store: Store, at: datetime, *, refresh_digests: bool = True):
             if post['status'] in ('prepared', 'blocked_source') and series_expired(post, at):
                 store.db.execute("UPDATE posts SET status='expired' WHERE id=?", (post['id'],))
     from .story_identity import repeat
+    from .publication_policy import duplicate_reason, post_reason
     for post in store.posts():
-        if post['status'] == 'prepared' and repeat(store, post):
+        if post['status'] != 'prepared':
+            continue
+        reason = (post_reason(store, post, at) or duplicate_reason(store, post)
+                  or ('duplicate_story' if repeat(store, post) else None))
+        if reason:
             with store.db:
                 store.db.execute("UPDATE posts SET status='blocked_source' WHERE id=? AND status='prepared'", (post['id'],))
-            store.withhold(post['id'], 'duplicate_story', at.isoformat())
+            store.withhold(post['id'], reason, at.isoformat())
 
 
 def queue_item(store: Store, item: dict, kind: str, due: datetime, at: datetime):

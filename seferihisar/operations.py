@@ -7,13 +7,15 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from .domain import TZ, parse_date
+from .publication_policy import NEWS_DAILY_LIMIT
 
 STATUSES = frozenset(('complete', 'published', 'already_published', 'outside_window',
     'daily_limit', 'empty', 'disabled', 'rate_limited', 'media_missing',
     'media_not_deployed', 'already_claimed', 'awaiting_resolution', 'uncertain',
     'story_pending', 'blocked_source', 'account_mismatch', 'check_failed',
     'visual_review_missing', 'visual_review_stale', 'visual_review_unavailable',
-    'editorial_review_required', 'editorial_copy_stale', 'event_metadata_stale'))
+    'editorial_review_required', 'editorial_copy_stale', 'event_metadata_stale',
+    'duplicate_story', 'stale_parent', 'owner_excluded'))
 RESULT_FIELDS = frozenset(('status', 'feed', 'story', 'facebook'))
 FAILURES = frozenset(('media_missing', 'media_not_deployed', 'awaiting_resolution',
     'uncertain', 'account_mismatch', 'check_failed',
@@ -103,7 +105,8 @@ def summary(store, at):
                   'facebook_story': sum(r['format'] == 'story' and today(r['claimed_at']) for r in deliveries)},
         'unresolved': {'instagram': sum(p['status'] != 'published' for p in claims),
                        'facebook': sum(r['status'] != 'published' for r in deliveries)},
-        'daily_feed_limit': 2,
+        'daily_feed_limit': NEWS_DAILY_LIMIT,
+        'daily_story_limit': NEWS_DAILY_LIMIT, 'service_stories_extra': True,
         'illustrations': {'utc_day': utc_day.isoformat(), 'attempts': attempts, 'limit': DAILY_ATTEMPTS,
             'remaining': max(0, DAILY_ATTEMPTS - attempts),
             'reset_at': datetime.combine(utc_day + timedelta(days=1), datetime.min.time(), timezone.utc).astimezone(TZ).isoformat()}}

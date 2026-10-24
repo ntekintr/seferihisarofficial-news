@@ -26,8 +26,8 @@ hazırlıkları normal araştırmada yeniler; yayınlanmış iddialar yeniden ya
 
 Yayın işi yalnız başarılı ve güvenilir ana dal araştırmasından sonra çalışır.
 Yazmadan hemen önce kaynak/geçerlilik, metin sürümü, canlı Pages manifesti ve
-JPEG dosyaları tekrar eşleştirilir. Günde iki haber ve ilk eşleşen story,
-Facebook teslimleri ve ayrı günlük hava story sınırları korunur. Belirsiz Meta
+JPEG dosyaları tekrar eşleştirilir. 24 Ekim kullanıcı kararıyla günde en fazla üç haber ve üç ilk eşleşen story,
+Facebook teslimleri ve ayrı günlük hava/eczane story sınırları korunur. Belirsiz Meta
 yanıtı tekrar gönderilmez. Yeşil hazırlık işi gerçek teslim kanıtı değildir.
 
 ## Performanstan öğrenme

@@ -52,6 +52,6 @@ bağlarından fotoğraf/konu görseli/bilgi kartı sayılarını verir. Takvimin
 slaydında resim bulunması kapakta resim varmış gibi sayılmaz. Ham resim adresleri,
 özel metrikler veya erişim anahtarları bu özete girmez. Bu sayı Meta teslimi değildir.
 
-Günlük iki haber ve eşleşen story, bağımsız günlük hava, mevcut ücret/kota ve
+Günlük üç haber ve üç eşleşen story, bağımsız günlük hava/eczane, mevcut ücret/kota ve
 belirsiz yayını tekrarlamama sınırları aynı kalır. Geçmiş SQL satırları ve canlı
 JPEG byte özetleri dağıtım sonrası tarihli karşılaştırmayla ayrıca doğrulanır.

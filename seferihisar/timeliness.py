@@ -96,6 +96,9 @@ def service_validity_reason(item: dict, at: datetime) -> str | None:
 
 def publication_reason(item: dict, at: datetime) -> str | None:
     """Recheck stored items for every destination, including legacy queues."""
+    from .publication_policy import owner_exclusion
+    if reason := owner_exclusion(item):
+        return reason
     if reason := news_quality_reason(item):
         return reason
     if reason := service_validity_reason(item, at):
