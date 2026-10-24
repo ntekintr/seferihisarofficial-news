@@ -422,7 +422,7 @@ def ai_priority(item: dict, session=None) -> int | None:
 
 def headline(item: dict, kind: str) -> str:
     if item['category']=='outage' and item['kind']=='event':
-        return item['title']
+        return ('İptal duyurusu: ' if kind == 'cancellation' else '') + item['title']
     if item["kind"] == "event" and kind == "announcement":
         return event_title(item)
     prefix = {"reminder_3d": "3 gün kaldı", "reminder_day": "Bugün yakınınızda",

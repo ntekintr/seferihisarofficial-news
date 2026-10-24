@@ -1,8 +1,22 @@
 # Sistem rehberi ve öğrenilenler
 
-Son gözden geçirme: **21 Ekim 2026**. Bu dosya kod haritası ve kalıcı çalışma
+Son gözden geçirme: **24 Ekim 2026**. Bu dosya kod haritası ve kalıcı çalışma
 notudur. Anlık sağlık/teslim kanıtı zaman damgalı çıktılardan alınır; burada bir
 kez başarılı olması sonraki ay kesintisiz çalışacağı anlamına gelmez.
+
+### 24 Ekim: yayın sayısı ve aynı kartın ikinci revizyonu
+
+Kullanıcı iki sayfa için üç haber gönderisi ve üç haber story'si istedi; hava ve
+eczane story'lerinin buna ek olduğunu ayrıca seçti. Haber tavanı her giriş
+noktasında, başarılı/devam eden/belirsiz iddiaları sayarak uygulanır. Kaynakta
+metadata değişimi aynı kesinti kartını revizyon 2 olarak yeniden kuyruklayabilir:
+yayımlanmış kartın değişmez metin alanları ve story JPEG özeti de karşılaştırılır.
+Yeni bir içerik kimliği veya revizyon tek başına yeni haber sayılmaz. Gerçek tarih,
+mekân ve iptal değişikliği görünür kartta farklıysa uygundur. Her parent'ın yalnız
+ilk story'si, aynı gün ve son bir saat içinde tamamlanır; geçmiş parent yenilenmez.
+Canan Tutal ile Hatha Yoga yeni gönderi/story/seçkilerden kullanıcı kararıyla
+çıkarılır. [Güncel yayın kuralları](automatic-publication.md). Geçmiş iddialar
+değişmez; bu kod notu dağıtım veya doğal yeni teslim kanıtı değildir.
 
 ### 22 Ekim: günlük nöbetçi eczane listesi
 
@@ -92,7 +106,7 @@ o yanıt penceresinde uygun kayıt yok; `partial`: bazı ayrıntılar okunamadı
 - Hava/kesinti ve süreli uyarılarda doğrulanmış geçerlilik bitişi gerekir.
   Göreli/çelişkili/eksik tarih kendiliğinden tamamlanmaz.
 - Haber pencereleri Türkiye saati 08:30, 12:30, 15:00, 18:30 ve 21:00; her biri
-  bir saat. Günde en fazla iki haber gönderisi ve her birine ilk eşleşen story;
+  bir saat. Günde en fazla üç haber gönderisi ve üç ilk eşleşen story;
   farklı içerikler için 45 dakika aralığı korunur. Kaçırılan pencere için toplu
   eski yayın veya günlük sınır artışı yoktur.
 - Hava story'si bağımsız, günde bir IG story'dir; Facebook hava yayını yoktur.
@@ -220,7 +234,7 @@ kapsamdır; Eczacı Odası 403 nedeniyle etkinleştirilmedi. Kaynak tarihi ve
 
 [Benzer yaş ölçümü ve yerel seriler](cohort-local-series.md), 24–30 saat/7 gün
 gruplarını, ham ölçümsüz kaba kayıtları, tamamlanmamış reklam ayrımını ve mevcut
-iki gönderi bütçesindeki cuma hafta sonu/salı ücretsiz etkinlik seçkilerini açıklar.
+üç haber gönderisi bütçesindeki cuma hafta sonu/salı ücretsiz etkinlik seçkilerini açıklar.
 
 [İşletim denetimi ve yedek](production-resilience.md): ayrı sağlık işi, kontrollü
 GitHub uyarıları, GET ile teslim gözlemi ve izole geri yükleme. Bu sürümün canlı

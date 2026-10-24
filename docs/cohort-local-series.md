@@ -38,7 +38,7 @@ açıklamada” slaytı eklenmez. Kaynak adı ve tam adresi açıklamanın korun
 son alanına ayrılır. Her ayrıntı slaytı yayın öncesinde güncel etkinlikle tekrar
 eşleştirilir; ücretsizliği değişen kayıt ücretsiz seçkiye giremez.
 
-Bu seriler mevcut günde iki gönderi sınırını paylaşır. Kamu uyarıları ve
+Bu seriler 24 Ekim kullanıcı kararıyla günde üç haber gönderisi sınırını paylaşır. Kamu uyarıları ve
 düzeltmeler önce gelir; dolu günlük bütçe artırılmaz. Uygun içerik veya boş
 slot yoksa o hafta seri yayımlanmayabilir. Yayınlanmamış seçki hedefinden 25 saat
 sonra sona erer. Başlamış/yayımlanmış/belirsiz eski kartlar değiştirilmez.

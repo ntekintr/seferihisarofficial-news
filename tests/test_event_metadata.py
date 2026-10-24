@@ -22,6 +22,13 @@ def yoga():
     return json.loads(Path('tests/fixtures/event-yoga-metadata.json').read_text(encoding='utf-8'))
 
 
+@pytest.fixture
+def allowed_yoga(yoga):
+    # Keep the raw rejected-class fixture for role parsing; preparation tests
+    # exercise another class so the later owner exclusion is not their subject.
+    return {**yoga, 'title': 'ÖRNEK · Başka bir eğitmenle Hatha Yoga'}
+
+
 def test_actual_raw_yoga_roles_are_not_presented_as_verified_organizer(yoga):
     original = deepcopy(yoga)
     value = caption(yoga, yoga['title'])
@@ -100,7 +107,8 @@ def test_old_bad_draft_is_rejected_before_media_fetch_even_with_new_visual_hash(
     client.get.assert_not_called()
 
 
-def test_normal_preparation_repairs_pending_drafts_but_freezes_all_claims(store, yoga):
+def test_normal_preparation_repairs_pending_drafts_but_freezes_all_claims(store, allowed_yoga):
+    yoga = allowed_yoga
     at = parse_date('2026-10-18T08:30:00+03:00')
     store.upsert(yoga, at.isoformat()); item = store.items()[0]
     queue_item(store, item, 'announcement', at, at)
@@ -123,7 +131,8 @@ def test_normal_preparation_repairs_pending_drafts_but_freezes_all_claims(store,
     assert 'Organizatör: Bubilet' not in pending['caption'] and 'İzmir İzmir' not in pending['caption']
 
 
-def test_bad_calendar_slide_cannot_be_approved_from_its_own_hash(store, yoga):
+def test_bad_calendar_slide_cannot_be_approved_from_its_own_hash(store, allowed_yoga):
+    yoga = allowed_yoga
     at = parse_date('2026-10-18T08:30:00+03:00')
     store.upsert(yoga, at.isoformat()); item = store.items()[0]
     prepare(store, at)
@@ -133,7 +142,8 @@ def test_bad_calendar_slide_cannot_be_approved_from_its_own_hash(store, yoga):
     assert publication_copy_reason(digest, {item['id']: item}) == 'event_metadata_stale'
 
 
-def test_calendar_allows_distinct_verified_sessions_sharing_one_ticket_page(store, yoga):
+def test_calendar_allows_distinct_verified_sessions_sharing_one_ticket_page(store, allowed_yoga):
+    yoga = allowed_yoga
     at = parse_date('2026-10-18T08:30:00+03:00')
     store.upsert(yoga, at.isoformat())
     other = {**yoga, 'identity': yoga['identity']+'#next-session',
@@ -162,7 +172,8 @@ def test_export_holds_old_bad_event_metadata_instead_of_rendering_a_ready_card(s
 
 
 @pytest.mark.parametrize('destination', ['feed', 'story', 'facebook'])
-def test_destination_makes_no_meta_write_for_stale_deployed_metadata(store, yoga, destination):
+def test_destination_makes_no_meta_write_for_stale_deployed_metadata(store, allowed_yoga, destination):
+    yoga = allowed_yoga
     at = parse_date('2026-10-18T08:30:00+03:00')
     store.upsert(yoga, at.isoformat()); item = store.items()[0]
     queue_item(store, item, 'reminder_day', at, at); post = store.posts()[0]
@@ -184,7 +195,9 @@ def test_destination_makes_no_meta_write_for_stale_deployed_metadata(store, yoga
               if destination == 'facebook' else
               publish_one(store, at, 'https://example.org/', paths, story=destination=='story',
                           adapter=api, require_visual_review=True))
-    assert result['status'] == ('event_metadata_stale' if destination=='facebook' else 'visual_review_missing')
+    expected = {'facebook': 'event_metadata_stale', 'feed': 'visual_review_missing',
+                'story': 'empty'}  # No confirmed parent: the earlier pairing gate holds.
+    assert result['status'] == expected[destination]
     api.session.head.assert_not_called(); api.session.get.assert_not_called()
     api.container.assert_not_called(); api.publish.assert_not_called()
     api.upload.assert_not_called(); api.call.assert_not_called()

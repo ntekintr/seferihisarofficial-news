@@ -20,7 +20,7 @@ anlamına gelmez. Uygun fotoğraf bulunmazsa logolu metin kartı kullanılabilir
 normal bekleme sayılır. Eksik/dağıtılmamış medya, yanlış hesap, belirsiz yayın
 ve çözümlenmesi gereken iddia komutu başarısız bitirir. Yayın workflow'undaki
 `always()` adımı bu sonucu ve mevcut iddiaları yine kalıcı duruma yazar. Otomatik
-yeniden gönderme eklenmez; yayın pencereleri ve günlük iki gönderi sınırı değişmez.
+yeniden gönderme eklenmez; yayın pencereleri ve 24 Ekim'de üçe yükseltilen günlük haber gönderisi sınırı korunur.
 
 Mevcut bağlantı testi Türkiye saati **08:10** için günlük GitHub zamanlaması
 aldı. Modül/workflow değişikliği ana dala geldiğinde de bir kez çalışır.

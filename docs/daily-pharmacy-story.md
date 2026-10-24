@@ -2,7 +2,7 @@
 
 Kullanıcı her iki Instagram hesabı için Türkiye saati 17:00'da günlük nöbetçi
 eczane listesi istedi. Seferihisar ilçe kapsamıdır; Isparta yalnız merkez ve
-merkez mahalleleridir. Haber/etkinlik akışındaki iki gönderi tavanı ve günlük
+merkez mahalleleridir. Haber/etkinlik akışındaki üç gönderi/üç haber story'si tavanı ve günlük
 hava story kaydı değiştirilmez. Facebook için yeni bir eczane yayını eklenmez.
 
 ## Kaynak ve tarih

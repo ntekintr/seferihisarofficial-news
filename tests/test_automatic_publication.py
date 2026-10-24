@@ -76,9 +76,10 @@ def test_uncertain_feed_consumes_slot_and_is_never_resent(store,status):
     adapter.container.assert_not_called()
 
 
-def test_two_daily_feed_claims_including_uncertainty_stop_new_publication(store):
-    at=parse_date('2026-10-10T15:10:00+03:00');assets=news(store,at,'a');assets.update(news(store,at,'b'));assets.update(news(store,at,'c'))
-    for post,stamp,status in zip(store.posts()[:2],['08:35','12:35'],['published','uncertain']):
+def test_three_daily_feed_claims_including_uncertainty_stop_new_publication(store):
+    at=parse_date('2026-10-10T18:35:00+03:00');assets={}
+    for name in 'abcd': assets.update(news(store,at,name))
+    for post,stamp,status in zip(store.posts()[:3],['08:35','12:35','15:10'],['published','uncertain','publishing']):
         claim(store,post,parse_date('2026-10-10T'+stamp+':00+03:00'),status)
     adapter=api()
     assert publish_automatic(store,at,'https://example.org/',assets,adapter)['status']=='daily_limit'

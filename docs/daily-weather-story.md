@@ -1,7 +1,7 @@
 # Her sabah Seferihisar hava durumu
 
 Instagram için Türkiye saati **08:00** hedefiyle günde bir bağımsız story.
-Haber akışındaki iki gönderi ve onlara eşleşen story bütçesi değişmez.
+24 Ekim kullanıcı kararıyla haber akışında üç gönderi ve üç eşleşen story tavanı vardır; hava story'si bu bütçeye dahil değildir.
 Bu istek Instagram içindir; Facebook'a yeni bir hava durumu yayını eklenmez.
 
 Kaynak MGM İzmir Bölgesel Tahmin ve Uyarı Merkezi'nin açık ilçe tablosudur:

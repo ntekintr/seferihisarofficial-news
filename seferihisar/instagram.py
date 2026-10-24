@@ -16,6 +16,7 @@ import requests
 from .domain import digest, parse_date
 from .media_caption import generated_image_caption
 from .store import Store
+from .publication_policy import NEWS_DAILY_LIMIT, daily_limit_reason, duplicate_reason, post_reason
 
 
 class Instagram:
@@ -84,7 +85,7 @@ def publish_one(store: Store, at: datetime, site_url: str, assets: dict[str, dic
     prepared = sorted((p for p in store.posts() if p["status"] == "prepared" and
                        (parse_date(p["due_at"]) <= at or (requested and target_id == p['id'] and (not story or paired_story)))
                        and (p.get("publish_format") == "story") == story), key=lambda p: p["due_at"])
-    # Automatic announcements/reminders must not consume both daily feed slots
+    # Automatic announcements/reminders must not consume the daily feed slots
     # for the same event. Explicit corrections and cancellation notices remain eligible.
     if exclude_event_ids and not story:
         prepared = [p for p in prepared if p.get('item_id') not in exclude_event_ids
@@ -95,6 +96,11 @@ def publish_one(store: Store, at: datetime, site_url: str, assets: dict[str, dic
         from .selection import prioritize
         prepared = prioritize(store, prepared, at)
     post = prepared[0] if prepared else None
+    if post:
+        if reason := daily_limit_reason(store, at, story=story):
+            return {'status': reason}
+        if reason := post_reason(store, post, at) or duplicate_reason(store, post):
+            return {'status': reason}
     recent = store.rows("SELECT payload FROM posts WHERE status IN ('publishing','published','uncertain')")
     import json
     recent_posts = [json.loads(row['payload']) for row in recent]
@@ -181,7 +187,7 @@ def publish_requested(store: Store, at: datetime, site_url: str, assets: dict[st
         today = [p for p in store.posts() if not p.get('publish_format') and
                  p['status'] in ('published', 'publishing', 'uncertain') and p.get('published_at') and
                  parse_date(p['published_at']).astimezone(TZ).date() == at.date()]
-        if len(today) >= 2:
+        if len(today) >= NEWS_DAILY_LIMIT:
             return {'status': 'daily_limit'}
         feed = publish_one(store, at, site_url, assets, adapter=api, checkpoint=checkpoint,
                            target_id=target_id, requested=True, require_visual_review=require_visual_review)
@@ -199,7 +205,7 @@ def publish_requested(store: Store, at: datetime, site_url: str, assets: dict[st
 
 
 def publish_automatic(store: Store, at: datetime, site_url: str, assets: dict[str, dict], adapter=None, checkpoint=None, *, require_visual_review: bool = False) -> dict:
-    """At most two feeds per Turkish day; each gets one matching story card.
+    """At most three feeds per Turkish day; each gets one matching story card.
 
     A completed/uncertain claim consumes its slot and daily budget, including
     across runner restarts. Delays beyond one hour never dump the old queue.
@@ -224,7 +230,7 @@ def publish_automatic(store: Store, at: datetime, site_url: str, assets: dict[st
         feed = {'status':'already_published','post_id':parent['id']}
     else:
         today = [p for p in claims if parse_date(p['published_at']).astimezone(TZ).date() == at.date()]
-        if len(today) >= 2:
+        if len(today) >= NEWS_DAILY_LIMIT:
             return {'status':'daily_limit'}
         covered = {p['item_id'] for p in today if p.get('item_id')}
         feed = publish_one(store, at, site_url, assets, adapter=api, checkpoint=checkpoint, exclude_event_ids=covered, editorial=True, require_visual_review=require_visual_review)
@@ -240,7 +246,7 @@ def publish_automatic(store: Store, at: datetime, site_url: str, assets: dict[st
 
 
 def prepare_story_jobs(store: Store, assets: dict[str, dict]):
-    """Series frames are independently persisted; each dispatch sends one frame."""
+    """Persist only the first matching news card; never build extra story frames."""
     import json
     parents = [p for p in store.posts() if not p.get("publish_format") and p["status"] in ("prepared", "published")]
     valid_parents = {p["id"] for p in parents}
@@ -249,7 +255,7 @@ def prepare_story_jobs(store: Store, assets: dict[str, dict]):
             if child.get("publish_format") == "story" and child["status"] in ("prepared", "blocked_source") and child.get("parent_post_id") not in valid_parents:
                 store.db.execute("UPDATE posts SET status='superseded' WHERE id=?", (child["id"],))
     for parent in parents:
-        for index, path in enumerate(assets.get(parent["id"], {}).get("story", [])):
+        for index, path in enumerate(assets.get(parent["id"], {}).get("story", [])[:1]):
             child = {**parent, "id": digest(parent["id"] + f":story:{index}"), "publish_format": "story",
                      "parent_post_id": parent["id"], "story_asset": path, "story_index": index,
                      "title": parent["title"] + f" · Story {index+1}"}

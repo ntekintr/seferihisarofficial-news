@@ -51,7 +51,8 @@ def test_explicit_choice_cannot_bypass_safety_or_choose_another_item(store,monke
     assets,target=selected(store); adapter=api()
     if reason=='daily_limit':
         assets.update(news(store,AT,'c'))
-        for p in [p for p in store.posts() if p['id']!=target][:2]:
+        assets.update(news(store,AT,'d'))
+        for p in [p for p in store.posts() if p['id']!=target][:3]:
             claim(store,p,AT-timedelta(hours=2),'uncertain')
     elif reason=='failed_source':
         with store.db: store.db.execute('INSERT INTO runs(started_at,finished_at,errors) VALUES(?,?,?)',

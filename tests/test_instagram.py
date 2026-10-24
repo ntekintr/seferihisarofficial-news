@@ -73,7 +73,7 @@ def test_media_not_yet_deployed_prevents_meta_call(store,event,at):
     api.container.assert_not_called()
 
 
-def test_story_series_each_frame_has_persistent_identity(store,event,at):
+def test_only_first_matching_story_has_persistent_identity(store,event,at):
     store.upsert(event,at.isoformat())
     prepare(store,at)
     assets=assets_for(store)
@@ -82,7 +82,15 @@ def test_story_series_each_frame_has_persistent_identity(store,event,at):
     prepare_story_jobs(store,assets)
     assert initial==[p['id'] for p in store.posts() if p.get('publish_format')=='story']
     api=adapter()
-    result=publish_one(store,at,'https://example.org/',assets,story=True,adapter=api)
+    from seferihisar.domain import parse_date
+    parent=next(p for p in store.posts() if p['id'] in assets and not p.get('publish_format') and parse_date(p['due_at'])<=at)
+    # A news story must accompany a confirmed recent feed, never an unpublished one.
+    import json
+    with store.db:
+        store.db.execute("UPDATE posts SET status='published',payload=? WHERE id=?",
+                         (json.dumps({**parent,'published_at':at.isoformat()}),parent['id']))
+    result=publish_one(store,at,'https://example.org/',assets,story=True,adapter=api,
+                       target_id=next(p['id'] for p in store.posts() if p.get('parent_post_id')==parent['id']),paired_story=True)
     assert result['status']=='published'
     args=api.container.call_args.args
     assert len(args[0])==1 and args[2] is True

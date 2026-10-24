@@ -17,6 +17,7 @@ from .domain import TZ, digest, parse_date
 from .schedule import blocked_sources, source_current
 from .security import public_url
 from .store import Store
+from .publication_policy import NEWS_DAILY_LIMIT, owner_exclusion
 
 
 class Facebook:
@@ -68,6 +69,8 @@ class Facebook:
 
 
 def current_post(store, post, at):
+    if owner_exclusion(post):
+        return False
     items = store.items()
     by_id = {i['id']: i for i in items}
     by_url = {url: i for i in items for url in i.get('sources', []) + [i['url']]}
@@ -89,7 +92,7 @@ def deliver(store, post, at, site_url, paths, story, api, checkpoint, *, require
         return 'already_published' if previous[0]['status'] == 'published' else 'awaiting_resolution'
     # Includes uncertain attempts; a restart cannot restore the daily budget.
     claims = store.rows('SELECT claimed_at FROM facebook_deliveries WHERE page_id=? AND format=?', (api.page, kind))
-    if sum(parse_date(c['claimed_at']).astimezone(TZ).date() == at.date() for c in claims) >= 2:
+    if sum(parse_date(c['claimed_at']).astimezone(TZ).date() == at.date() for c in claims) >= NEWS_DAILY_LIMIT:
         return 'daily_limit'
     parsed = urlsplit(site_url)
     if not public_url(site_url) or parsed.query or parsed.fragment:

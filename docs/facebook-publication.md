@@ -28,7 +28,7 @@ same Turkish day can be mirrored. Revalidate the current source, item revision,
 news age and event end before sending. This never republishes Instagram content.
 The existing caption and all feed slides (up to ten) become one Facebook photo
 post. The matching first story card is eligible only after its Instagram story
-and Facebook feed are confirmed published. Maximum two feeds and two stories
+and Facebook feed are confirmed published. Maximum three feeds and three stories
 per Page per Turkish day, including uncertain attempts.
 
 Media must already be deployed as public HTTPS JPEGs. All photos are uploaded

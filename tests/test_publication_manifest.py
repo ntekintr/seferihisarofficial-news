@@ -35,6 +35,10 @@ def test_manifest_keeps_oldest_due_media_after_large_history(
                 'category': 'public', 'source_urls': [event['url']],
                 'slides': [{'title': title, 'body': slide_body(event)}],
                 **fields}
+        if label == 'previously-published':
+            # A different historical fact, not an identical card that the
+            # cross-revision publication guard must now hold.
+            post['slides'] = [{'title': 'Önceki yerel duyuru', 'body': 'Önceki güne ait farklı bir kamu haberi.'}]
         store.queue(post)
         with store.db:
             store.db.execute('UPDATE posts SET status=? WHERE id=?', (status, post['id']))
