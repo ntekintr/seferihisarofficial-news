@@ -7,7 +7,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from .domain import TZ, parse_date
-from .publication_policy import NEWS_DAILY_LIMIT
+from .publication_policy import NEWS_DAILY_LIMIT, news_windows, evening_summary
 
 STATUSES = frozenset(('complete', 'published', 'already_published', 'outside_window',
     'daily_limit', 'empty', 'disabled', 'rate_limited', 'media_missing',
@@ -74,8 +74,8 @@ def summary(store, at):
     deliveries = store.rows('SELECT format,status,claimed_at FROM facebook_deliveries')
     today_claims = [p for p in claims if today(p.get('published_at'))]
     checks = [{**r, 'result': json.loads(r['result'])} for r in store.rows('SELECT checked_at,mode,result FROM publication_checks ORDER BY id DESC LIMIT 10')]
-    slots = [datetime.combine(at.date() + timedelta(days=day), slot, TZ) for day in (0, 1) for slot in SLOTS]
-    window = next(s for s in slots if at < s + timedelta(hours=1))
+    windows = [window for day in (0, 1) for window in news_windows(at.date() + timedelta(days=day), SLOTS)]
+    window, window_end, _ = next(w for w in windows if at < w[1])
     utc_day = at.astimezone(timezone.utc).date()
     budget = store.rows('SELECT attempts FROM illustration_days WHERE day=?', (utc_day.isoformat(),))
     from .illustrations import DAILY_ATTEMPTS
@@ -95,8 +95,8 @@ def summary(store, at):
         "SELECT id FROM withheld WHERE reason='unrenderable_card_text'"))
     return {'as_of': at.isoformat(), 'checks': checks,
         'editorial_holds': editorial,
-        'window_start': window.isoformat(), 'window_end': (window + timedelta(hours=1)).isoformat(),
-        'window_open': window <= at < window + timedelta(hours=1),
+        'window_start': window.isoformat(), 'window_end': window_end.isoformat(),
+        'window_open': window <= at < window_end,
         'queue': {status: sum(p['status'] == status for p in parents) for status in ('prepared', 'blocked_source')}
             | {'due': sum(p['status'] == 'prepared' and parse_date(p['due_at']) <= at for p in parents)},
         'today': {'instagram_feed': sum(not p.get('publish_format') for p in today_claims),
@@ -107,6 +107,7 @@ def summary(store, at):
                        'facebook': sum(r['status'] != 'published' for r in deliveries)},
         'daily_feed_limit': NEWS_DAILY_LIMIT,
         'daily_story_limit': NEWS_DAILY_LIMIT, 'service_stories_extra': True,
+        'evening_news': evening_summary(at),
         'illustrations': {'utc_day': utc_day.isoformat(), 'attempts': attempts, 'limit': DAILY_ATTEMPTS,
             'remaining': max(0, DAILY_ATTEMPTS - attempts),
             'reset_at': datetime.combine(utc_day + timedelta(days=1), datetime.min.time(), timezone.utc).astimezone(TZ).isoformat()}}

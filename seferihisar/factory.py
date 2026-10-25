@@ -1,7 +1,7 @@
 """Read-only production-stage status, not an assertion that every fact is true."""
 from .learning import profile
 from .source_discovery import summary as discovery_summary
-from .publication_policy import NEWS_DAILY_LIMIT
+from .publication_policy import NEWS_DAILY_LIMIT, evening_summary
 
 
 def summary(store, at):
@@ -17,6 +17,7 @@ def summary(store, at):
             'learning': profile(store, at), 'source_discovery': discovery_summary(store),
             'hashtag_target': 5, 'daily_news_feed_limit': NEWS_DAILY_LIMIT,
             'daily_news_story_limit': NEWS_DAILY_LIMIT,
+            'evening_news': evening_summary(at),
             'visual_policy': visual_summary(store),
             'delivery_audit': delivery_summary(store, at),
             'learning_cohorts': cohort_summary(store, at),

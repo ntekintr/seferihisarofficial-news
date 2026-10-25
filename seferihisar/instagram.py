@@ -16,7 +16,8 @@ import requests
 from .domain import digest, parse_date
 from .media_caption import generated_image_caption
 from .store import Store
-from .publication_policy import NEWS_DAILY_LIMIT, daily_limit_reason, duplicate_reason, post_reason
+from .publication_policy import (NEWS_DAILY_LIMIT, daily_limit_reason, duplicate_reason, post_reason,
+                                 day_claims, dispatch_window, evening_post, evening_window)
 
 
 class Instagram:
@@ -69,7 +70,7 @@ class Instagram:
         return value
 
 
-def publish_one(store: Store, at: datetime, site_url: str, assets: dict[str, dict], story: bool = False, adapter=None, checkpoint=None, *, target_id: str | None = None, paired_story: bool = False, exclude_event_ids: set[str] | None = None, editorial: bool = False, require_visual_review: bool = False, requested: bool = False) -> dict:
+def publish_one(store: Store, at: datetime, site_url: str, assets: dict[str, dict], story: bool = False, adapter=None, checkpoint=None, *, target_id: str | None = None, paired_story: bool = False, exclude_event_ids: set[str] | None = None, editorial: bool = False, require_visual_review: bool = False, requested: bool = False, evening_only: bool = False) -> dict:
     api = adapter or Instagram()
     if not api.enabled():
         return {"status": "disabled"}
@@ -92,12 +93,18 @@ def publish_one(store: Store, at: datetime, site_url: str, assets: dict[str, dic
                     or p['kind'] not in ('announcement', 'reminder_3d', 'reminder_day')]
     if target_id:
         prepared = [p for p in prepared if p['id'] == target_id]
+    if evening_only and not story:
+        prepared = [p for p in prepared if evening_post(store, p, at, bonus=False)]
+    if len(day_claims(store, at, story=story)) >= NEWS_DAILY_LIMIT:
+        prepared = [p for p in prepared if daily_limit_reason(store, at, p, story=story) is None]
+        if not prepared:
+            return {'status': 'daily_limit'}
     if editorial and not story:
         from .selection import prioritize
         prepared = prioritize(store, prepared, at)
     post = prepared[0] if prepared else None
     if post:
-        if reason := daily_limit_reason(store, at, story=story):
+        if reason := daily_limit_reason(store, at, post, story=story):
             return {'status': reason}
         if reason := post_reason(store, post, at) or duplicate_reason(store, post):
             return {'status': reason}
@@ -187,7 +194,7 @@ def publish_requested(store: Store, at: datetime, site_url: str, assets: dict[st
         today = [p for p in store.posts() if not p.get('publish_format') and
                  p['status'] in ('published', 'publishing', 'uncertain') and p.get('published_at') and
                  parse_date(p['published_at']).astimezone(TZ).date() == at.date()]
-        if len(today) >= NEWS_DAILY_LIMIT:
+        if daily_limit_reason(store, at, parent):
             return {'status': 'daily_limit'}
         feed = publish_one(store, at, site_url, assets, adapter=api, checkpoint=checkpoint,
                            target_id=target_id, requested=True, require_visual_review=require_visual_review)
@@ -205,7 +212,7 @@ def publish_requested(store: Store, at: datetime, site_url: str, assets: dict[st
 
 
 def publish_automatic(store: Store, at: datetime, site_url: str, assets: dict[str, dict], adapter=None, checkpoint=None, *, require_visual_review: bool = False) -> dict:
-    """At most three feeds per Turkish day; each gets one matching story card.
+    """Three regular feeds, with one bounded fresh-evening-news pair exception.
 
     A completed/uncertain claim consumes its slot and daily budget, including
     across runner restarts. Delays beyond one hour never dump the old queue.
@@ -216,27 +223,34 @@ def publish_automatic(store: Store, at: datetime, site_url: str, assets: dict[st
     if not api.enabled():
         return {'status':'disabled'}
     at = at.astimezone(TZ)
-    slots = [datetime.combine(at.date(), slot, TZ) for slot in SLOTS]
-    slot = next((s for s in reversed(slots) if s <= at < s + timedelta(hours=1)), None)
-    if slot is None:
+    window = dispatch_window(at, SLOTS)
+    if window is None:
         return {'status':'outside_window'}
+    slot, end, evening_only = window
     prepare(store, at, refresh_digests=False)
     claims = [p for p in store.posts() if not p.get('publish_format') and p['status'] in ('published','publishing','uncertain') and p.get('published_at')]
-    in_slot = [p for p in claims if slot <= parse_date(p['published_at']).astimezone(TZ) < slot + timedelta(hours=1)]
+    today = [p for p in claims if parse_date(p['published_at']).astimezone(TZ).date() == at.date()]
+    in_slot = [p for p in claims if slot <= parse_date(p['published_at']).astimezone(TZ) < end]
+    parent = None
     if in_slot:
-        parent = sorted(in_slot, key=lambda p:p['published_at'])[0]
+        parent = sorted(in_slot, key=lambda p:p['published_at'])[-1]
         if parent['status'] != 'published':
             return {'status':'awaiting_resolution'}
-        feed = {'status':'already_published','post_id':parent['id']}
-    else:
-        today = [p for p in claims if parse_date(p['published_at']).astimezone(TZ).date() == at.date()]
-        if len(today) >= NEWS_DAILY_LIMIT:
-            return {'status':'daily_limit'}
+        child = next((p for p in store.posts() if p['id'] == digest(parent['id'] + ':story:0')), None)
+        # A complete third pair must not permanently occupy the last evening
+        # window and hide a later fresh fourth. Cooldown is still checked below.
+        if (len(today) == NEWS_DAILY_LIMIT and evening_window(at)
+                and child and child['status'] == 'published'):
+            parent = None
+    if parent is None:
         covered = {p['item_id'] for p in today if p.get('item_id')}
-        feed = publish_one(store, at, site_url, assets, adapter=api, checkpoint=checkpoint, exclude_event_ids=covered, editorial=True, require_visual_review=require_visual_review)
+        feed = publish_one(store, at, site_url, assets, adapter=api, checkpoint=checkpoint, exclude_event_ids=covered,
+                           editorial=True, require_visual_review=require_visual_review, evening_only=evening_only)
         if feed['status'] != 'published':
             return {'status':feed['status']}
         parent = next(p for p in store.posts() if p['id'] == feed['post_id'])
+    else:
+        feed = {'status':'already_published','post_id':parent['id']}
     child_id = digest(parent['id'] + ':story:0')
     child = next((p for p in store.posts() if p['id'] == child_id), None)
     if child and child['status'] in ('published','publishing','uncertain'):

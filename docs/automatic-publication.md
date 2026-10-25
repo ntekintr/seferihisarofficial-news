@@ -2,7 +2,29 @@
 
 Yayın akışı, ana daldaki başarılı araştırma ve panel yayını tamamlanınca kontrol edilir. Araştırma akışı Instagram anahtarına erişmez ve paylaşım yapmaz. Ayrı yayın işi yalnız `main` kodunu çalıştırır ve `instagram-production` ortamına erişir.
 
-Türkiye saatine göre kontrol pencereleri: **08:30, 12:30, 15:00, 18:30, 21:00**. Her pencere en fazla bir saat sürer. GitHub gecikmesi nedeniyle bunlar kesin yayın dakikası garantisi değildir; pencere kaçırılırsa eski içerikler topluca yayımlanmaz.
+Türkiye saatine göre normal kontrol pencereleri: **08:30, 12:30, 15:00, 18:30, 21:00**. Her normal pencere en fazla bir saat sürer. Yeni akşam haberlerine özel **20:00–21:00 ve 22:00–23:30** pencereleri eklenir. GitHub gecikmesi nedeniyle bunlar kesin yayın dakikası garantisi değildir; pencere kaçırılırsa eski içerikler topluca yayımlanmaz.
+
+24 Ekim akşamı kullanıcı yeni bir haber 20:00, 21:00 veya 22:00 saatlerinde
+geldiğinde dördüncü gönderi ve eşleşen story'sine de izin verdi. Temel sınır üç
+olarak kalır. Yalnız kaynakta gerçekten aynı gün **20:00–22:59** arasında
+yayımlanmış, ilk kez o akşam görülmüş, ilk kaynak revizyonundaki normal haber
+dördüncü olabilir. Etkinlik, hatırlatma ve takvim seçkisi bu istisnayı kullanamaz.
+Yeni tarama zamanı veya düzeltilmiş yayın saati eski haberi yeni yapmaz. Hızlı
+düzeltilmiş revizyon 2 bir haber normal üçlük bütçeye uygun olabilir; kaynağın ilk
+yayın zamanı kesin korunamadığından ek dördüncü hakkına girmez.
+
+Yeni 20:00 ve 22:00 pencereleri üçlük bütçe dolmamışken de yalnız o akşamın yeni
+haberlerini işler. Son saatteki kaynak araştırmasının tamamlanabilmesi için
+23:30'a kadar sınırlı yayın payı vardır; **23:00 ve sonrasında yayımlanmış** yeni
+haber bu paya alınmaz. Uygun akşam haberi ilk görüldüğü turda zamanlanır; sonraki
+günün ilk penceresine sırf son normal saat geçti diye ertelenmez. Aynı 22:00
+penceresinin önceki üçüncü gönderisi tamamlandıysa, aradaki 45 dakika korunarak
+geç gelen dördüncü haber seçilebilir.
+
+Kesin tavan **dört haber gönderisi ve dört haber story'sidir**; başlamış ve
+belirsiz girişimler de sayılır. Dördüncü story yalnız aynı günkü gerçek dördüncü
+haber parent'ının ilk eşleşen kartıdır. İlk üç gönderiden birine başka kart eklemek
+dördüncü story hakkı değildir. Hava ve eczane akışları ayrı kalır.
 
 24 Ekim 2026 kullanıcı kararıyla sınır **günde en fazla üç haber gönderisi/carousel ve üç haber story'si**. Hava durumu ve nöbetçi eczane story'leri bu sayıya ek, kendi bağımsız günlük sınırlarıyla çalışır. Her haber gönderisinin yalnız ilk eşleşen story kartı gönderilir. Günlük sınır Türkiye gününe göre hesabın kayıtlı başarılı/devam eden/belirsiz girişimlerini sayar; manuel giriş noktası da bu sınırları aşamaz. Bir gönderi ve kendi story'si aynı pencerede paylaşılabilir; farklı içeriklerin 45 dakikalık aralık kontrolü korunur. Bu bir üst sınırdır; uygun olmayan içerikle doldurulmaz.
 

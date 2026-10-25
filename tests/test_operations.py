@@ -70,7 +70,8 @@ def test_summary_uses_turkish_publication_day_and_utc_illustration_day(store):
     assert result['window_start'] == '2026-10-15T08:30:00+03:00'
     assert result['window_open'] is False
     assert summary(store, parse_date('2026-10-15T08:50:00+03:00'))['window_open'] is True
-    assert summary(store, parse_date('2026-10-15T22:00:00+03:00'))['window_start'] == '2026-10-16T08:30:00+03:00'
+    assert summary(store, parse_date('2026-10-15T22:00:00+03:00'))['window_start'] == '2026-10-15T22:00:00+03:00'
+    assert summary(store, parse_date('2026-10-15T23:30:00+03:00'))['window_start'] == '2026-10-16T08:30:00+03:00'
     assert store.rows('SELECT * FROM posts') == before
 
 

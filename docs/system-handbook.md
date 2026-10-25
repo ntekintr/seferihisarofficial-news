@@ -4,6 +4,20 @@ Son gözden geçirme: **24 Ekim 2026**. Bu dosya kod haritası ve kalıcı çal�
 notudur. Anlık sağlık/teslim kanıtı zaman damgalı çıktılardan alınır; burada bir
 kez başarılı olması sonraki ay kesintisiz çalışacağı anlamına gelmez.
 
+### 24 Ekim akşamı: yeni habere dördüncü çift istisnası
+
+Kullanıcı 20:00–22:59 arasında yayımlanan yeni haber için üçlük sınır dolsa da
+dördüncü gönderi ve eşleşen ilk story'ye izin verdi. `publication_policy.py`
+normal üç, mutlak dört sınırını; aynı akşamki gerçek kaynak yayım zamanı,
+ilk görülme ve ilk revizyon gereğini uygular. Yeni 20:00/22:00 pencereleri yalnız
+akşam haberlerini işler; 22:00 penceresi son araştırmanın tamamlanması için en
+geç 23:30'da kapanır. Bu pay kaynakta 23:00 sonrası yayımlanmış haberi kapsamaz.
+Mevcut aynı pencerenin tamamlanmış üçüncü parent'ı daha sonra gelen dördüncüyü
+gizlememelidir; Instagram ve Facebook sıradaki eksik doğru parent'ı seçer.
+[Yayın sözleşmesi](automatic-publication.md) hızlı revizyonların neden ek hakka
+alınmadığını ve dördüncü story'nin yalnız dördüncü parent'a bağlılığını açıklar.
+Eski iddialar değişmez; çalışma anı ve gerçek doğal teslim ayrıca doğrulanır.
+
 ### 24 Ekim: yayın sayısı ve aynı kartın ikinci revizyonu
 
 Kullanıcı iki sayfa için üç haber gönderisi ve üç haber story'si istedi; hava ve
