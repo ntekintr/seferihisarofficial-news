@@ -82,8 +82,8 @@ def test_unproven_default_archival_related_or_private_images_are_rejected(change
     with pytest.raises(ValueError):candidate(body,final,NEWS,SOURCE)
 
 
-@pytest.mark.parametrize('size',[(100,100),(500,280),(800,1200),(2100,2000)])
-def test_tiny_portrait_and_oversized_sources_use_information_cards(size):
+@pytest.mark.parametrize('size',[(100,100),(500,280),(400,1200),(2100,2000)])
+def test_tiny_extreme_aspect_and_oversized_sources_are_rejected(size):
     with pytest.raises(ValueError):cleaned_photo(raw_photo(size))
 
 

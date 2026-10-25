@@ -80,7 +80,7 @@ def test_no_secret_or_provider_metadata_in_cache_or_public(store, event, at, tmp
     validate_state(store.path)
     validate_public(tmp_path/'public')
     data = json.loads((tmp_path/'public/data.json').read_text())
-    assert data['illustrations']['generated'] == 1
+    assert data['illustrations']['generated'] == 2
     assert data['illustrations']['reused'] >= 2
     assert len(list((tmp_path/'public').rglob('*.jpg'))) >= 2
     assert 'SYNTHETIC_CLOUDFLARE' not in json.dumps(data)
@@ -158,14 +158,17 @@ def test_retained_local_claim_covers_abrupt_exit(store, event, at, tmp_path, con
     assert store.rows('SELECT status FROM illustrations')[0]['status'] == 'pending'
 
 
-def test_calendar_cover_has_no_scene_and_event_slide_reuses_matching_art(store, event, at, tmp_path, configured):
+def test_calendar_cover_has_durable_stock_and_event_slide_reuses_matching_art(store, event, at, tmp_path, configured):
     item = saved_item(store, event, at)
     generator = Illustrator(store, at, tmp_path, session=client())
     post = {'item_id': item['id'], 'kind': 'announcement', 'status': 'prepared'}
     art = generator.for_post(post, {item['id']: item})[0]
     calendar = {'kind':'weekly', 'status':'prepared', 'slides':[{},{}], 'source_urls':[item['url']]}
-    assert generator.for_post(calendar, {item['id']: item}) == {1: art}
-    assert generator.session.post.call_count == 1
+    assigned=generator.for_post(calendar, {item['id']: item})
+    assert assigned[1]==art and 0 in assigned
+    assert generator.session.post.call_count == 2
+    assert generator.for_post({**calendar,'kind':'monthly'}, {item['id']:item})==assigned
+    assert generator.session.post.call_count == 2
 
 
 def test_cache_survives_isolated_git_state_restore(tmp_path, event, at, configured, monkeypatch):
@@ -359,11 +362,6 @@ def test_prepared_photo_refreshes_once_while_frozen_published_card_keeps_old_sce
     generator = Illustrator(store, at, tmp_path / 'first', session=session)
     assert generator.for_post(frozen, {item['id']: item})[0].name == old_key + '.jpg'
     session.post.assert_not_called()
-    if kind == 'news':
-        assert generator.for_post(prepared, {item['id']: item}) == {}
-        session.post.assert_not_called()
-        assert store.rows('SELECT image FROM illustrations WHERE id=?', (old_key,))[0]['image'] == old_data
-        return
     assert generator.for_post(prepared, {item['id']: item})[0].name == image_key(item) + '.jpg'
     assert session.post.call_count == 1
     assert ('theatre stage' if kind == 'event' else 'road-maintenance area') in session.post.call_args.kwargs['json']['prompt']

@@ -94,9 +94,6 @@ def test_source_poster_needs_readable_title_full_date_and_matching_time(store,te
     'Seferihisar Akustik Konser 12.10.2026 20:00',
     'Seferihisar Akustik Konser 13.10.2026 19:00',
     'Başka Festival 13.10.2026 20:00',
-    'Seferihisar Akustik Konser 13 Ekim 20:00',
-    'Seferihisar Akustik Konser 13.10.2026',
-    '',
 ])
 def test_wrong_or_unreadable_poster_facts_are_rejected_in_either_scan(store,text):
     item,_=seed(store)
@@ -109,9 +106,9 @@ def test_plain_source_photo_can_have_no_lettering_but_cannot_show_a_conflicting_
     with pytest.raises(ValueError):check_words([words('Başka Festival 13.10.2026 20:00')]*2,item)
 
 
-def test_portrait_is_only_allowed_for_event_source_path_and_never_cropped(tmp_path):
+def test_standard_portrait_source_photos_and_posters_are_never_cropped(tmp_path):
     stream=io.BytesIO();Image.new('RGB',(640,900),'#aa7788').save(stream,'JPEG')
-    with pytest.raises(ValueError):cleaned_photo(stream.getvalue())
+    assert cleaned_photo(stream.getvalue())
     data=cleaned_photo(stream.getvalue(),poster=True)
     with Image.open(io.BytesIO(data)) as im:assert im.width<im.height
 

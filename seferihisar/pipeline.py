@@ -13,7 +13,7 @@ from .collect import Fetcher, collect_source, network_error_kind
 from .domain import now, parse_date
 from .editor import ai_priority, verify
 from .render import render_post
-from .illustrations import Illustrator
+from .illustrations import Illustrator, CALENDAR_ITEM_ID
 from .media_caption import generated_image_caption
 from .schedule import prepare
 from .store import Store
@@ -183,7 +183,7 @@ def _export(store: Store, public_dir: Path, sources: list[dict], at: datetime, d
                         instagram_photos=instagram_photos,instagram_checks=instagram_checks)
     item_map = {i['id']: i for i in safe_items}
     photos.prune(set(item_map))
-    illustrator.prune(set(item_map))
+    illustrator.prune(set(item_map) | {CALENDAR_ITEM_ID})
     # Public output always rebuilt; removed/sensitive/superseded images cannot linger.
     shutil.rmtree(public_dir / "media", ignore_errors=True)
     from .selection import prioritize
@@ -249,7 +249,7 @@ def _export(store: Store, public_dir: Path, sources: list[dict], at: datetime, d
                 with store.db:
                     store.db.execute("UPDATE posts SET payload=? WHERE id=? AND status='prepared'",
                                      (json.dumps({k:v for k,v in post.items() if k not in ('status','container_id','media_id')}, ensure_ascii=False), post['id']))
-    illustrator.prune(set(item_map))
+    illustrator.prune(set(item_map) | {CALENDAR_ITEM_ID})
     from .schedule import blocked_sources, source_current
     failed = blocked_sources(store)
     public_items = [{**{k: v for k, v in i.items() if k in PUBLIC_ITEM_FIELDS or k in ("id", "revision", "first_seen", "last_seen")}, "source_current": source_current(i, at, failed)} for i in safe_items]

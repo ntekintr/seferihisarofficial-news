@@ -38,7 +38,11 @@
     "access": "robots",
     "max_pages": 8,
     "allow_missing_robots": true,
-    "transient_retries": 1
+    "transient_retries": 1,
+    "photo_identity_reader": "rss-html-v1",
+    "photo_article_selector": ".izbel-content",
+    "body_selector": ".izbel-content",
+    "photo_inline_selector": ".triple-slider .imageGallery1 img[src]"
   },
   {
     "id": "eshot",

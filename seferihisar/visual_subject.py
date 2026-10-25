@@ -6,14 +6,11 @@ def subject(item: dict) -> str | None:
     from .owner_curated import matches, SUBJECT
     if matches(item):
         return SUBJECT
-    # These require the actual source photograph. A plausible generated scene
-    # cannot establish who met, what flooded, or where an incident happened.
-    if item.get('category') == 'outage':
-        return None
-    if item.get('kind') != 'event':
-        # Broad news categories (transport, municipality, public) do not prove
-        # that generic stock-like scenery illustrates this particular story.
-        return None
+    from .visual_topics import news_subjects
+    if item.get('visual_calendar') is True and item.get('kind') == 'event':
+        return 'event_calendar'
+    if item.get('kind') != 'event' or item.get('category') == 'outage':
+        return news_subjects(item)[1]
     if activity := event_activity(item.get('category'), item.get('title', '')):
         return activity
     category = item.get('category')

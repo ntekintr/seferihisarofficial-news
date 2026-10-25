@@ -2,7 +2,8 @@
 
 The actual source bytes and all three production crops were visually reviewed.
 This allowlist cannot approve another story, revision text or generated image.
-Automatic general-news scene generation remains prohibited.
+This approval remains limited to these exact source bytes; automatic generic
+news scenes follow the separate current visual policy.
 """
 import hashlib
 from pathlib import Path

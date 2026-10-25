@@ -28,7 +28,7 @@ def test_exact_source_and_exact_pixels_only():
     assert matches(item) and subject(item)==SUBJECT
     for key,value in [('url',URL+'other'),('description','Başka bir haber.'),('source_id','other'),('title','Üretim başladı')]:
         assert not matches({**item,key:value})
-        assert subject({**item,key:value}) is None
+        assert subject({**item,key:value}) != SUBJECT
     data=image_bytes();validate(data)
     with pytest.raises(ValueError):validate(data[:-1])
     from seferihisar.editor import verify

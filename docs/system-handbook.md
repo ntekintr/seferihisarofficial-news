@@ -1,8 +1,15 @@
 # Sistem rehberi ve öğrenilenler
 
-Son gözden geçirme: **24 Ekim 2026**. Bu dosya kod haritası ve kalıcı çalışma
+Son gözden geçirme: **26 Ekim 2026**. Bu dosya kod haritası ve kalıcı çalışma
 notudur. Anlık sağlık/teslim kanıtı zaman damgalı çıktılardan alınır; burada bir
 kez başarılı olması sonraki ay kesintisiz çalışacağı anlamına gelmez.
+
+### 26 Ekim: kaynak fotoğrafı, uygun üretim ve görselsiz yayını bekletme
+
+[Yeni görsel sözleşmesi](visual-first-publication.md), yalnız sonraki yayınlara
+uygulanır. İzmir Belediyesi RSS kaydı aynı sayfa/başlık/tarihle HTML galerisine
+bağlanır. Konu yolları genişletildi; doğrulanmış kapak görseli olmayan yeni
+feed bekler. Eski SQL iddiaları ve sosyal teslimler yeniden yazılmaz.
 
 ### 24 Ekim akşamı: yeni habere dördüncü çift istisnası
 

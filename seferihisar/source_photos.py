@@ -14,7 +14,7 @@ from .collect import Fetcher,structured
 from .domain import canonical,normalized,parse_date
 from .illustrations import clean_image
 from .security import public_url,contains_secret
-from .source_photo_data import VERSION,EVENT_VERSION,key,validate_record,valid_bindings,MAX_CACHE_BYTES,MAX_CACHED_IMAGES
+from .source_photo_data import VERSION,EVENT_VERSION,key,validate_record,valid_bindings,MAX_CACHE_BYTES,MAX_CACHED_IMAGES,approved_image_url,IMAGE_ORIGINS
 from .visual_gate import fingerprint
 from .visual_match import validate_news_photo,MatchRejected,MatchUnavailable
 from .image_safety import IllustrationCheckUnavailable
@@ -24,20 +24,11 @@ ARCHIVE=re.compile(r'\b(?:ar[şs]iv\w*|temsili\w*|illustration\w*|ill[uü]strasy
 
 
 def news_subject(item):
-    if item.get('kind')!='news' or item.get('category')=='outage':return None
-    title=normalized(item.get('title',''))
-    # A warning, cancellation or proposal is not evidence that the pictured
-    # incident/meeting happened. Keep those notices on information cards.
-    if re.search(r'\b(?:uyari\w*|beklen\w*|risk\w*|iptal\w*|planlan\w*|yarin|yapilacak|gerçekleşecek|önlenecek)\b',title):
+    if item.get('kind') != 'news':
         return None
-    if re.search(r'\b(?:sel|su baskini|göle döndü|sular altinda)\b',title):return 'flood'
-    if (re.search(r'\b(?:mandalina\w*|satsuma)\b', title)
-            and re.search(r'\bhasat\w*\b', title)
-            and re.search(r'\b(?:başladi|sürüyor|yapiliyor)\b', title)):
-        return 'citrus_harvest'
-    if re.search(r'\b(?:toplanti\w*|bir araya gel\w*|buluştu|bulustu)\b',title):return 'meeting'
-    if re.search(r'\b(?:trafik|çevre yolu|kavşak)\b',title):return 'traffic'
-    return None
+    from .visual_topics import news_subjects
+    return news_subjects(item)[0]
+
 
 
 def photo_subject(item):
@@ -53,10 +44,21 @@ def identity_dates(item):
     return {k:item.get(k) for k in (('start','end') if item.get('kind')=='event' else ('published_at',))}
 
 
-def candidate(html,final_url,item,source):
-    """Same article URL, headline and publication date, plus an in-article image."""
+def candidate_urls(html,final_url,item,source,*,feed_html=None):
+    """Bounded candidates from one exact article/session, never related stories."""
     if canonical(final_url)!=canonical(item['url']):raise ValueError('Article redirected')
-    matches=[row for row in structured(html,final_url,source) if row['kind']==item.get('kind')
+    rows = structured(html,final_url,source)
+    if source.get('photo_identity_reader') == 'rss-html-v1' and source.get('kind') == 'rss':
+        from .collect import feed_items
+        if feed_html is None:
+            raise ValueError('Current source feed required for article image')
+        from xml.etree.ElementTree import ParseError
+        try:
+            rows = feed_items(feed_html,source['url'],source)
+        except ParseError:
+            raise ValueError('Source feed invalid') from None
+    matches=[row for row in rows if row['kind']==item.get('kind')
+             and not row.get('parser_holds') and not row.get('date_conflict')
              and canonical(row['url'])==canonical(item['url'])
              and normalized(row['title'])==normalized(item['title'])
              and all(parse_date(row.get(k))==parse_date(v) and parse_date(v) is not None
@@ -68,7 +70,7 @@ def candidate(html,final_url,item,source):
     canonical_node=soup.select_one('link[rel="canonical"][href]')
     if canonical_node and canonical(urljoin(final_url,canonical_node['href']))!=canonical(item['url']):
         raise ValueError('Article canonical mismatch')
-    article=soup.select_one(source.get('article_selector','article .entry-content, article .article-content, article, .news-detail, .haber-detay'))
+    article=soup.select_one(source.get('photo_article_selector') or source.get('article_selector','article .entry-content, article .article-content, article, .news-detail, .haber-detay'))
     if not article:raise ValueError('No article image scope')
     # WordPress featured photos often sit beside entry-content inside article.
     article=article.find_parent('article') or article
@@ -79,34 +81,64 @@ def candidate(html,final_url,item,source):
     if image_alt and ARCHIVE.search(normalized(image_alt['content'])):
         raise ValueError('Archival article photograph')
     images={}
-    for node in article.select('img'):
+    # The reviewed body can be a sibling of the hero wrapper. Bind its direct
+    # paragraphs to the exact body already parsed for this article; do not
+    # expand to sidebars, comments or a second infinite-scroll article.
+    body = soup.select_one(source['body_selector']) if source.get('body_selector') else None
+    inline = ([node for node in soup.select(source['photo_inline_selector'])
+               if any(parent is body for parent in node.parents)]
+              if body is not None and source.get('photo_inline_selector') else [])
+    inline_nodes = {id(node) for node in inline}
+    inline_images = []
+    nodes = list({id(node):node for node in article.select('img') + inline}.values())
+    for node in nodes:
         if node.find_parent(['aside','nav','footer','header']):continue
-        raw=node.get('data-src') or node.get('src')
-        if not isinstance(raw,str):continue
-        url=urljoin(final_url,raw)
         label=normalized(' '.join(str(node.get(k,'')) for k in ('alt','title')))
         figure=node.find_parent('figure')
         if figure and (caption:=figure.find('figcaption')):label+=' '+normalized(caption.get_text(' ',strip=True))
-        if (not public_url(url) or len(url)>2048 or urlsplit(url).hostname!=urlsplit(item['url']).hostname
-                or ARCHIVE.search(label) or re.search(r'logo|avatar|banner|reklam|placeholder|no-image',urlsplit(url).path,re.I)):
-            continue
-        link=node.find_parent('a',href=True)
-        if link:
-            href=urljoin(final_url,link['href'])
-            if canonical(href) not in (canonical(url),canonical(item['url'])):continue
-        images[url]=label
+        raw_urls = [node.get('data-src'), node.get('src')]
+        # Reviewed lazy-loading publishers omit src entirely. A valid bounded
+        # srcset supplies candidates; OpenGraph must still choose an exact one.
+        for field in ('srcset', 'data-srcset'):
+            value = node.get(field, '')
+            if isinstance(value, str) and len(value) <= 8192:
+                raw_urls += [m[1] for part in value.split(',')[:12]
+                             if (m:=re.fullmatch(r'\s*(\S+)\s+(\d{2,4})w\s*', part)) and int(m[2])<=4096]
+        for raw in raw_urls:
+            if not isinstance(raw,str):continue
+            url=urljoin(final_url,raw)
+            if (not approved_image_url(item['source_id'], item['url'], url)
+                    or ARCHIVE.search(label) or re.search(r'logo|avatar|banner|reklam|placeholder|no-image',urlsplit(url).path,re.I)):
+                continue
+            link=node.find_parent('a',href=True)
+            if link:
+                href=urljoin(final_url,link['href'])
+                if canonical(href) not in (canonical(url),canonical(item['url'])):continue
+            images[url]=label
+            if id(node) in inline_nodes and url not in inline_images:
+                inline_images.append(url)
+    # Natural, directly embedded source photographs are evaluated before an
+    # editorial collage. The same strict subject check still accepts/rejects
+    # each actual file; choosing a URL never grants visual approval.
+    if inline_images:
+        return inline_images[:MAX_READS]
     primary=soup.select_one('meta[property="og:image"][content]')
     if primary:
         url=urljoin(final_url,primary['content'])
-        if url in images:return url
+        if url in images:return [url]
         # A WordPress featured img can be a resized derivative of the exact
         # OpenGraph file. Match the same host/path, never filename alone.
         base=lambda value:re.sub(r'-\d{2,5}x\d{2,5}(?=\.(?:jpe?g|png|webp)$)','',canonical(value),flags=re.I)
         variants=[image for image in images if base(image)==base(url)]
-        if (public_url(url) and len(url)<=2048 and urlsplit(url).hostname==urlsplit(item['url']).hostname
-                and len(variants)==1):return variants[0]
+        if (approved_image_url(item['source_id'], item['url'], url)
+                and len(variants)==1):return [variants[0]]
     if len(images)!=1:raise ValueError('Ambiguous article photograph')
-    return next(iter(images))
+    return [next(iter(images))]
+
+
+def candidate(html,final_url,item,source):
+    """Compatibility accessor; all identity checks precede image selection."""
+    return candidate_urls(html,final_url,item,source)[0]
 
 
 def cleaned_photo(raw, *, poster=False):
@@ -114,7 +146,7 @@ def cleaned_photo(raw, *, poster=False):
     try:
         with Image.open(io.BytesIO(raw)) as image:
             if (image.format not in ('JPEG','PNG','WEBP') or image.width*image.height>4_000_000
-                    or not ((image.width>=640 and image.height>=300 and 1.4<=image.width/image.height<=2.6)
+                    or not ((image.width>=480 and image.height>=300 and max(image.size)>=640 and 0.5<=image.width/image.height<=2.6)
                             or (poster and image.width>=480 and image.height>=640 and .5<=image.width/image.height<1.4))
                     or getattr(image,'n_frames',1)!=1 or image.getexif().get(274,1)!=1):
                 # Cleaning strips EXIF. Do not silently turn an orientation-
@@ -151,16 +183,28 @@ def binding_reason(store,post,items,at):
 class SourcePhotos:
     def __init__(self,store,at,directory,sources,*,demo=False,fetcher=None,instagram_photos=None,instagram_checks=None):
         self.store,self.at,self.directory=store,at,directory
-        self.enabled=not demo and os.getenv('ILLUSTRATIONS_ENABLED')=='true'
+        # Source-owned photos don't require a generation service credential.
+        # An explicit false also keeps this path closed if generation is enabled.
+        self.enabled=not demo and os.getenv('SOURCE_PHOTOS_ENABLED', os.getenv('ILLUSTRATIONS_ENABLED', 'false'))=='true'
         self.sources={s['id']:s for s in sources if s.get('enabled') and s.get('trusted')
                       and ((s.get('kind') in ('html','rss') and s.get('access')=='robots')
                            or (s.get('kind')=='instagram_api' and s.get('access')=='api'))}
         self.instagram_photos=instagram_photos or {}
         self.fetcher=fetcher
-        self.stats={'enabled':self.enabled,'downloaded':0,'reused':0,'rejected':0,'unavailable':0,'deferred':0}
+        self.stats={'enabled':self.enabled,'downloaded':0,'reused':0,'rejected':0,'unavailable':0,'deferred':0,
+                    'rejection_stages':{}}
         if instagram_checks is not None:self.stats['instagram']=instagram_checks
         self.reads=0
         self.results={}
+
+    def failure(self,stage,*,unavailable=False):
+        # Enumerated pipeline stages, never exception/provider text or URLs.
+        if stage not in ('source_read','source_binding','image_read','image_format',
+                         'event_text','visual_subject','cache_binding'):
+            raise ValueError('Unknown source photograph check stage')
+        self.stats['unavailable' if unavailable else 'rejected']+=1
+        reasons=self.stats['rejection_stages']
+        reasons[stage]=reasons.get(stage,0)+1
 
     def materialize(self,row):
         validate_record(row['id'],row['item_id'],row['revision'],row['payload'],row['image'])
@@ -216,32 +260,71 @@ class SourcePhotos:
         if self.reads>=MAX_READS:
             self.stats['deferred']+=1;return None
         self.reads+=1
+        stage='source_read'
         try:
-            if self.fetcher is None:self.fetcher=Fetcher(list(self.sources.values()))
+            if self.fetcher is None:
+                cdns = [{'enabled': True, 'url': 'https://' + origin[1] + '/'}
+                        for sid, origin in IMAGE_ORIGINS.items() if sid in self.sources
+                        and urlsplit(self.sources[sid]['url']).hostname == origin[0]]
+                self.fetcher=Fetcher(list(self.sources.values()) + cdns)
             html,final=self.fetcher.get(item['url'])
-            url=candidate(html,final,item,source)
-            raw,final_image=self.fetcher.image(url)
-            if final_image!=url:raise ValueError('Image redirected')
-            image=cleaned_photo(raw,poster=item.get('kind')=='event')
-            if item.get('kind')=='event':
-                from .event_image_text import validate as validate_event_text
-                with Image.open(io.BytesIO(image)) as pixels:portrait=pixels.width<pixels.height
-                validate_event_text(image,item,poster=portrait)
-                from .visual_match import validate_event_photo
-                validate_event_photo(image,expected)
-            else:
-                validate_news_photo(image,expected)
-            sha=fingerprint(image)
-            for previous in self.store.rows('SELECT item_id,payload FROM source_photos WHERE item_id!=?',(item['id'],)):
-                old=json.loads(previous['payload'])
-                if old.get('image_url')==url or old['sha256']==sha:
-                    raise ValueError('Photograph reused by another article')
-            evidence={'version':EVENT_VERSION if item.get('kind')=='event' else VERSION,'source_id':item['source_id'],'source_url':item['url'],
-                      'image_url':url,'title':item['title'],**identity_dates(item),
-                      'checked_at':self.at.isoformat(),'subject':expected,'sha256':sha}
-            return self.save(item,evidence,image)
-        except (MatchUnavailable,IllustrationCheckUnavailable):self.stats['unavailable']+=1
-        except (requests.RequestException,ValueError,TypeError,KeyError,OSError):self.stats['rejected']+=1
+            stage='source_binding'
+            feed_html = None
+            if source.get('photo_identity_reader') == 'rss-html-v1' and source.get('kind') == 'rss':
+                feed_html,feed_url = self.fetcher.get(source['url'])
+                if canonical(feed_url) != canonical(source['url']):
+                    raise ValueError('Source feed redirected')
+            urls=candidate_urls(html,final,item,source,feed_html=feed_html)
+        except (requests.RequestException,ValueError,TypeError,KeyError,OSError):
+            self.failure(stage);return None
+        for index,url in enumerate(urls):
+            # MAX_READS still bounds all image candidates across this run.
+            # A second same-article image consumes the next existing slot;
+            # another source cannot then receive an extra read.
+            if index:
+                if self.reads>=MAX_READS:
+                    self.stats['deferred']+=1;break
+                self.reads+=1
+            stage='image_read'
+            try:
+                raw,final_image=self.fetcher.image(url)
+                if final_image!=url:raise ValueError('Image redirected')
+                stage='image_format'
+                image=cleaned_photo(raw,poster=item.get('kind')=='event')
+                if item.get('kind')=='event':
+                    stage='event_text'
+                    from .event_image_text import validate as validate_event_text
+                    with Image.open(io.BytesIO(image)) as pixels:portrait=pixels.width<pixels.height
+                    promotional = validate_event_text(image,item,poster=portrait)
+                    stage='visual_subject'
+                    from .visual_match import validate_event_photo
+                    if not promotional:
+                        validate_event_photo(image,expected)
+                else:
+                    stage='visual_subject'
+                    try:
+                        validate_news_photo(image,expected)
+                    except MatchRejected as rejection:
+                        from .visual_match import validate_headline_photo
+                        try:
+                            validate_headline_photo(image,expected,item['title'])
+                        except (ValueError,IllustrationCheckUnavailable):
+                            raise rejection
+                stage='cache_binding'
+                sha=fingerprint(image)
+                for previous in self.store.rows('SELECT item_id,payload FROM source_photos WHERE item_id!=?',(item['id'],)):
+                    old=json.loads(previous['payload'])
+                    if old.get('image_url')==url or old['sha256']==sha:
+                        raise ValueError('Photograph reused by another article')
+                evidence={'version':EVENT_VERSION if item.get('kind')=='event' else VERSION,'source_id':item['source_id'],'source_url':item['url'],
+                          'image_url':url,'title':item['title'],**identity_dates(item),
+                          'checked_at':self.at.isoformat(),'subject':expected,'sha256':sha}
+                return self.save(item,evidence,image)
+            except (MatchUnavailable,IllustrationCheckUnavailable):
+                # A missing checker cannot improve on another photograph.
+                self.failure(stage,unavailable=True);break
+            except (requests.RequestException,ValueError,TypeError,KeyError,OSError):
+                self.failure(stage)
         return None
 
     def save(self,item,evidence,image):

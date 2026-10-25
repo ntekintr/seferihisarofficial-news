@@ -26,6 +26,7 @@ MODEL = '@cf/black-forest-labs/flux-1-schnell'
 DAILY_ATTEMPTS = 20
 RUN_ATTEMPTS = 2
 MAX_RESPONSE_BYTES = 8 * 1024 * 1024
+CALENDAR_ITEM_ID = digest('generic-calendar-objects-v1')
 STYLE = ('Create a photorealistic editorial image for a Turkish local news account. '
          'Natural colours and light, photographic depth, realistic materials and textures. '
          'No cartoon, painting, vector artwork or flat brand-colour treatment. '
@@ -86,6 +87,16 @@ def event_scene(item: dict) -> str | None:
 
 
 def scene_brief(item: dict) -> str:
+    from .visual_topics import SCENES
+    selected = subject(item)
+    if selected == 'market' and re.search(r'\b(?:mandalina\w*|satsuma)\b',normalized(item.get('title',''))):
+        return SCENES['citrus_basket']
+    if selected == 'weather_sky' and re.search(r'yağmur|yağiş|sağanak',normalized(item.get('title',''))):
+        return _legacy_scene_brief({**item,'category':'weather'})
+    return SCENES[selected] if selected in SCENES else _legacy_scene_brief(item)
+
+
+def _legacy_scene_brief(item: dict) -> str:
     if scene := event_scene(item):
         return scene
     category = item.get('category')
@@ -140,6 +151,8 @@ def illustration_prompt(item: dict) -> str:
 
 
 def scene_version(item: dict) -> str:
+    if scene_brief(item) != _legacy_scene_brief(item):
+        return 'editorial-photo-news-v8'
     from .owner_curated import matches, SUBJECT
     if matches(item):
         return SUBJECT
@@ -491,9 +504,11 @@ class Illustrator:
             references = [(0, items.get(post['item_id']))]
         elif post['kind'] in ('weekly', 'monthly', 'weekend', 'free_week') and len(post['slides']) == len(post['source_urls']) + 1:
             by_url = {u: i for i in items.values() for u in i.get('sources', []) + [i['url']]}
-            # Calendar cover remains a branded text card; event slides reuse
-            # the exact illustration used for that event's announcement.
-            references = [(index + 1, by_url.get(url)) for index, url in enumerate(post['source_urls'])]
+            # The cover has its own generic planner scene; event slides retain
+            # their exact event images. No invented programme is pictured.
+            cover = {'id':CALENDAR_ITEM_ID,'revision':1,'kind':'event',
+                     'category':'event','title':'Etkinlik takvimi','visual_calendar':True}
+            references = [(0,cover)] + [(index + 1, by_url.get(url)) for index, url in enumerate(post['source_urls'])]
         else:
             references = []
         bindings = {}

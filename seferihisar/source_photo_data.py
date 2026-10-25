@@ -13,8 +13,24 @@ EVENT_VERSION='source-photo-event-v1'
 FIELDS={'version','source_id','source_url','image_url','title','published_at','checked_at','subject','sha256'}
 INSTAGRAM_FIELDS=(FIELDS-{'image_url'})|{'media_id'}
 EVENT_FIELDS=(FIELDS-{'published_at'})|{'start','end'}
-SUBJECTS=('meeting','flood','traffic','citrus_harvest')
-EVENT_SUBJECTS=('theatre','concert','cinema','festival','culture','family','sport','market','food','education','yoga','tile_art','workshop')
+SUBJECTS=('meeting','flood','traffic','citrus_harvest','roadworks','hiking','glass_litter','football','landscape','parking','bus','electrical','water_utility','weather_sky','land_planning','education','health_workspace','public_service','food','market','concert','theatre','cinema','festival','culture','animal_care','citrus_processing','public_park')
+EVENT_SUBJECTS=('theatre','concert','cinema','festival','culture','family','sport','market','food','education','yoga','tile_art','workshop','electrical','water_utility')
+
+IMAGE_ORIGINS = {}
+
+
+def approved_image_url(source_id, source_url, image_url):
+    from .security import public_url
+    if not public_url(image_url) or len(image_url) > 2048:
+        return False
+    page, image = urlsplit(source_url), urlsplit(image_url)
+    if image.hostname == page.hostname:
+        return True
+    origin = IMAGE_ORIGINS.get(source_id)
+    return bool(origin and page.hostname == origin[0] and image.hostname == origin[1]
+                and not image.query and not image.fragment
+                and not any(part in ('.', '..') for part in image.path.split('/'))
+                and re.fullmatch(origin[2], image.path, re.I))
 
 
 def key(item_id,revision,evidence):
