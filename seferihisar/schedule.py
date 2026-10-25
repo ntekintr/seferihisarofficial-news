@@ -62,7 +62,9 @@ def prepare(store: Store, at: datetime, *, refresh_digests: bool = True):
             if at - parse_date(item["published_at"]) > timedelta(days=7):
                 continue
             urgent = item["category"] in ("outage", "weather", "transport")
-            queue_item(store, item, "news", at if urgent else next_slot(at), at)
+            from .publication_policy import evening_news_item
+            due_now = urgent or evening_news_item(item, at, bonus=False)
+            queue_item(store, item, "news", at if due_now else next_slot(at), at)
             continue
         start = parse_date(item["start"])
         if item['category']=='outage':
@@ -144,7 +146,9 @@ def queue_item(store: Store, item: dict, kind: str, due: datetime, at: datetime)
     # A wording/layout change may refresh an unclaimed card, but keeps its
     # identity and due date. Published, in-flight and uncertain claims are frozen.
     previous = json.loads(rows[0]["payload"])
-    post["due_at"] = previous["due_at"]
+    from .publication_policy import evening_news_item
+    post["due_at"] = (min(parse_date(previous['due_at']), at).isoformat()
+                      if evening_news_item(item, at, bonus=False) else previous["due_at"])
     post["created_at"] = previous["created_at"]
     if "illustration_keys" in previous:
         post["illustration_keys"] = previous["illustration_keys"]

@@ -93,7 +93,7 @@ def test_budget_resets_on_turkish_day_not_utc_day(store):
     assert publish_automatic(store,at,'https://example.org/',assets,api())['status']=='complete'
 
 
-@pytest.mark.parametrize('stamp',['2026-10-10T08:29:00+03:00','2026-10-10T16:01:00+03:00','2026-10-10T22:01:00+03:00'])
+@pytest.mark.parametrize('stamp',['2026-10-10T08:29:00+03:00','2026-10-10T16:01:00+03:00','2026-10-10T23:30:00+03:00'])
 def test_late_or_night_runs_do_not_dump_queued_content(store,stamp):
     at=parse_date(stamp);assets=news(store,at);adapter=api()
     assert publish_automatic(store,at,'https://example.org/',assets,adapter)['status']=='outside_window'

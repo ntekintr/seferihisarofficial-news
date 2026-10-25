@@ -29,7 +29,14 @@ news age and event end before sending. This never republishes Instagram content.
 The existing caption and all feed slides (up to ten) become one Facebook photo
 post. The matching first story card is eligible only after its Instagram story
 and Facebook feed are confirmed published. Maximum three feeds and three stories
-per Page per Turkish day, including uncertain attempts.
+per Page per Turkish day, including uncertain attempts. The authorized evening
+exception may mirror the qualifying fourth Instagram news feed and its first
+matching story, with an absolute four-per-format ceiling. It uses the same
+20:00–22:59 source-publication/first-edition checks and 23:30 delivery cutoff;
+it cannot mirror an unrelated late parent as a fourth. A fully mirrored third
+parent must not hide a newer fourth pending mirror. Weather and pharmacy remain
+outside these news counts. Existing claim keys, including uncertain deliveries,
+are never replayed or reset.
 
 Media must already be deployed as public HTTPS JPEGs. All photos are uploaded
 unpublished; feed uses `/{page-id}/feed` with `attached_media`, story uses

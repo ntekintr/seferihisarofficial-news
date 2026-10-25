@@ -17,7 +17,7 @@ from .domain import TZ, digest, parse_date
 from .schedule import blocked_sources, source_current
 from .security import public_url
 from .store import Store
-from .publication_policy import NEWS_DAILY_LIMIT, owner_exclusion
+from .publication_policy import NEWS_DAILY_LIMIT, NEWS_EVENING_LIMIT, owner_exclusion, evening_post, fourth_parent
 
 
 class Facebook:
@@ -92,7 +92,9 @@ def deliver(store, post, at, site_url, paths, story, api, checkpoint, *, require
         return 'already_published' if previous[0]['status'] == 'published' else 'awaiting_resolution'
     # Includes uncertain attempts; a restart cannot restore the daily budget.
     claims = store.rows('SELECT claimed_at FROM facebook_deliveries WHERE page_id=? AND format=?', (api.page, kind))
-    if sum(parse_date(c['claimed_at']).astimezone(TZ).date() == at.date() for c in claims) >= NEWS_DAILY_LIMIT:
+    count = sum(parse_date(c['claimed_at']).astimezone(TZ).date() == at.date() for c in claims)
+    if (count >= NEWS_EVENING_LIMIT or count >= NEWS_DAILY_LIMIT
+            and not (fourth_parent(store, post, at) and evening_post(store, post, at))):
         return 'daily_limit'
     parsed = urlsplit(site_url)
     if not public_url(site_url) or parsed.query or parsed.fragment:
@@ -158,7 +160,14 @@ def publish_recent(store: Store, at: datetime, site_url, assets, adapter=None, c
     # Prevent publishing into the wrong page even if a secret was misconfigured.
     if not api.check_identity():
         return {'status': 'account_mismatch'}
-    parent = parents[0]
+    # A completed third pair cannot hide a later fourth still awaiting its
+    # mirror. Existing uncertain delivery keys remain non-replayable.
+    def complete(parent):
+        keys = [digest(f"facebook:{api.page}:{parent['id']}:{kind}") for kind in ('feed', 'story')]
+        rows = store.rows('SELECT id,status FROM facebook_deliveries WHERE id IN (?,?)', keys)
+        return len(rows) == 2 and all(row['status'] == 'published' for row in rows)
+    pending = [p for p in parents if not complete(p)]
+    parent = (pending or parents)[-1]
     if not current_post(store, parent, at):
         return {'status': 'blocked_source'}
     feed = deliver(store, parent, at, site_url, assets.get(parent['id'], {}).get('feed', []), False, api, checkpoint, require_visual_review=require_visual_review)

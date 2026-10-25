@@ -4,12 +4,87 @@ Independent weather/pharmacy tables are deliberately outside the news budget.
 Claimed rows are observations, never reset or rewritten to recover a slot.
 """
 import json
-from datetime import timedelta
+from datetime import date, datetime, time, timedelta
 
 from .domain import TZ, normalized, parse_date
 
 NEWS_DAILY_LIMIT = 3
+NEWS_EVENING_LIMIT = 4
+EVENING_EFFECTIVE_FROM = date.min
 CLAIMED = frozenset(('publishing', 'published', 'uncertain'))
+
+
+def evening_enabled(at):
+    return at.astimezone(TZ).date() >= EVENING_EFFECTIVE_FROM
+
+
+def evening_window(at):
+    local = at.astimezone(TZ)
+    return evening_enabled(local) and time(20) <= local.time().replace(tzinfo=None) < time(23, 30)
+
+
+def news_windows(day, base_slots):
+    windows = [(datetime.combine(day, slot, TZ), datetime.combine(day, slot, TZ) + timedelta(hours=1), False)
+               for slot in base_slots]
+    if day >= EVENING_EFFECTIVE_FROM:
+        windows += [(datetime.combine(day, time(20), TZ), datetime.combine(day, time(21), TZ), True),
+                    (datetime.combine(day, time(22), TZ), datetime.combine(day, time(23, 30), TZ), True)]
+    return sorted(windows)
+
+
+def dispatch_window(at, base_slots):
+    at = at.astimezone(TZ)
+    return next((window for window in reversed(news_windows(at.date(), base_slots))
+                 if window[0] <= at < window[1]), None)
+
+
+def evening_news_item(item, at, *, bonus=True):
+    """Only a new, first source edition; discovery/retimestamping is not news."""
+    at = at.astimezone(TZ)
+    published, first = parse_date(item.get('published_at')), parse_date(item.get('first_seen'))
+    start = datetime.combine(at.date(), time(20), TZ)
+    cutoff = datetime.combine(at.date(), time(23), TZ)
+    return bool(evening_window(at) and item.get('kind') == 'news'
+                and (not bonus or item.get('revision') == 1) and published and first
+                and start <= published.astimezone(TZ) < cutoff
+                and published <= at and start <= first.astimezone(TZ) <= at)
+
+
+def day_claims(store, at, *, story=False):
+    day = at.astimezone(TZ).date()
+    return [p for p in store.posts() if p['status'] in CLAIMED
+            and (p.get('publish_format') == 'story') == story
+            and (stamp := parse_date(p.get('published_at'))) is not None
+            and stamp.astimezone(TZ).date() == day]
+
+
+def fourth_parent(store, parent, at):
+    stamp = parse_date(parent.get('published_at'))
+    claims = day_claims(store, at)
+    return bool(stamp and parent['status'] == 'published'
+                and sum(parse_date(p['published_at']) <= stamp for p in claims) == NEWS_EVENING_LIMIT
+                and parent['id'] in {p['id'] for p in claims})
+
+
+def evening_post(store, post, at, *, story=False, bonus=True):
+    parent = post
+    if story:
+        parent = next((p for p in store.posts() if p['id'] == post.get('parent_post_id')), None)
+        if not parent or post.get('story_index') != 0 or not fourth_parent(store, parent, at):
+            return False
+    if parent.get('kind') != 'news' or not parent.get('item_id'):
+        return False
+    item = next((i for i in store.items() if i['id'] == parent['item_id']), None)
+    return bool(item and item['revision'] == parent.get('revision')
+                and evening_news_item(item, at, bonus=bonus) and not owner_exclusion(parent))
+
+
+def evening_summary(at):
+    return {'enabled': evening_enabled(at), 'normal_daily_feed_limit': NEWS_DAILY_LIMIT,
+            'normal_daily_story_limit': NEWS_DAILY_LIMIT, 'absolute_daily_feed_limit': NEWS_EVENING_LIMIT,
+            'absolute_daily_story_limit': NEWS_EVENING_LIMIT, 'source_hours': '20:00–22:59',
+            'publication_cutoff': '23:30', 'source_first_edition_required': True,
+            'extra_story': 'first_matching_story_of_fourth_feed'}
 
 
 def owner_exclusion(value):
@@ -19,13 +94,13 @@ def owner_exclusion(value):
             else None)
 
 
-def daily_limit_reason(store, at, *, story=False):
-    day = at.astimezone(TZ).date()
-    claims = [p for p in store.posts() if p['status'] in CLAIMED
-              and (p.get('publish_format') == 'story') == story
-              and (stamp := parse_date(p.get('published_at'))) is not None
-              and stamp.astimezone(TZ).date() == day]
-    return 'daily_limit' if len(claims) >= NEWS_DAILY_LIMIT else None
+def daily_limit_reason(store, at, post=None, *, story=False):
+    count = len(day_claims(store, at, story=story))
+    if count < NEWS_DAILY_LIMIT:
+        return None
+    if count == NEWS_DAILY_LIMIT and post and evening_post(store, post, at, story=story):
+        return None
+    return 'daily_limit'
 
 
 def post_reason(store, post, at):
