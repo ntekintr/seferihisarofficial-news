@@ -29,16 +29,17 @@ def jpeg():
     return clean_image(buf.getvalue())
 
 
-@pytest.mark.parametrize('kind,category,title', [
-    ('news','news','AK Parti Seferihisar İlçe Başkanı, 23 muhtarla bir araya geldi'),
-    ('news','transport','Seferihisar Tepecik mahallesi yağmurdan göle döndü'),
-    ('news','municipality','Yeni otopark projesi'),
-    ('event','outage','Urla’da planlı elektrik kesintisi'),
-    ('event','outage','Seferihisar su kesintisi'),
-    ('event','event','Konser salonunda buluşma'),
+@pytest.mark.parametrize('kind,category,title,expected', [
+    ('news','news','İlçe Başkanı, 23 muhtarla bir araya geldi','meeting_room'),
+    ('news','transport','Tepecik mahallesi yağmurdan göle döndü','rain_puddle'),
+    ('news','municipality','Yeni otopark projesi','parking'),
+    ('event','outage','Planlı elektrik kesintisi','electrical'),
+    ('event','outage','İlçede su kesintisi','water_utility'),
+    ('event','event','Konser salonunda buluşma',None),
+    ('news','news','Başlığında somut konu açıklanmayan gelişme',None),
 ])
-def test_unsupported_or_actual_incident_requires_information_card(kind,category,title):
-    assert subject(dict(kind=kind,category=category,title=title)) is None
+def test_known_topics_have_generic_objects_without_reconstructing_incidents(kind,category,title,expected):
+    assert subject(dict(kind=kind,category=category,title=title)) == expected
 
 
 def test_outage_is_not_a_theatre_or_an_event_badge(event):
@@ -138,9 +139,10 @@ def reviewed_post(store,event,at,tmp_path):
     store.upsert(event,at.isoformat());item=store.items()[0]
     queue_item(store,item,'announcement',at,at)
     post=store.posts()[0]
-    post['illustration_keys']={}
-    post['visual_review']=review(post,{})
-    assets=render_post(post,tmp_path)
+    photo=tmp_path/'scene.jpg';photo.write_bytes(jpeg())
+    post['illustration_keys']={'0':'b'*24}
+    post['visual_review']=review(post,{0:photo})
+    assets=render_post(post,tmp_path,{0:photo})
     record_assets(post,assets,tmp_path)
     with store.db:store.db.execute('UPDATE posts SET payload=? WHERE id=?',(json.dumps({k:v for k,v in post.items() if k not in ('status','container_id','media_id')}),post['id']))
     visible={k:post[k] for k in ('id','title','caption','category','visual_review')};visible['assets']=assets
@@ -173,7 +175,9 @@ def test_calendar_review_binds_each_source_revision_even_without_photos(store,ev
     store.upsert(event,at.isoformat());item=store.items()[0]
     post={'id':'a'*24,'kind':'weekly','title':'Takvim','source_urls':[item['url']],
           'slides':[{'title':'Takvim','body':'Tarih bilgileri'}],'category':'event'}
-    post['visual_review']=review(post,{}, {item['id']:item})
+    photo=tmp_path/'cover.jpg';photo.write_bytes(jpeg())
+    post['illustration_keys']={'0':'b'*24}
+    post['visual_review']=review(post,{0:photo}, {item['id']:item})
     assert post['visual_review']['references']=={item['id']:item['revision']}
     assets=render_post(post,tmp_path);record_assets(post,assets,tmp_path)
     with store.db:store.db.execute('UPDATE items SET revision=revision+1')

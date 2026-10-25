@@ -195,7 +195,7 @@ def test_destination_makes_no_meta_write_for_stale_deployed_metadata(store, allo
               if destination == 'facebook' else
               publish_one(store, at, 'https://example.org/', paths, story=destination=='story',
                           adapter=api, require_visual_review=True))
-    expected = {'facebook': 'event_metadata_stale', 'feed': 'visual_review_missing',
+    expected = {'facebook': 'event_metadata_stale', 'feed': 'awaiting_content_visual',
                 'story': 'empty'}  # No confirmed parent: the earlier pairing gate holds.
     assert result['status'] == expected[destination]
     api.session.head.assert_not_called(); api.session.get.assert_not_called()

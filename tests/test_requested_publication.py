@@ -63,7 +63,7 @@ def test_explicit_choice_cannot_bypass_safety_or_choose_another_item(store,monke
     elif reason=='missing_media': assets[target]['feed']=[]
     else: monkeypatch.setattr('seferihisar.visual_gate.deployed',lambda *a,**kw:'visual_review_stale')
     result=publish_requested(store,AT,'https://example.org/',assets,target,adapter,require_visual_review=reason=='visual_gate')
-    assert result['status'] in ('daily_limit','blocked_source','rate_limited','media_missing','visual_review_stale')
+    assert result['status'] in ('daily_limit','blocked_source','rate_limited','media_missing','visual_review_stale','awaiting_content_visual')
     adapter.container.assert_not_called()
 
 

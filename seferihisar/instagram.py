@@ -99,6 +99,12 @@ def publish_one(store: Store, at: datetime, site_url: str, assets: dict[str, dic
         prepared = [p for p in prepared if daily_limit_reason(store, at, p, story=story) is None]
         if not prepared:
             return {'status': 'daily_limit'}
+    if not story and (require_visual_review or isinstance(api, Instagram)):
+        from .visual_policy import image_reason
+        eligible_before_visual = bool(prepared)
+        prepared = [p for p in prepared if image_reason(p) is None]
+        if eligible_before_visual and not prepared:
+            return {'status': 'awaiting_content_visual'}
     if editorial and not story:
         from .selection import prioritize
         prepared = prioritize(store, prepared, at)

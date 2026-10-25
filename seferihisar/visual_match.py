@@ -14,7 +14,7 @@ from pathlib import Path
 
 from PIL import Image, ImageOps
 
-VERSION = 'subject-crop-v2'
+VERSION = 'subject-full-frame-v3'
 MODEL = 'openai/clip-vit-base-patch32'
 REVISION = '3d74acf9a28c67741b2f4f2ea7635f0aaf6f0268'
 WEIGHT_SHA = 'a63082132ba4f97a80bea76823f544493bffa8082296d62d71581a4feff1576f'
@@ -44,6 +44,11 @@ LABELS = {
     'blank': 'a blank solid colour image without objects',
     'citrus_harvest': 'a photograph of a person harvesting tangerines from a citrus tree in an orchard',
 }
+
+from .visual_topics import LABELS as NEWS_LABELS
+LABELS.update(NEWS_LABELS)
+LABELS.setdefault('roadworks', 'a news photograph of a street or sidewalk being renovated with bare ground and road maintenance equipment')
+LABELS['event_calendar'] = 'a photograph of an open planner, blank tickets and a pen on a desk'
 
 
 class MatchUnavailable(ValueError):
@@ -134,7 +139,7 @@ def accepted(result: dict[str, float], expected: str) -> bool:
 
 
 def validate_match(data: bytes, expected: str) -> dict:
-    if expected not in LABELS or expected in ('traffic', 'empty_hall', 'landscape', 'meeting', 'flood', 'blank', 'citrus_harvest'):
+    if expected not in LABELS or expected in ('empty_hall', 'landscape', 'meeting', 'flood', 'blank', 'citrus_harvest'):
         raise MatchRejected('Unsupported visual subject')
     return _validate_crops(data,expected)
 
@@ -142,9 +147,63 @@ def validate_match(data: bytes, expected: str) -> dict:
 def validate_news_photo(data: bytes, expected: str) -> dict:
     # These remain forbidden generated scenes. Only a separately verified,
     # article-bound source photograph may reach this narrow news taxonomy.
-    if expected not in ('traffic','meeting','flood','citrus_harvest'):
+    from .source_photo_data import SUBJECTS
+    if expected not in SUBJECTS:
         raise MatchRejected('Unsupported news photograph')
     return _validate_crops(data,expected,source_photo=True)
+
+
+def validate_headline_photo(data: bytes, expected: str, title: str) -> dict:
+    """Check an editorial graphic's actual photo above a matching text banner.
+
+    This is model input only: the source file and published full frame are
+    unchanged. A matching headline never replaces the photo subject check.
+    """
+    import re
+    import shutil
+    from .domain import normalized
+    from .image_safety import _scan_words
+    binary = shutil.which('tesseract')
+    if not binary:
+        raise MatchRejected('No verified headline region')
+    title_words = {w for w in normalized(title).split() if len(w)>2}
+    if len(title_words)<3:
+        raise MatchRejected('Insufficient headline identity')
+    with Image.open(io.BytesIO(data)) as raw:
+        image=raw.convert('RGB');width,height=image.size
+    for mode in (11,6):
+        try:
+            words=_scan_words(binary,data,mode)
+        except ValueError:
+            continue
+        hits=[w for w in words if w['confidence']>=65
+              and title_words.intersection(normalized(w['text']).split())
+              and w['box']['height']>=height*.045]
+        seen={v for w in hits for v in normalized(w['text']).split()} & title_words
+        if len(seen)/len(title_words)<.6:
+            continue
+        top=min(w['box']['top'] for w in hits)
+        if not height*.35<=top<=height*.75:
+            continue
+        # A broad, bounded upper photograph must independently pass the same
+        # fixed taxonomy, absolute similarity and alternative-class margin.
+        region=image.crop((0,0,width,max(1,int(top-height*.02))))
+        buffer=io.BytesIO();region.save(buffer,format='JPEG',quality=90)
+        if expected == 'traffic':
+            import math
+            values=scores([ImageOps.pad(region,(224,224),color='#777777')])
+            result=values[0] if len(values)==1 else {}
+            # Parking and traffic share cars/road geometry. Only for an exact
+            # source/title-bound banner may that sibling have a narrow margin;
+            # traffic must still be the highest score and beat every unrelated
+            # subject by the unchanged margin. Flood/dry-road are never grouped.
+            if (set(result)==set(LABELS) and all(type(v) in (int,float) and math.isfinite(v) for v in result.values()) and result['traffic']>=.24
+                    and result['traffic']>=result['parking']
+                    and result['traffic']-max(v for k,v in result.items() if k not in ('traffic','parking'))>=.015):
+                return {'subject':expected,'version':VERSION,'image_sha256':hashlib.sha256(data).hexdigest()}
+            raise MatchRejected('Source transport context mismatch')
+        return _validate_crops(buffer.getvalue(),expected,source_photo=True)
+    raise MatchRejected('No verified headline region')
 
 
 def validate_event_photo(data: bytes, expected: str) -> dict:

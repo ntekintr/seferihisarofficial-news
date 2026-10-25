@@ -53,16 +53,17 @@ def test_source_only_caption_survives_research_to_disabled_publisher_and_final_p
     if kind == 'news':
         event = json.loads(Path('tests/fixtures/items.json').read_text())[3]
         event['category'] = 'transport'
+        event['title'] = 'ÖRNEK · Seferihisar trafik düzenlemesi'
     store.upsert(event, research_at.isoformat())
     prepare(store, research_at)
     export(store, tmp_path / 'research', source_config(), research_at)
     post = next(p for p in store.posts() if p['kind'] == {'event': 'reminder_3d'}.get(kind, kind))
     expected_keys = post['illustration_keys']
-    assert bool(expected_keys) == (kind != 'news')
+    assert expected_keys
     assert GENERATED_IMAGE_NOTE not in post['caption']
     assert event['source_name'] in post['caption'] and event['url'] in post['caption']
     assert len(post['caption']) <= 2200
-    assert generated_scene.call_count == (0 if kind == 'news' else 1)
+    assert generated_scene.call_count == (1 if kind == 'news' else 2)
 
     # An older research version may already have queued the retired note.
     legacy = json.loads(store.rows('SELECT payload FROM posts WHERE id=?', (post['id'],))[0]['payload'])
@@ -93,7 +94,7 @@ def test_source_only_caption_survives_research_to_disabled_publisher_and_final_p
     assert GENERATED_IMAGE_NOTE not in published_caption
     assert published_caption == retained['caption']
     assert len(published_caption) <= 2200
-    assert generated_scene.call_count == (0 if kind == 'news' else 1)
+    assert generated_scene.call_count == (1 if kind == 'news' else 2)
 
 
 @pytest.mark.parametrize('status', ['published', 'publishing', 'uncertain'])
@@ -113,7 +114,7 @@ def test_claimed_caption_and_bindings_are_not_rewritten_by_prepare_or_export(
     prepare(store, later)
     export(store, tmp_path / 'later', source_config(), later)
     assert store.rows('SELECT payload FROM posts WHERE id=?', (post['id'],))[0]['payload'] == original_payload
-    assert generated_scene.call_count == 1
+    assert generated_scene.call_count == 2
 
 
 def test_rejected_generated_scene_falls_back_without_an_ai_disclosure(
@@ -128,7 +129,7 @@ def test_rejected_generated_scene_falls_back_without_an_ai_disclosure(
     public = json.loads((tmp_path / 'fallback/data.json').read_text(encoding='utf-8'))
     assert all(GENERATED_IMAGE_NOTE not in p['caption'] for p in public['posts'])
     assert all(p['illustration_keys'] == {} for p in store.posts())
-    assert generated_scene.call_count == 1
+    assert generated_scene.call_count == 2
 
 
 @pytest.mark.parametrize('generated', [False, True])

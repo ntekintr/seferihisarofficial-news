@@ -1,5 +1,5 @@
 """A relevant picture is preferred; a source or category alone is not proof."""
-VERSION = 'relevant-visual-first-v1'
+VERSION = 'relevant-visual-first-v2'
 
 
 def summary(store):
@@ -14,6 +14,17 @@ def summary(store):
                 'topic_visual' if '0' in images and post.get('illustration_keys',{}).get('0') else
                 'information_card')
         counts[kind] += 1
-    return {'version':VERSION, 'preference':['verified_source_image','reviewed_event_scene','information_card'],
+    return {'version':VERSION, 'preference':['verified_source_image','reviewed_topic_scene','wait_for_valid_image'],
             'pending_covers':counts, 'unrelated_filler_allowed':False,
-            'scope':'Supported source subjects and same-origin structured event images; no universal image guarantee'}
+            'content_image_required':True, 'information_card_publishable':False,
+            'scope':'Source image first, supported generic scene second, otherwise wait without a new social claim'}
+
+
+def image_reason(post):
+    if post.get('status') in ('published', 'publishing', 'uncertain'):
+        return None
+    proof = post.get('visual_review', {})
+    bound = post.get('source_photo_keys', {}).get('0') or post.get('illustration_keys', {}).get('0')
+    if not bound or not proof.get('images', {}).get('0'):
+        return 'awaiting_content_visual'
+    return None
