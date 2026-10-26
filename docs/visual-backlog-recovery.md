@@ -65,3 +65,24 @@ edilmeden bu belge tek başına canlı başarı iddiası değildir.
 Bulut OCR denemesinde Rebetiko afişinin stilize başlığı güvenilir okunamadı.
 Bu afişin denetimi gevşetilmez; açık müzik türü Rebetiko için genel konser
 sahnesi kullanılabilir. Atatürk'ün sevdiği şarkılar afişi normal OCR'dan geçti.
+
+
+## 27 Ekim canlı son kontrolü
+
+İlk dağıtım Seferihisar'da 26 hazır karttan 25'ine görsel bağladı. Kalan
+toplantı haberi için dokuzuncu stok sahne eklendi; gerçek kaynak fotoğrafı
+önceliği sürer. Isparta'daki yeni müftülük ziyareti, açık resmî muhatap
+başlığıyla toplantı konusuna bağlanır. Müze/antik kent ziyareti bu kurala girmez.
+Kaynak JPEG'de yön bilgisinin 0 (tanımsız) olması döndürme gerektirmez;
+0/1 aynı piksel yönüyle temizlenir. Gerçek döndürme/ayna değerleri 2–8 ve
+diğer geçersiz değerler reddedilmeye devam eder.
+
+Festivalden söz eden toplantı haberinin yalnız henüz sahiplenilmemiş kartı,
+başlık/açıklama/etiketleriyle yerel haber olarak hazırlanır. Kaynak kaydı,
+revizyon, aynı haberin kimliği ve geçmiş SQL iddiaları değişmez.
+
+Seferihisar canlı kıyasında 13 Ekim'den kalmış, hiç piksel içermeyen bir
+başarısız önbellek satırının eski temizleme koduyla silindiği görüldü; eski
+yayın satırları ve mevcut görsel pikselleri değişmedi. Yeni temizleme,
+yayımlanmış/devam eden/belirsiz iddialara bağlı hazır veya başarısız anahtarları
+da korur. Boş eski hata kaydı, yayımlanmış bir fotoğraf kaybı sayılmaz.

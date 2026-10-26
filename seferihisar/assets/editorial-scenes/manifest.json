@@ -64,6 +64,14 @@
       "brief_sha256": "14:63:ee:c5:0d:9f:83:e6:d5:d1:55:d0:a6:89:55:17:f7:ae:35:97:78:49:38:27:80:c0:36:44:f1:0e:c6:c1",
       "origin": "owned-generated-generic-scene",
       "reviewed_on": "2026-10-26"
+    },
+    {
+      "subject": "meeting_room",
+      "file": "meeting_room.jpg",
+      "sha256": "93:06:c3:7f:72:b1:ed:f1:0c:b0:7c:f9:cd:5e:b3:85:f0:f9:74:52:91:b9:dc:0d:da:62:df:e5:dc:1d:f1:ee",
+      "brief_sha256": "b6:09:92:4f:34:40:7b:a4:1f:df:83:b0:d5:ed:2c:f5:21:57:48:09:9e:62:61:fb:75:88:56:7e:b9:66:38:88",
+      "origin": "owned-generated-generic-scene",
+      "reviewed_on": "2026-10-27"
     }
   ]
 }

@@ -175,7 +175,9 @@ def cleaned_photo(raw, *, poster=False):
             if (image.format not in ('JPEG','PNG','WEBP') or image.width*image.height>4_000_000
                     or not ((image.width>=480 and image.height>=300 and max(image.size)>=640 and 0.5<=image.width/image.height<=2.6)
                             or (poster and image.width>=480 and image.height>=640 and .5<=image.width/image.height<1.4))
-                    or getattr(image,'n_frames',1)!=1 or image.getexif().get(274,1)!=1):
+                    or getattr(image,'n_frames',1)!=1 or image.getexif().get(274,1) not in (0,1)):
+                # EXIF 0 is undefined/no transform; decoded pixels stay upright.
+                # Actual rotation/mirroring values 2..8 remain rejected.
                 # Cleaning strips EXIF. Do not silently turn an orientation-
                 # dependent photograph sideways or change its displayed frame.
                 raise ValueError('Unsupported source photo dimensions')

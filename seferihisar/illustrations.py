@@ -275,12 +275,15 @@ class Illustrator:
     def prune(self, allowed_ids: set[str]):
         rows = self.store.rows('SELECT id,item_id,length(image) AS bytes,status FROM illustrations ORDER BY updated_at DESC,id')
         size, count, keep = 0, 0, 0
+        frozen = self._frozen_keys()
         with self.store.db:
             for row in rows:
                 if row['status'] == 'ready':
                     size += row['bytes'] or 0
                     count += 1
                 keep += 1
+                if frozen is None or row['id'] in frozen:
+                    continue  # Retained publication bindings survive pruning.
                 if row['item_id'] not in allowed_ids or size > MAX_CACHE_BYTES or count > MAX_CACHED_IMAGES or keep > 500:
                     self.store.db.execute('DELETE FROM illustrations WHERE id=?', (row['id'],))
             self.store.db.execute('DELETE FROM illustration_days WHERE day<?', ((self.at.astimezone(timezone.utc).date() - timedelta(days=30)).isoformat(),))
@@ -415,16 +418,22 @@ class Illustrator:
             self.stopped = True
             return None
 
-    def _frozen_key(self, key: str) -> bool:
+    def _frozen_keys(self):
+        keys = set()
         for row in self.store.rows("SELECT payload FROM posts WHERE status IN ('published','publishing','uncertain')"):
             try:
                 bindings = json.loads(row['payload']).get('illustration_keys', {})
+                if not isinstance(bindings, (dict, list)):
+                    return None
                 values = bindings.values() if isinstance(bindings, dict) else bindings
-                if not isinstance(bindings, (dict, list)) or key in values:
-                    return True
+                keys.update(values)
             except (ValueError, TypeError, AttributeError):
-                return True
-        return False
+                return None
+        return keys
+
+    def _frozen_key(self, key: str) -> bool:
+        keys = self._frozen_keys()
+        return keys is None or key in keys
 
     def _reuse_scene(self, item, key, old):
         # Never change a key already consumed by any publication claim.
