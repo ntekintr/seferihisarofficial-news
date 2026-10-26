@@ -190,7 +190,11 @@ def _export(store: Store, public_dir: Path, sources: list[dict], at: datetime, d
     # Spend the unchanged two-attempt budgets on the next editorial candidates,
     # before distant/old queue entries. Frozen cards retain their stored bytes.
     pending = [p for p in parents if p['status']=='prepared']
-    ordered = prioritize(store,pending,at) + sorted(
+    from .visual_policy import image_reason
+    ranked = prioritize(store,pending,at)
+    # Preparation order only: missing covers precede already-imaged drafts.
+    # Social publication priority and all daily limits remain independent.
+    ordered = sorted(ranked,key=lambda p:image_reason(p) is None) + sorted(
         (p for p in parents if p['status']!='prepared'),key=lambda p:p['due_at'])
     for post in ordered:
         if post["status"] in ("prepared", "published", "publishing", "uncertain"):

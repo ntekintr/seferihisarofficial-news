@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 import re
 
 MAX_ROWS = 400
-STAGES = frozenset(('source_read', 'source_binding', 'image_read', 'image_format',
+STAGES = frozenset(('source_read', 'source_binding', 'image_read', 'poster_delivery_v2', 'image_format',
                     'event_text', 'visual_subject', 'cache_binding', 'checker_unavailable'))
 COLUMNS = ['item_id', 'revision', 'checked_at', 'retry_at', 'stage']
 
@@ -12,7 +12,7 @@ def wait(stage):
     if stage not in STAGES:
         raise ValueError('Unknown photo retry stage')
     return timedelta(minutes=15 if stage == 'checker_unavailable' else
-                     60 if stage in ('source_read', 'image_read') else 360)
+                     60 if stage in ('source_read', 'image_read', 'poster_delivery_v2') else 360)
 
 
 def validate_row(row):
@@ -26,13 +26,15 @@ def validate_row(row):
         raise ValueError('Invalid photo retry interval')
 
 
-def active(store, item, at):
+def active(store, item, at, *, obsolete=()):
     rows = store.rows('SELECT * FROM source_photo_retries WHERE item_id=? AND revision=?',
                       (item['id'], item['revision']))
     if not rows:
         return False
     row = rows[0]
     validate_row(tuple(row[k] for k in COLUMNS))
+    if row['stage'] in obsolete:
+        return False
     checked, retry = datetime.fromisoformat(row['checked_at']), datetime.fromisoformat(row['retry_at'])
     return checked - timedelta(minutes=5) <= at < retry
 

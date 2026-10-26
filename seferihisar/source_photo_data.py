@@ -14,9 +14,12 @@ FIELDS={'version','source_id','source_url','image_url','title','published_at','c
 INSTAGRAM_FIELDS=(FIELDS-{'image_url'})|{'media_id'}
 EVENT_FIELDS=(FIELDS-{'published_at'})|{'start','end'}
 SUBJECTS=('meeting','flood','traffic','citrus_harvest','roadworks','hiking','glass_litter','football','landscape','parking','bus','electrical','water_utility','weather_sky','land_planning','education','health_workspace','public_service','food','market','concert','theatre','cinema','festival','culture','animal_care','citrus_processing','public_park')
-EVENT_SUBJECTS=('theatre','concert','cinema','festival','culture','family','sport','market','food','education','yoga','tile_art','workshop','electrical','water_utility')
+EVENT_SUBJECTS=('theatre','concert','cinema','festival','culture','family','sport','market','food','education','yoga','tile_art','workshop','event_poster','electrical','water_utility')
 
-IMAGE_ORIGINS = {}
+IMAGE_ORIGINS = {
+    'bubilet': ('www.bubilet.com.tr', 'cdn.bubilet.com.tr', r'/cdn-cgi/image/width=\d{2,4},quality=\d{2,3}/files/Etkinlik/[A-Za-z0-9_.-]+\.(?:jpe?g|png|webp)'),
+    'bubilet-bademler': ('www.bubilet.com.tr', 'cdn.bubilet.com.tr', r'/cdn-cgi/image/width=\d{2,4},quality=\d{2,3}/files/Etkinlik/[A-Za-z0-9_.-]+\.(?:jpe?g|png|webp)'),
+}
 
 
 def approved_image_url(source_id, source_url, image_url):
@@ -65,7 +68,7 @@ def validate_evidence(value):
                 or not isinstance(value['media_id'],str) or not re.fullmatch(r'\d{8,32}',value['media_id'])):
             raise ValueError('Invalid Instagram photograph identity')
     elif (not public_url(value['image_url']) or len(value['image_url'])>2048
-          or urlsplit(value['source_url']).hostname!=urlsplit(value['image_url']).hostname):
+          or not approved_image_url(value['source_id'],value['source_url'],value['image_url'])):
         raise ValueError('Invalid article photograph identity')
     return value
 
@@ -86,3 +89,41 @@ def valid_bindings(value):
     return (isinstance(value,dict) and len(value)<=1 and all(
         index=='0' and isinstance(photo,str) and re.fullmatch(r'[a-f0-9]{24}',photo)
         for index,photo in value.items()))
+
+
+def reviewed_ticket_source(source):
+    return (source.get('id') in ('bubilet','bubilet-bademler','bubilet-isparta')
+            and urlsplit(source.get('url','')).hostname == 'www.bubilet.com.tr'
+            and (source.get('kind') == 'ticketing' or source.get('reader') == 'ticketing'))
+
+
+def delivery_sources(sources):
+    # A reviewed CDN with HTTP 404/410 robots has no published robot rules.
+    # Existing disallow rules, 403/429/5xx, redirects, TLS and MIME checks stay
+    # closed. This opt-in does not apply to any other publisher/CDN.
+    return [{'enabled':True,'url':'https://'+origin[1]+'/',
+             'allow_missing_robots': origin[1]=='cdn.bubilet.com.tr' and reviewed_ticket_source(sources[sid])}
+            for sid,origin in IMAGE_ORIGINS.items() if sid in sources
+            and urlsplit(sources[sid]['url']).hostname==origin[0]]
+
+
+def same_event_artwork(evidence,item):
+    # A provider's date-free poster can belong to several exact sessions of
+    # the same show. Each new session still needs source binding AND OCR.
+    from .domain import normalized
+    if (evidence.get('version')!=EVENT_VERSION or item.get('kind')!='event'
+            or evidence.get('source_id')!=item.get('source_id')
+            or item.get('source_id') not in ('bubilet','bubilet-bademler','bubilet-isparta')
+            or evidence.get('subject')!=photo_subject_for_reuse(item)
+            or normalized(evidence.get('title',''))!=normalized(item.get('title',''))):
+        return False
+    a,b=urlsplit(evidence.get('source_url','')),urlsplit(item.get('url',''))
+    pattern=r'/[^/]+/etkinlik/[a-z0-9-]+/seans/\d+'
+    return (a.hostname==b.hostname=='www.bubilet.com.tr' and not a.query and not b.query
+            and re.fullmatch(pattern,a.path) and re.fullmatch(pattern,b.path)
+            and a.path.rsplit('/seans/',1)[0]==b.path.rsplit('/seans/',1)[0])
+
+
+def photo_subject_for_reuse(item):
+    from .source_photos import photo_subject
+    return photo_subject(item)

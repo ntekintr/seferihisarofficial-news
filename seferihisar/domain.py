@@ -24,7 +24,7 @@ TERMS = {
     "theatre": ("tiyatro",), "cinema": ("sinema", "film göster"),
     "family": ("çocuk", "aile"), "sport": ("turnuva", "spor", "koşu"),
     "market": ("pazar", "fuar", "kermes"), "food": ("gastronomi", "mandalina", "zeytin"),
-    "culture": ("sergi", "sanat", "atölye", "söyleşi", "dans", "kitap tanıtım"), "transport": ("eshot", "trafik", "yol çalış"),
+    "culture": ("sergi", "sanat", "atölye", "söyleşi", "dans", "kitap tanıtım"), "transport": ("eshot", "trafik", "yol çalış", "yol yenilen", "yol yenile", "yol bakım"),
     "outage": ("kesinti", "elektrik", "su kes"), "weather": ("meteoroloji", "fırtına", "yağış"),
     "education": ("kurs", "seminer", "eğitim"), "health": ("sağlık",),
     "tourism": ("turizm", "gezi"), "municipality": ("belediye",),

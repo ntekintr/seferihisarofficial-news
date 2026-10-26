@@ -230,7 +230,7 @@ def validate_state(path: Path):
                 size, count = 0, 0
                 for key, item_id, status, image, attempts, retry_at, updated_at in db.execute('SELECT * FROM illustrations'):
                     assert_no_secrets((key, item_id, status, attempts, retry_at, updated_at))
-                    if not all(re.fullmatch(r'[a-f0-9]{24}', v) for v in (key, item_id)) or status not in ('ready', 'pending', 'failed') or type(attempts) is not int or not 1 <= attempts <= 2:
+                    if not all(re.fullmatch(r'[a-f0-9]{24}', v) for v in (key, item_id)) or status not in ('ready', 'pending', 'failed') or type(attempts) is not int or not (0 if status == 'ready' else 1) <= attempts <= 2:
                         raise ValueError('Invalid illustration record')
                     from datetime import datetime
                     for stamp in (retry_at, updated_at):

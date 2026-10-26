@@ -48,7 +48,7 @@ LABELS = {
 from .visual_topics import LABELS as NEWS_LABELS
 LABELS.update(NEWS_LABELS)
 LABELS.setdefault('roadworks', 'a news photograph of a street or sidewalk being renovated with bare ground and road maintenance equipment')
-LABELS['event_calendar'] = 'a photograph of an open planner, blank tickets and a pen on a desk'
+LABELS['event_calendar'] = 'a photograph of a desk calendar with blank pages and colourful blank admission tickets beside a pen'
 
 
 class MatchUnavailable(ValueError):

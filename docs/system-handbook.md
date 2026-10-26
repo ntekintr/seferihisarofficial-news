@@ -279,3 +279,7 @@ yayınlar veya önceki testler yeni özelliğin canlı kanıtı değildir.
 Eski tarihli kaynak araştırması belgelerini güncel sağlık tablosunun yerine kullanmayın.
 
 22 Ekim 2026 tek kullanıcı isteği: [mandalina yan ürün projesi ve son tarihli yayın](owner-request-mandarin-reuse.md). Genel haber görsel kapıları açılmaz; kesin kaynak/piksel bağı, OCR, günlük bütçe ve tekrar koruması korunur. Hazır görsel gerçek Meta teslimi değildir.
+
+26 Ekim 2026: [görsel kuyruğunu kurtarma ve kalıcı stok](visual-backlog-recovery.md).
+İki başarısız üretim, aynı seans sahnesinin gereksiz tekrarı ve Bubilet CDN robots 404 nedeni ayrı ele alınır.
+Canlı sonuç için tarihli dağıtım/SQL kanıtı gerekir; eski kurulum notları güncel Meta durumu sayılmaz.

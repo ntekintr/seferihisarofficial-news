@@ -42,7 +42,8 @@
     "photo_identity_reader": "rss-html-v1",
     "photo_article_selector": ".izbel-content",
     "body_selector": ".izbel-content",
-    "photo_inline_selector": ".triple-slider .imageGallery1 img[src]"
+    "photo_inline_selector": ".triple-slider .imageGallery1 img[src]",
+    "prefer_headline_category": true
   },
   {
     "id": "eshot",

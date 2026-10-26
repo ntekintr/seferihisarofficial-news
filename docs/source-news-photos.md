@@ -44,7 +44,7 @@ görüntü kazınmaz veya oturum açma engeli aşılmaz, uygun doğrulanmış fo
 bilgi kartı kullanılır. Bu değişiklik Instagram kaynaklarının tüm medyasını alma
 özelliği olarak sunulmaz.
 
-Fotoğraf kanıtı en fazla 15 dakika yeniden kullanılır; yeni kontrol ayrı anahtar
+Fotoğraf kanıtı en fazla 45 dakika yeniden kullanılır; yeni kontrol ayrı anahtar
 alır. Yayımlanmış/başlamış/belirsiz gönderinin kanıtı ve JPEG'i değişmez. Kalıcı
 cache en fazla 80 fotoğraf/12 MB; yalnız hiçbir gönderiye bağlı olmayan kayıtlar
 temizlenir. Donmuş kayıtlar limiti doldurursa eski fotoğraflar silinmez, yeni

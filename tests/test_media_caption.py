@@ -9,7 +9,7 @@ import pytest
 from PIL import Image
 
 from seferihisar.editor import caption_with_hashtags
-from seferihisar.illustrations import clean_image
+from seferihisar.illustrations import clean_image, Illustrator
 from seferihisar.image_safety import IllustrationTextRejected, validate_jpeg
 from seferihisar.instagram import publish_one, prepare_story_jobs
 from seferihisar.media_caption import GENERATED_IMAGE_NOTE, generated_image_caption
@@ -19,6 +19,8 @@ from seferihisar.schedule import prepare
 
 @pytest.fixture
 def generated_scene(monkeypatch):
+    # Explicitly exercise provider-backed caption behavior with no stock candidate.
+    monkeypatch.setattr(Illustrator, '_reuse_scene', lambda *args: None)
     monkeypatch.setenv('CLOUDFLARE_API_TOKEN', 'SYNTHETIC_CLOUDFLARE_CREDENTIAL_0123456789')
     monkeypatch.setenv('CLOUDFLARE_ACCOUNT_ID', 'a' * 32)
     monkeypatch.setenv('ILLUSTRATIONS_ENABLED', 'true')
