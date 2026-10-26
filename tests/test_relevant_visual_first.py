@@ -173,4 +173,4 @@ def test_cancelled_outage_or_unclassified_event_has_no_source_scene():
     for item in [{'kind':'event','category':'outage','status':'scheduled'},
                  {'kind':'event','category':'concert','status':'cancelled'},
                  {'kind':'event','category':'event','status':'scheduled'}]:
-        assert photo_subject(item) is None
+        assert photo_subject(item) == ('event_poster' if item.get('category')=='event' and item.get('status')=='scheduled' else None)

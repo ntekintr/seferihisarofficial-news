@@ -151,6 +151,8 @@ def illustration_prompt(item: dict) -> str:
 
 
 def scene_version(item: dict) -> str:
+    if item.get('visual_calendar') is True:
+        return 'editorial-calendar-v9'
     if scene_brief(item) != _legacy_scene_brief(item):
         return 'editorial-photo-news-v8'
     from .owner_curated import matches, SUBJECT
@@ -206,9 +208,12 @@ class Illustrator:
         self.ocr_ready = None
         self.match_checks = {}
         self.match_ready = True
-        self.stats.update({'subject_rejected': 0, 'subject_unavailable': 0, 'text_only': 0})
+        self.stats.update({'subject_rejected': 0, 'subject_unavailable': 0, 'text_only': 0, 'stock_reused': 0, 'scene_reused': 0})
 
     def check_subject(self, key: str, data: bytes, expected: str):
+        from .editorial_stock import reviewed_calendar
+        if reviewed_calendar(data, expected):
+            return  # Exact reviewed calendar crops; OCR still precedes this check.
         from .owner_curated import SUBJECT, validate
         if expected == SUBJECT:
             # Exact reviewed pixels, not a model score or a general-news bypass.
@@ -331,22 +336,23 @@ class Illustrator:
             except IllustrationTextRejected:
                 self.quarantine(key)
                 self.stats['failed'] += 1
-                return None
             except IllustrationCheckUnavailable:
                 self.stats['deferred'] += 1
                 return None
             except MatchRejected:
                 self.stats['subject_rejected'] += 1
-                return None
             except MatchUnavailable:
                 self.stats['subject_unavailable'] += 1
                 return None
             except ValueError:
                 # A damaged cache is not silently regenerated with more calls.
                 self.stats['failed'] += 1
-                return None
         if not generate:
             return None
+        if path := self._reuse_scene(item,key,old):
+            return path
+        if old and old['status'] == 'ready':
+            return None  # Rejected cached pixels do not authorize a new API attempt.
         # v5 changes only a few custom scenes. Reuse an already-checked v4
         # photo for an unchanged fixed brief, without spending another request.
         unchanged = (scene_version(item) == 'editorial-photo-v5' and
@@ -417,6 +423,54 @@ class Illustrator:
             except (ValueError, TypeError, AttributeError):
                 return True
         return False
+
+    def _reuse_scene(self, item, key, old):
+        # Never change a key already consumed by any publication claim.
+        if self._frozen_key(key):
+            return None
+        from .editorial_stock import stock_image
+        from .visual_topics import SCENES
+        expected, brief = subject(item), scene_brief(item)
+        fixed = (*SCENES.values(), *ACTIVITY_SCENES.values(), *EVENT_SCENES.values(), *NEWS_SCENES.values())
+        if brief not in fixed:
+            return None
+        candidates = []
+        if data := stock_image(expected, brief):
+            candidates.append(('stock_reused', data))
+        items = {i['id']:i for i in self.store.items()}
+        for row in self.store.rows("SELECT * FROM illustrations WHERE status='ready' ORDER BY updated_at DESC,id"):
+            donor = items.get(row['item_id'])
+            if (row['id'] != key and donor and image_key(donor) == row['id']
+                    and subject(donor) == expected and scene_brief(donor) == brief):
+                candidates.append(('scene_reused', row['image']))
+        seen = set()
+        import hashlib
+        for origin, data in candidates:
+            check_key = 'scene:' + hashlib.sha256(data).hexdigest()
+            if check_key in seen:
+                continue
+            seen.add(check_key)
+            try:
+                validate_jpeg(data)
+                # Pixel-specific signatures cannot inherit an old negative
+                # result from a different image under this item's cache key.
+                self.check_image(check_key, data)
+                self.check_subject(check_key, data, expected)
+            except (IllustrationCheckUnavailable, MatchUnavailable):
+                self.stats['deferred'] += 1
+                return None
+            except (IllustrationTextRejected, MatchRejected, ValueError):
+                continue
+            with self.store.db:
+                self.store.db.execute('INSERT OR REPLACE INTO illustrations VALUES(?,?,?,?,?,?,?)',
+                    (key,item['id'],'ready',data,old['attempts'] if old else 0,
+                     old['retry_at'] if old else self.retry_at,self.at.isoformat()))
+            self.checked_images[key] = 'safe'
+            self.match_checks[(key,expected)] = True
+            self.stats[origin] += 1
+            self.stats['reused'] += 1
+            return self.materialize(key, data)
+        return None
 
     def _reuse_v4(self, item: dict, key: str) -> Path | None:
         # Revised festival/market briefs must not alias an old stall scene.

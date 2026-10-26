@@ -28,6 +28,8 @@ def png():
 
 @pytest.fixture
 def configured(monkeypatch):
+    # Exercise the provider path explicitly; scene-stock recovery is tested separately.
+    monkeypatch.setattr(Illustrator, '_reuse_scene', lambda *args: None)
     monkeypatch.setenv('CLOUDFLARE_API_TOKEN', 'SYNTHETIC_CLOUDFLARE_CREDENTIAL_0123456789')
     monkeypatch.setenv('CLOUDFLARE_ACCOUNT_ID', 'a' * 32)
     monkeypatch.setenv('ILLUSTRATIONS_ENABLED', 'true')
