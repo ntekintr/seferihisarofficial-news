@@ -15,6 +15,10 @@ altı kaynak kimliği ve iki gerçek görsel dosyası kontrol edilir. Görsel be
 sonucu işletim raporunda `awaiting_content_visual` olarak korunur; bilinmeyen
 durum sayılıp `check_failed` etiketine çevrilmez. Bütçe ve durum regresyonları
 `tests/test_source_photo_queue.py` ile sınanır.
+Canlı Isparta turunda aynı uyumsuz görsellerin sonraki turları da meşgul ettiği
+görüldü. `source_photo_retry.py` yalnız içerik/revizyon, aşama ve zamanla sınırlı
+bekleme tutar; kaynak ve görsel kotası artmadan diğer adaylar ilerler. Şema,
+yeniden başlatma, süre dolumu ve yeni revizyon davranışı ayrıca test edilir.
 
 ### 24 Ekim akşamı: yeni habere dördüncü çift istisnası
 

@@ -193,7 +193,7 @@ class SourcePhotos:
         self.instagram_photos=instagram_photos or {}
         self.fetcher=fetcher
         self.stats={'enabled':self.enabled,'downloaded':0,'reused':0,'rejected':0,'unavailable':0,'deferred':0,
-                    'rejection_stages':{},'source_checks':0}
+                    'rejection_stages':{},'source_checks':0,'cooldown':0}
         if instagram_checks is not None:self.stats['instagram']=instagram_checks
         self.reads=0
         self.results={}
@@ -218,6 +218,8 @@ class SourcePhotos:
                 for key in p.get('source_photo_keys',{}).values()}
 
     def prune(self,allowed_ids):
+        from .source_photo_retry import prune
+        prune(self.store,allowed_ids)
         frozen=self.frozen()
         with self.store.db:
             for row in self.store.rows('SELECT id,item_id FROM source_photos'):
@@ -258,6 +260,9 @@ class SourcePhotos:
                 self.stats['reused']+=1
                 self.results[item['id']]=(row['id'],self.materialize(row))
                 return self.results[item['id']]
+        from .source_photo_retry import active,remember
+        if active(self.store,item,self.at):
+            self.stats['cooldown']+=1;return None
         if self.reads>=MAX_READS or self.stats['source_checks']>=MAX_SOURCE_CHECKS:
             self.stats['deferred']+=1;return None
         # Missing images consume bounded page checks, not binary-image slots.
@@ -278,7 +283,8 @@ class SourcePhotos:
                     raise ValueError('Source feed redirected')
             urls=candidate_urls(html,final,item,source,feed_html=feed_html)
         except (requests.RequestException,ValueError,TypeError,KeyError,OSError):
-            self.failure(stage);return None
+            self.failure(stage);remember(self.store,item,self.at,stage);return None
+        last_failure=None
         for url in urls:
             # Every attempted image, including network/quality failures,
             # consumes one of the existing two image slots for this run.
@@ -322,9 +328,10 @@ class SourcePhotos:
                 return self.save(item,evidence,image)
             except (MatchUnavailable,IllustrationCheckUnavailable):
                 # A missing checker cannot improve on another photograph.
-                self.failure(stage,unavailable=True);break
+                self.failure(stage,unavailable=True);last_failure='checker_unavailable';break
             except (requests.RequestException,ValueError,TypeError,KeyError,OSError):
-                self.failure(stage)
+                self.failure(stage);last_failure=stage
+        if last_failure:remember(self.store,item,self.at,last_failure)
         return None
 
     def save(self,item,evidence,image):
@@ -349,6 +356,8 @@ class SourcePhotos:
                 self.store.db.execute('INSERT OR REPLACE INTO source_photos VALUES(?,?,?,?,?)',
                                       (photo,item['id'],item['revision'],payload,image))
         row=self.store.rows('SELECT * FROM source_photos WHERE id=?',(photo,))[0]
+        from .source_photo_retry import clear
+        clear(self.store,item)
         self.stats['downloaded']+=1
         self.results[item['id']]=(photo,self.materialize(row))
         return self.results[item['id']]
