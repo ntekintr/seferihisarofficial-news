@@ -10,6 +10,11 @@ kez başarılı olması sonraki ay kesintisiz çalışacağı anlamına gelmez.
 uygulanır. İzmir Belediyesi RSS kaydı aynı sayfa/başlık/tarihle HTML galerisine
 bağlanır. Konu yolları genişletildi; doğrulanmış kapak görseli olmayan yeni
 feed bekler. Eski SQL iddiaları ve sosyal teslimler yeniden yazılmaz.
+Görselsiz kaynak sayfası iki dosyalık görsel hakkını tüketmez; turda en fazla
+altı kaynak kimliği ve iki gerçek görsel dosyası kontrol edilir. Görsel bekleme
+sonucu işletim raporunda `awaiting_content_visual` olarak korunur; bilinmeyen
+durum sayılıp `check_failed` etiketine çevrilmez. Bütçe ve durum regresyonları
+`tests/test_source_photo_queue.py` ile sınanır.
 
 ### 24 Ekim akşamı: yeni habere dördüncü çift istisnası
 

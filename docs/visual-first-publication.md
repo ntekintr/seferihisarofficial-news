@@ -33,3 +33,10 @@ adayı/tur, iki üretim denemesi/tur ve günlük yirmi üretim denemesi sınırl
 korunur. Kota, servis veya kalite engelinde görsel hazır sayılmaz. Başlamış,
 yayımlanmış ve belirsiz eski iddialar/metinler/medya bağları değiştirilmez;
 manüel tekrar paylaşım yapılmaz. Hazırlık, dağıtım ve gerçek teslim ayrı kanıttır.
+
+
+Kaynakta görsel bulunmayan sayfalar iki dosya indirme hakkını tüketmez. Bir turda
+en fazla altı kaynak kimliği kontrol edilir; gerçek dosya denemeleri, başarısız
+indirme ve kalite reddi dahil, hâlâ en fazla ikidir. Aynı kayda tur içinde tekrar
+bakılmaz. `source_checks` ile kaynak sayfası kontrolü ayrı görünür. Görsel bekleme
+sonucu işletim kaydında normal bekleme olarak saklanır; servis hatası sayılmaz.
