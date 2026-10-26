@@ -40,3 +40,11 @@ en fazla altı kaynak kimliği kontrol edilir; gerçek dosya denemeleri, başar�
 indirme ve kalite reddi dahil, hâlâ en fazla ikidir. Aynı kayda tur içinde tekrar
 bakılmaz. `source_checks` ile kaynak sayfası kontrolü ayrı görünür. Görsel bekleme
 sonucu işletim kaydında normal bekleme olarak saklanır; servis hatası sayılmaz.
+
+Reddedilen kaynak görseli aynı içerik/revizyon için her araştırmada yeniden
+indirilmez. Konu, biçim, OCR veya kaynak bağı reddi altı saat; ağ hatası bir saat;
+kontrol aracı erişimsizliği on beş dakika bekler. Yeni revizyon yeniden kontrol
+edilir. Kalıcı deneme kaydı yalnız içerik kimliği, revizyon, kontrollü aşama ve
+zaman taşır; adres, piksel veya sağlayıcı hata metni taşımaz. En fazla 400 kayıt
+tutulur ve kapsamdan çıkanlar temizlenir. Bekletilen görsel indirme hakkı tüketmez;
+diğer içerikler aynı iki dosya/tur bütçesiyle ilerler. Bu kayıt yayın onayı değildir.

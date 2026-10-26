@@ -56,6 +56,9 @@ class Store:
               updated_at TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS illustration_days (
               day TEXT PRIMARY KEY, attempts INTEGER NOT NULL);
+            CREATE TABLE IF NOT EXISTS source_photo_retries (
+              item_id TEXT NOT NULL, revision INTEGER NOT NULL, checked_at TEXT NOT NULL,
+              retry_at TEXT NOT NULL, stage TEXT NOT NULL, PRIMARY KEY(item_id,revision));
             CREATE TABLE IF NOT EXISTS source_photos (
               id TEXT PRIMARY KEY, item_id TEXT NOT NULL, revision INTEGER NOT NULL,
               payload TEXT NOT NULL, image BLOB NOT NULL);

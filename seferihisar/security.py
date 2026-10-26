@@ -74,7 +74,7 @@ def validate_state(path: Path):
     db = sqlite3.connect(f"file:{path.resolve()}?mode=ro", uri=True)
     try:
         tables = {r[0] for r in db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
-        if not tables <= {"items", "posts", "withheld", "runs", "candidates", "annotations", "illustrations", "illustration_days", "source_photos", "source_health", "facebook_deliveries", "publication_checks", "weather_stories", "learning_profile", "source_checks", "delivery_audits", "learning_samples", "pharmacy_stories"}:
+        if not tables <= {"items", "posts", "withheld", "runs", "candidates", "annotations", "illustrations", "illustration_days", "source_photos", "source_photo_retries", "source_health", "facebook_deliveries", "publication_checks", "weather_stories", "learning_profile", "source_checks", "delivery_audits", "learning_samples", "pharmacy_stories"}:
             raise ValueError("Unexpected state tables")
         for table in sorted(tables):
             if table == 'pharmacy_stories':
@@ -125,6 +125,16 @@ def validate_state(path: Path):
                 for row in db.execute('SELECT * FROM source_checks'):
                     assert_no_secrets(row)
                     validate_check(row)
+                continue
+            if table == 'source_photo_retries':
+                from .source_photo_retry import COLUMNS, MAX_ROWS, validate_row
+                if [r[1] for r in db.execute('PRAGMA table_info(source_photo_retries)')] != COLUMNS:
+                    raise ValueError('Unexpected source photo retry fields')
+                if db.execute('SELECT COUNT(*) FROM source_photo_retries').fetchone()[0] > MAX_ROWS:
+                    raise ValueError('Source photo retry limit exceeded')
+                for row in db.execute('SELECT * FROM source_photo_retries'):
+                    assert_no_secrets(row)
+                    validate_row(row)
                 continue
             if table=='source_photos':
                 from .source_photo_data import validate_record,MAX_CACHE_BYTES,MAX_CACHED_IMAGES
