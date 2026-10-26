@@ -13,6 +13,11 @@ def subject(item: dict) -> str | None:
         return news_subjects(item)[1]
     if activity := event_activity(item.get('category'), item.get('title', '')):
         return activity
+    from .domain import normalized
+    import re
+    # Rebetiko is an explicit musical genre, not an inference from a venue.
+    if re.search(r'\brebetiko\b', normalized(item.get('title',''))):
+        return 'concert'
     category = item.get('category')
     return category if category in (
         'theatre', 'concert', 'cinema', 'festival', 'culture', 'family',

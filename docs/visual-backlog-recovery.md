@@ -60,3 +60,8 @@ robots reddi ve süreli tekrar davranışı test edilir. Bulut CI gerçek OCR ve
 modeli ayrıca çalıştırır. Hazırlanmış kart, başarılı CI ve gerçek sosyal teslim
 ayrı kanıtlardır; dağıtım ve eski SQL alanları tarihli çalışma raporuyla kontrol
 edilmeden bu belge tek başına canlı başarı iddiası değildir.
+
+
+Bulut OCR denemesinde Rebetiko afişinin stilize başlığı güvenilir okunamadı.
+Bu afişin denetimi gevşetilmez; açık müzik türü Rebetiko için genel konser
+sahnesi kullanılabilir. Atatürk'ün sevdiği şarkılar afişi normal OCR'dan geçti.

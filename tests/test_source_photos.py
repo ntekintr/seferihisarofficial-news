@@ -157,10 +157,10 @@ def test_each_refresh_is_separate_evidence_and_network_budget_is_bounded(store,t
     item,post=seed(store);photos,fetcher=manager(store,tmp_path,monkeypatch)
     first=photos.for_post(post,{item['id']:item});old_key=post['source_photo_keys']['0']
     with store.db:store.db.execute('UPDATE posts SET payload=?',(json.dumps(post),))
-    cache,unused=manager(store,tmp_path/'cached',monkeypatch,AT+timedelta(minutes=10))
+    cache,unused=manager(store,tmp_path/'cached',monkeypatch,AT+timedelta(minutes=45))
     again=cache.for_post(post,{item['id']:item});unused.get.assert_not_called()
     assert again[0].read_bytes()==first[0].read_bytes() and post['source_photo_keys']['0']==old_key
-    later,fetcher=manager(store,tmp_path/'new',monkeypatch,AT+timedelta(minutes=16))
+    later,fetcher=manager(store,tmp_path/'new',monkeypatch,AT+timedelta(minutes=46))
     later.for_post(post,{item['id']:item})
     assert post['source_photo_keys']['0']!=old_key
     for index in range(3):

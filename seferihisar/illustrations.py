@@ -89,6 +89,8 @@ def event_scene(item: dict) -> str | None:
 def scene_brief(item: dict) -> str:
     from .visual_topics import SCENES
     selected = subject(item)
+    if item.get('kind') == 'event' and selected in EVENT_SCENES and selected != item.get('category'):
+        return EVENT_SCENES[selected]
     if selected == 'market' and re.search(r'\b(?:mandalina\w*|satsuma)\b',normalized(item.get('title',''))):
         return SCENES['citrus_basket']
     if selected == 'weather_sky' and re.search(r'yağmur|yağiş|sağanak',normalized(item.get('title',''))):

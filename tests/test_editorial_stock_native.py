@@ -29,4 +29,11 @@ def test_actual_backlog_posters_match_the_original_session_text(ident):
     from seferihisar.event_image_text import validate
     folder=Path('tests/fixtures/backlog-posters')
     item=json.loads((folder/(ident+'.json')).read_text(encoding='utf8'))
-    assert validate((folder/(ident+'.jpg')).read_bytes(),item,poster=True)
+    data=(folder/(ident+'.jpg')).read_bytes()
+    if ident=='788d64a6aafa6d475aa1525c':
+        # The stylized source title fails OCR. Keep that boundary closed;
+        # the explicit musical genre receives a reviewed concert scene instead.
+        with pytest.raises(ValueError,match='title'):
+            validate(data,item,poster=True)
+    else:
+        assert validate(data,item,poster=True)

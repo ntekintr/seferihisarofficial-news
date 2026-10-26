@@ -158,3 +158,10 @@ def test_only_current_same_brief_donor_can_be_reused(tmp_path,monkeypatch,change
         assert not store.rows('SELECT * FROM illustration_days')
         generator.session.post.assert_not_called()
 
+
+
+def test_rebetiko_uses_music_scene_without_guessing_unknown_events():
+    row=item(category='event',title="Rebetiko Kordelio Yunan Yemekleri ve Gecesi")
+    assert subject(row)=='concert'
+    assert editorial_stock.stock_image('concert',scene_brief(row))
+    assert subject(item(category='event',title='Yunan Yemekleri ve Gecesi')) is None
