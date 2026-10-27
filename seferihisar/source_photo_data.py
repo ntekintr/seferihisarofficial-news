@@ -13,7 +13,7 @@ EVENT_VERSION='source-photo-event-v1'
 FIELDS={'version','source_id','source_url','image_url','title','published_at','checked_at','subject','sha256'}
 INSTAGRAM_FIELDS=(FIELDS-{'image_url'})|{'media_id'}
 EVENT_FIELDS=(FIELDS-{'published_at'})|{'start','end'}
-SUBJECTS=('thyme_herbs','meeting','flood','traffic','citrus_harvest','roadworks','hiking','glass_litter','football','landscape','parking','bus','electrical','water_utility','weather_sky','land_planning','education','health_workspace','public_service','food','market','concert','theatre','cinema','festival','culture','animal_care','citrus_processing','public_park')
+SUBJECTS=('meeting','flood','traffic','citrus_harvest','roadworks','hiking','glass_litter','football','landscape','parking','bus','electrical','water_utility','weather_sky','land_planning','education','health_workspace','public_service','food','market','concert','theatre','cinema','festival','culture','animal_care','citrus_processing','public_park')
 EVENT_SUBJECTS=('theatre','concert','cinema','festival','culture','family','sport','market','food','education','yoga','tile_art','workshop','event_poster','electrical','water_utility')
 
 IMAGE_ORIGINS = {

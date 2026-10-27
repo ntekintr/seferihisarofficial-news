@@ -9,7 +9,6 @@ import re
 from .domain import normalized
 
 LABELS = {
-    'thyme_herbs': 'a photograph of thyme or oregano herb sprigs, small green leaves and tiny flowers',
     'citrus_processing': 'a photograph of tangerines, orange peels and a small oil bottle on a table',
     'adult_workspace': 'a photograph of folded clothes and everyday craft materials on an adult training workspace',
     'public_park': 'a photograph of a park bench under trees in a green public park',
@@ -34,7 +33,6 @@ LABELS = {
 }
 
 SCENES = {
-    'thyme_herbs': 'A photographic close view of fresh and dried culinary thyme sprigs on a plain table. Small natural leaves and fine stems, realistic texture and soft daylight. No people, product packaging, text, medical claim, named place or claim of a specific endemic variety.',
     'adult_workspace': 'An adult life-skills training workspace with everyday household objects, folded clothes and unlettered craft materials on a table. Natural photographic light and realistic textures. No people, children, toys, kite or written instructions.',
     'citrus_basket': 'A photographic close view of freshly harvested mandarins in a plain wicker basket on a simple table. No people harvesting, orchard identity, lettering or claim about an actual crop.',
     'citrus_processing': 'A photographic close view of tangerines, a few fresh mandarin peels and a small plain unlabelled oil bottle. No factory, manufacturing process, animals, people, lettering or unverified scientific claim.',
@@ -92,9 +90,6 @@ def news_subjects(item):
         return ('citrus_harvest' if actual else None), 'market'
     if re.search(r'\b(?:mandalina\w*|satsuma)\b', title):
         return 'citrus_processing', 'citrus_processing'
-    if (re.search(r'\bkeki(?:k\w*|ğ\w*)\b', title)
-            and re.search(r'\b(?:endemik|hasa[td]\w*|üretim\w*|ticaret\w*|kilogram\w*|kilo\w*|yetiştir\w*)\b', title)):
-        return 'thyme_herbs', 'thyme_herbs'
     if re.search(r'\b(?:engelli genç\w*|bağimsiz yaşam|istihdam desteği)\b',title):
         return 'education', 'adult_workspace'
     if 'park alani' in title and ('araç' in title or category=='transport'):
