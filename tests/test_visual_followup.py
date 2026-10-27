@@ -84,13 +84,14 @@ def test_pending_category_refresh_preserves_all_frozen_claims(tmp_path):
 
 
 @pytest.mark.skipif(__import__('os').getenv('RUN_VISUAL_NATIVE')!='true',reason='Native source photo and headline checks')
-def test_actual_exif_zero_source_photo_retains_matching_news_subject():
+def test_actual_exif_zero_source_photo_format_is_valid_but_model_rejection_stays_closed():
     from pathlib import Path
     from seferihisar.visual_match import validate_news_photo,validate_headline_photo,MatchRejected
     raw=Path('tests/fixtures/visual-followup/official-visit-exif-zero.jpg').read_bytes()
     data=cleaned_photo(raw)
-    try:
-        proof=validate_news_photo(data,'meeting')
-    except MatchRejected:
-        proof=validate_headline_photo(data,'meeting','HÜDA PAR Isparta İl Başkanı Salih Demir’den Yeni Müftüye Ziyaret')
-    assert proof['subject']=='meeting'
+    # This reviewed publisher graphic does not pass the pinned automatic model.
+    # Format support is not subject approval; generic meeting stock remains available.
+    with pytest.raises(MatchRejected):
+        validate_news_photo(data,'meeting')
+    with pytest.raises(MatchRejected):
+        validate_headline_photo(data,'meeting','HÜDA PAR Isparta İl Başkanı Salih Demir’den Yeni Müftüye Ziyaret')

@@ -283,3 +283,5 @@ Eski tarihli kaynak araştırması belgelerini güncel sağlık tablosunun yerin
 26 Ekim 2026: [görsel kuyruğunu kurtarma ve kalıcı stok](visual-backlog-recovery.md).
 İki başarısız üretim, aynı seans sahnesinin gereksiz tekrarı ve Bubilet CDN robots 404 nedeni ayrı ele alınır.
 Canlı sonuç için tarihli dağıtım/SQL kanıtı gerekir; eski kurulum notları güncel Meta durumu sayılmaz.
+
+27 Ekim son kontrol: native CI kapsamına test_visual_followup.py eklendi. EXIF 0 desteği tek başına konu onayı değildir; başlıklı örnek fotoğrafın model tarafından reddi korunur. Dokuz etkin stok sahne sürer. Başarısız kekik stok ve yan panel OCR denemesi bu depoya dağıtılmadı; Isparta kaynak incelemesi bağımsız depoda kalır.
