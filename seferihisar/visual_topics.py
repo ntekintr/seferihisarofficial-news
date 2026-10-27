@@ -72,6 +72,7 @@ def news_subjects(item):
         (r'\b(?:doğa yürüy\w*|yürüdü|yürüyüş\w*|trekking)\b', 'hiking', 'hiking_gear'),
         (r'\b(?:futbol\w*|isparta32spor|gol\w*|mağlup\w*|süper lig)\b', 'football', 'football_equipment'),
         (r'\b(?:sel|su baskini|göle döndü|sular altinda)\b', 'flood', 'rain_puddle'),
+        (r'\b(?:müftü(?:ye|sü(?:ne|nü))|vali(?:ye|si(?:ne|ni))|kaymakam(?:a|i(?:na|ni))|başkan(?:a|i(?:na|ni)))\b.{0,70}\bziyaret\w*\b', 'meeting', 'meeting_room'),
         (r'\b(?:toplanti\w*|genel kurul|bir araya gel\w*|buluştu|bulustu)\b', 'meeting', 'meeting_room'),
         (r'\b(?:otopark\w*)\b', 'parking', 'parking'),
         (r'\b(?:otobüs\w*|eshot|dolmuş\w*|toplu ulaşim)\b', 'bus', 'bus'),

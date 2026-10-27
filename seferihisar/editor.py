@@ -120,6 +120,16 @@ def event_title(item: dict) -> str:
     return title + " — " + event_type_label(category, title)
 
 
+def editorial_category(item: dict) -> str:
+    # A news report about an official meeting is not an event announcement
+    # merely because its body mentions a festival. Source data stays intact.
+    if item.get('kind') == 'news' and item.get('category') in ('festival','concert','theatre','cinema','event','culture'):
+        from .visual_topics import news_subjects
+        if news_subjects(item)[1] == 'meeting_room':
+            return 'news'
+    return item['category']
+
+
 def news_type_label(category: str, title: str = '') -> str:
     """An adult support story must not be presented as a children's activity."""
     value = normalized(title)
@@ -358,6 +368,7 @@ def event_description_repeats_title(description: str, title: str) -> bool:
 
 
 def caption(item: dict, label: str) -> str:
+    item = {**item, 'category': editorial_category(item)}
     display_title = news_title(item) if item["kind"] == "news" else item["title"]
     lines = [label] if display_title in label else [label, display_title]
     if item['kind']=='event' and item['category']=='outage':
@@ -426,7 +437,7 @@ def headline(item: dict, kind: str) -> str:
     if item["kind"] == "event" and kind == "announcement":
         return event_title(item)
     prefix = {"reminder_3d": "3 gün kaldı", "reminder_day": "Bugün yakınınızda",
-              "update": "Etkinlik bilgisi güncellendi", "cancellation": "İptal duyurusu", "news": news_type_label(item['category'], item['title'])}
+              "update": "Etkinlik bilgisi güncellendi", "cancellation": "İptal duyurusu", "news": news_type_label(editorial_category(item), item['title'])}
     title = event_title(item) if item["kind"] == "event" else news_title(item)
     return f"{prefix.get(kind, 'Seferihisar Official')}: {title}"
 

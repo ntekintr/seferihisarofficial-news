@@ -128,6 +128,7 @@ def prepare(store: Store, at: datetime, *, refresh_digests: bool = True):
 
 
 def queue_item(store: Store, item: dict, kind: str, due: datetime, at: datetime):
+    from .editor import editorial_category
     days = (parse_date(item["start"]).date() - at.date()).days if item["kind"] == "event" else None
     title = headline(item, kind)
     if kind == "reminder_3d" and days != 3:
@@ -135,7 +136,7 @@ def queue_item(store: Store, item: dict, kind: str, due: datetime, at: datetime)
     key = digest(f"{item['id']}:{item['revision']}:{kind}")
     post = {"id": key, "item_id": item["id"], "revision": item["revision"], "kind": kind,
                  "due_at": due.isoformat(), "title": title, "caption": caption(item, title),
-                 "category": item["category"], "source_urls": item["sources"],
+                 "category": editorial_category(item), "source_urls": item["sources"],
                  "slides": [{"title": title, "body": slide_body(item)}],
                  "created_at": at.isoformat(), "formats": ["carousel", "story"] if item["kind"] == "event" and item['category']!='outage' else ["feed", "story"]}
     if store.queue(post):
