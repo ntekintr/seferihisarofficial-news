@@ -86,3 +86,16 @@ başarısız önbellek satırının eski temizleme koduyla silindiği görüldü
 yayın satırları ve mevcut görsel pikselleri değişmedi. Yeni temizleme,
 yayımlanmış/devam eden/belirsiz iddialara bağlı hazır veya başarısız anahtarları
 da korur. Boş eski hata kaydı, yayımlanmış bir fotoğraf kaybı sayılmaz.
+
+
+27 Ekim öğle kontrolü: yeni Sütçüler endemik kekiği haberi desteklenmeyen
+konu nedeniyle fotoğrafsız bekliyordu. Açık kekik/endemik veya hasat/üretim
+bağı ayrı konuya alınır. Kaynağın başlık/tarih/URL bağı ve gerçek görüntü
+kontrolü korunur; başka bitki, restoran ve toplantı bu sınıfa girmez.
+Kaynak fotoğrafı önceliklidir; genel kekik sahnesi belirli bir endemik türün
+veya gerçek üretim yerinin fotoğrafı olduğunu iddia etmez.
+
+Aynı haber başlığı güçlü OCR ile eşleştiğinde yan şeritli kaynak grafiğinin
+karşı tarafındaki geniş fotoğraf ayrıca konu modeline girer. Küçük bölge veya
+ortaya serpilmiş yazı kabul edilmez; model eşikleri aynı kalır ve yayın dosyası
+kırpılmaz. Gerçek kaynak fotoğrafları bulutun yerel OCR/model testinde sınanır.

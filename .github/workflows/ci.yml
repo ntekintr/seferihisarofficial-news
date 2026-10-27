@@ -58,5 +58,5 @@ jobs:
       - name: Actual model regression on reviewed photo crops
         env:
           RUN_VISUAL_NATIVE: 'true'
-        run: python -m pytest -q tests/test_visual_native.py tests/test_editorial_stock_native.py
+        run: python -m pytest -q tests/test_visual_native.py tests/test_editorial_stock_native.py tests/test_visual_followup.py tests/test_thyme_visual.py
 

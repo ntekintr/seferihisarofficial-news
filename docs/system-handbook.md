@@ -1,8 +1,18 @@
 # Sistem rehberi ve öğrenilenler
 
-Son gözden geçirme: **26 Ekim 2026**. Bu dosya kod haritası ve kalıcı çalışma
+Son gözden geçirme: **27 Ekim 2026**. Bu dosya kod haritası ve kalıcı çalışma
 notudur. Anlık sağlık/teslim kanıtı zaman damgalı çıktılardan alınır; burada bir
 kez başarılı olması sonraki ay kesintisiz çalışacağı anlamına gelmez.
+
+### 27 Ekim: bekleyen görseller ve kaynak başlık şeritleri
+
+[Görsel kurtarma kaydı](visual-backlog-recovery.md) kota doluyken aynı konu ve
+sabit sahne tanımıyla yerel stoktan devamı, donmuş kayıtların korunmasını ve
+kaynak fotoğrafının önceliğini açıklar. Resmî ziyaretler toplantıdan ayrılmadan
+sınıflanır; EXIF 0 yön dönüşümü gerektirmeyen kaynak fotoğrafı olarak işlenir.
+Yeni kekik üretim konusu ve kaynak grafiğindeki yan başlık şeridi ayrıca
+sınanır. OCR başlık eşleşmesi fotoğrafın konu denetiminin yerine geçmez.
+Canlı hazırlık ve sosyal teslim kanıtı ayrıca doğrulanır; bu not dağıtım onayı değildir.
 
 ### 26 Ekim: kaynak fotoğrafı, uygun üretim ve görselsiz yayını bekletme
 

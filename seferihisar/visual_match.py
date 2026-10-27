@@ -183,11 +183,22 @@ def validate_headline_photo(data: bytes, expected: str, title: str) -> dict:
         if len(seen)/len(title_words)<.6:
             continue
         top=min(w['box']['top'] for w in hits)
-        if not height*.35<=top<=height*.75:
-            continue
-        # A broad, bounded upper photograph must independently pass the same
-        # fixed taxonomy, absolute similarity and alternative-class margin.
-        region=image.crop((0,0,width,max(1,int(top-height*.02))))
+        if height*.35<=top<=height*.75:
+            region=image.crop((0,0,width,max(1,int(top-height*.02))))
+        else:
+            # Some reviewed publishers place the exact article headline in a
+            # side panel. Bound the opposite photograph using OCR geometry;
+            # never pick a small patch or infer acceptance from the text alone.
+            left=min(w['box']['left'] for w in hits)
+            right=max(w['box']['left']+w['box']['width'] for w in hits)
+            if width*.37<=left<=width*.75 and right>=width*.8:
+                region=image.crop((0,0,int(left-width*.02),height))
+            elif width*.25<=right<=width*.63 and left<=width*.2:
+                region=image.crop((int(right+width*.02),0,width,height))
+            else:
+                continue
+        # The broad bounded photo independently passes the unchanged model
+        # thresholds. The published source pixels and full frame are preserved.
         buffer=io.BytesIO();region.save(buffer,format='JPEG',quality=90)
         if expected == 'traffic':
             import math

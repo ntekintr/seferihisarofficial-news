@@ -72,6 +72,13 @@
       "brief_sha256": "b6:09:92:4f:34:40:7b:a4:1f:df:83:b0:d5:ed:2c:f5:21:57:48:09:9e:62:61:fb:75:88:56:7e:b9:66:38:88",
       "origin": "owned-generated-generic-scene",
       "reviewed_on": "2026-10-27"
+    },
+    {
+      "subject": "thyme_herbs",
+      "file": "thyme_herbs.jpg",
+      "brief_sha256": "56:cf:4c:8f:0b:03:7f:c8:0d:03:29:26:be:0e:21:62:cf:1d:56:6b:25:71:97:a6:9a:fe:86:76:ff:ae:ae:49",
+      "sha256": "b1:e1:4a:0e:46:7c:25:73:cf:31:b7:5c:84:88:69:0b:bd:82:45:38:0b:33:a0:e0:26:42:47:45:7d:7e:73:b1",
+      "origin": "owned-generated-generic-scene"
     }
   ]
 }
