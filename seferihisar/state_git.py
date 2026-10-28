@@ -50,6 +50,9 @@ def restore(path: Path):
         finally:
             db.close()
         validate_state(path)
+        from .historical_visuals import recover
+        recover(path, git)
+        validate_state(path)
 
 
 def persist(path: Path):
