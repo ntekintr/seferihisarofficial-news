@@ -65,3 +65,21 @@ def test_recover_only_fetches_pinned_commit_when_needed(tmp_path):
     assert recover(path,git,m)==1
     assert calls[1]==('fetch','--no-tags','--depth=1','origin',m['state_commit'])
     assert recover(path,lambda *a:pytest.fail('Repeated fetch'),m)==0
+
+def test_recovery_evicts_only_expired_draft_cache_within_existing_limit(monkeypatch):
+    db,archive,m,claim,original=fixture()
+    db.execute('INSERT INTO illustrations VALUES(?,?,?,?,?,?,?)',('stale','old','ready',b'old draft',1,'retry','updated'))
+    db.execute('INSERT INTO posts VALUES(?,?,?)',('stale-post','expired',json.dumps({'illustration_keys':{'0':'stale'}})))
+    db.commit();monkeypatch.setattr('seferihisar.image_safety.MAX_CACHED_IMAGES',1)
+    with db:assert repair(db,archive,m)==1
+    assert db.execute('SELECT id FROM illustrations').fetchall()==[('image',)]
+    assert db.execute('SELECT count(*) FROM posts').fetchone()[0]==2
+
+@pytest.mark.parametrize('status',['prepared','published','publishing','uncertain','blocked_source'])
+def test_full_active_cache_skips_recovery_without_breaking_restore(monkeypatch,status):
+    db,archive,m,claim,original=fixture()
+    db.execute('INSERT INTO illustrations VALUES(?,?,?,?,?,?,?)',('active','other','ready',b'active pixels',1,'retry','updated'))
+    db.execute('INSERT INTO posts VALUES(?,?,?)',('active-post',status,json.dumps({'illustration_keys':{'0':'active'}})))
+    db.commit();before=db.serialize();monkeypatch.setattr('seferihisar.image_safety.MAX_CACHED_IMAGES',1)
+    with db:assert repair(db,archive,m)==0
+    assert db.serialize()==before

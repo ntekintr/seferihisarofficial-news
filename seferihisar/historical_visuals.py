@@ -50,6 +50,30 @@ def repair(db, archive_bytes, manifest=MANIFEST):
             if not row or fingerprint(row) != spec['original']:
                 raise ValueError('Historical row checksum mismatch')
             replacements.append(row)
+        # Archive recovery shares the existing bounded cache. Only images
+        # referenced exclusively by expired/superseded drafts may be evicted;
+        # every current draft and publication claim remains protected.
+        from .image_safety import MAX_CACHE_BYTES, MAX_CACHED_IMAGES
+        protected = {row[0] for row in replacements}
+        for status, payload in db.execute('SELECT status,payload FROM posts'):
+            if status in ('expired', 'superseded'): continue
+            bindings = json.loads(payload).get('illustration_keys', {})
+            if not isinstance(bindings, dict): return 0
+            protected.update(bindings.values())
+        projected = {row[0]: len(row[3] or b'') for row in db.execute(
+            "SELECT * FROM illustrations WHERE status='ready'")}
+        for row in replacements:
+            if row[2] == 'ready': projected[row[0]] = len(row[3])
+            else: projected.pop(row[0], None)
+        evictions = []
+        for (key,) in db.execute("SELECT id FROM illustrations WHERE status='ready' ORDER BY updated_at,id"):
+            if len(projected) <= MAX_CACHED_IMAGES and sum(projected.values()) <= MAX_CACHE_BYTES: break
+            if key in protected: continue
+            evictions.append(key); projected.pop(key, None)
+        if len(projected) > MAX_CACHED_IMAGES or sum(projected.values()) > MAX_CACHE_BYTES:
+            return 0  # Never break a normal restore or discard an active image.
+        for key in evictions:
+            db.execute('DELETE FROM illustrations WHERE id=?', (key,))
         for row in replacements:
             db.execute('INSERT OR REPLACE INTO illustrations VALUES(?,?,?,?,?,?,?)', row)
         return len(replacements)
