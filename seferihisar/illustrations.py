@@ -274,18 +274,25 @@ class Illustrator:
 
     def prune(self, allowed_ids: set[str]):
         rows = self.store.rows('SELECT id,item_id,length(image) AS bytes,status FROM illustrations ORDER BY updated_at DESC,id')
-        size, count, keep = 0, 0, 0
         frozen = self._frozen_keys()
+        retained = [row for row in rows if frozen is None or row['id'] in frozen]
+        # Reserve historical claims before recent draft rows, irrespective of
+        # timestamp order. Deleted rows must not consume the remaining budget.
+        size = sum((row['bytes'] or 0) for row in retained if row['status'] == 'ready')
+        count = sum(row['status'] == 'ready' for row in retained)
+        keep = len(retained)
         with self.store.db:
             for row in rows:
-                if row['status'] == 'ready':
-                    size += row['bytes'] or 0
-                    count += 1
-                keep += 1
                 if frozen is None or row['id'] in frozen:
-                    continue  # Retained publication bindings survive pruning.
-                if row['item_id'] not in allowed_ids or size > MAX_CACHE_BYTES or count > MAX_CACHED_IMAGES or keep > 500:
+                    continue
+                added_count = int(row['status'] == 'ready')
+                added_size = (row['bytes'] or 0) if added_count else 0
+                if row['item_id'] not in allowed_ids or size + added_size > MAX_CACHE_BYTES or count + added_count > MAX_CACHED_IMAGES or keep >= 500:
                     self.store.db.execute('DELETE FROM illustrations WHERE id=?', (row['id'],))
+                else:
+                    size += added_size
+                    count += added_count
+                    keep += 1
             self.store.db.execute('DELETE FROM illustration_days WHERE day<?', ((self.at.astimezone(timezone.utc).date() - timedelta(days=30)).isoformat(),))
         if not self.enabled:
             return
