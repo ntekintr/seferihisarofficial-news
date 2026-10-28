@@ -290,3 +290,5 @@ Canlı sonuç için tarihli dağıtım/SQL kanıtı gerekir; eski kurulum notlar
 ### 28 Ekim: eski görsel arşivinin sınırlı onarımı
 
 Önceki temizleme kuralıyla silinen, yayımlanmış kartlara bağlı görsel satırları yalnız bu deponun 26 Ekim durum yedeğinden geri alınır. Sabit yedek ve satır özeti, değişmemiş sahip yayın satırları ve gözlenen mevcut durum birlikte eşleşmelidir. Yeni bir yayın aynı anahtarı kullanıyorsa veya kayıt başka türlü değiştiyse onarım atlanır. Yeni yayın, kota artışı veya eski durum veritabanına dönüş yapılmaz. Mevcut budama koruması bu kayıtları korur. Instagram üzerinde eski içeriğin doğrudan gözlemiyle web arşivinin doğrulanması ayrı kanıtlardır.
+
+Onarım mevcut 80 görsel/12 MiB sınırını yükseltmez. Yer gerekiyorsa yalnız süresi geçmiş veya yerini yeni sürüm almış taslaklara bağlı kullanılmayan önbellek satırları temizlenir. Aktif taslak/yayın görseli temizlenmez; yeterli yer yoksa onarım atlanır, normal durum yüklemesi kesilmez.
