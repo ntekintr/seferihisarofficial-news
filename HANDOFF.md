@@ -3,6 +3,14 @@
 Tarih: 29 Ekim 2026 (Europe/Istanbul). Depo: https://github.com/ntekintr/seferihisarofficial-news
 Devam dalı: **`codex/claude-handoff`** (yalnız devir belgesi). Karşı proje: https://github.com/ispartaofficial/ispartaofficial-news, orada açık PR #22 / `codex/restore-frozen-visuals`.
 
+## 29 Ekim 2026 akşam güncellemesi (Claude Code)
+
+Bu bölüm aşağıdaki devir anı notlarından daha günceldir. Seferihisar'da kod, yapılandırma veya durum değiştirilmedi; `main` hâlâ `9296acf`. Akşam salt okunur doğrulaması, 27–28 Ekim kesintisinin gerçek kapsamı, yayın tetiklemesi iptalleri ve önbellek doluluğu [HANDOFF-EVIDENCE.md](HANDOFF-EVIDENCE.md) içindedir.
+
+Karşı projede Isparta PR #22, #23 (12 bağlantılık okuma penceresi, iki kaynaklı yeniden görülme) ve #24 (yayıncının reklam bölümündeki makaleleri bekletme) kullanıcı onayıyla merge edildi. Bu düzeltmeler Seferihisar'a taşınmadı; Seferihisar okuyucuları farklıdır ve ayrı değerlendirme gerekir.
+
+Açık kalanlar: görsel önbelleği saklama stratejisi (karar Aralık'tan önce), yayın tetiklemesi iptalleri (düşük öncelik), 28 Ekim hava ve 27–28 Ekim eczane boşluklarının geçmişte kaldığının kaydı.
+
 ## Mevcut durum ve amaç
 
 Seferihisar ve yakın çevre için yerel haber, belediye/kamu, etkinlik ve hizmet duyurularını araştıran, doğrulayan ve Instagram/Facebook'a aynı içerik zincirinden yayımlayan bulut otomasyonu. Ayrı Facebook haber üreticisi yoktur: Facebook gönderi/story teslimi Instagram parent'ına bağlıdır. Onaylı S + 3D salyangoz logo, lacivert/turuncu/turkuaz şerit, krem içerik zemini, lacivert/koyu turkuaz başlık korunur. Hava story'sinde yalnız altta küçük 3D salyangoz sahnesi; günlük yeni resim üretimi yok. Eczane Seferihisar, kırmızı E tabelası.
