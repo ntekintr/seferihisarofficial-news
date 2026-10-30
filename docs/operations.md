@@ -57,7 +57,8 @@ işlenmekte olan ve belirsiz iddialar yeniden hazırlanmaz veya gönderilmez.
 - Seferihisar Yeni Haber: 15 Ekim 01:53 turunda `source_robots_denied`; tarama
   kısıtı aşılmaz. Diğer yerel basın kaynakları kısmi tamamlayıcıdır.
 - Yılı olmayan Bademler duyurusu tarih tahminiyle yayına alınmaz; tarihli ve
-  mekânı doğrulanmış Bubilet seansları ayrı kaynaktır.
+  mekânı doğrulanmış Bubilet ve Biletinial seansları ayrı kaynaktır. Bubilet
+  27 Ekim'den beri bulutta HTTP 403 veriyor; engel aşılmaz (30 Ekim).
 - Kaynağın okunması o tur uygun yeni içerik bulunması veya ilçenin bütün
   haberlerinin kapsanması anlamına gelmez. Instagram yalnız bağlı profesyonel
   hesapların API üzerinden erişilebilen içeriğini kapsar.
