@@ -114,6 +114,7 @@ def summary(store, at):
 
 
 QUIET_AFTER_HOURS = 72
+FAILING_RUNS = 4
 
 
 def quiet_sources(store, sources, at):
@@ -123,14 +124,21 @@ def quiet_sources(store, sources, at):
     so the newest `first_seen` per source is the evidence of its own yield.
     Finite reviewed requests stop by design; seasonal readers may set
     `quiet_after_hours`, and a known, non-bypassable block `quiet_acknowledged`.
+    A failed read must repeat in each of the last `FAILING_RUNS` runs: in the
+    100 runs to 30 Oct, blips lasted at most 3 runs, real blocks 17-84.
     """
     config = {s['id']: s for s in sources}
     newest = {r['sid']: r['newest'] for r in store.rows(
         "SELECT json_extract(payload,'$.source_id') AS sid, MAX(first_seen) AS newest FROM items GROUP BY sid")}
+    recent = [{e.get('source_id') for e in json.loads(r['errors'])} for r in store.rows(
+        'SELECT errors FROM runs WHERE finished_at IS NOT NULL ORDER BY id DESC LIMIT ?', (FAILING_RUNS,))]
+    failing = set.intersection(*recent) if len(recent) == FAILING_RUNS else set()
     result = []
     for row in store.rows("SELECT source_id,status FROM source_health WHERE status IN ('empty','failed') ORDER BY source_id"):
         source, last = config.get(row['source_id']), parse_date(newest.get(row['source_id']))
         if not source or not source.get('enabled', True) or source.get('requested_until') or not last:
+            continue
+        if row['status'] == 'failed' and row['source_id'] not in failing:
             continue
         if at - last >= timedelta(hours=source.get('quiet_after_hours', QUIET_AFTER_HOURS)):
             result.append({'source_id': row['source_id'], 'status': row['status'],

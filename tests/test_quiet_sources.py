@@ -22,6 +22,14 @@ def health(store, sid, status, at):
                      (sid, at.isoformat(), status, int(status == 'ok'), 0, int(status == 'failed'), None))
 
 
+def runs(store, at, *failing):
+    for n, ids in enumerate(failing):
+        started = at - timedelta(minutes=30 * (len(failing) - n))
+        store.db.execute('INSERT INTO runs(started_at,finished_at,errors) VALUES (?,?,?)',
+                         (started.isoformat(), (started + timedelta(minutes=10)).isoformat(),
+                          json.dumps([{'source_id': sid, 'code': 'source_timeout'} for sid in ids])))
+
+
 def test_previously_productive_reader_is_quiet_only_after_its_own_window(store, at):
     sources = [{'id': 'broken', 'enabled': True}, {'id': 'fresh', 'enabled': True},
                {'id': 'working', 'enabled': True}, {'id': 'never', 'enabled': True},
@@ -40,10 +48,30 @@ def test_previously_productive_reader_is_quiet_only_after_its_own_window(store, 
         health(store, sid, 'empty', at)
     health(store, 'blocked', 'failed', at)
     health(store, 'working', 'ok', at)
+    runs(store, at, *[('blocked',)] * 4)
     store.db.commit()
     assert quiet_sources(store, sources, at) == [
         {'source_id': 'blocked', 'status': 'failed', 'last_new_item_at': (at - timedelta(days=5)).isoformat(), 'acknowledged': True},
         {'source_id': 'broken', 'status': 'empty', 'last_new_item_at': (at - timedelta(hours=80)).isoformat(), 'acknowledged': False}]
+
+
+def test_failed_reader_counts_only_when_it_failed_in_each_recent_run(store, at):
+    sources = [{'id': 'blip', 'enabled': True}, {'id': 'down', 'enabled': True}]
+    for sid in ('blip', 'down'):
+        item(store, sid, at - timedelta(days=10))
+        health(store, sid, 'failed', at)
+    # A network blip fails many readers in one run; it must not toggle the alert.
+    runs(store, at, ('down', 'blip'), ('down',), ('down', 'blip'), ('down', 'blip'))
+    store.db.commit()
+    assert [r['source_id'] for r in quiet_sources(store, sources, at)] == ['down']
+
+
+def test_failure_history_shorter_than_the_window_is_not_enough(store, at):
+    item(store, 'down', at - timedelta(days=10))
+    health(store, 'down', 'failed', at)
+    runs(store, at, ('down',), ('down',))
+    store.db.commit()
+    assert quiet_sources(store, [{'id': 'down', 'enabled': True}], at) == []
 
 
 def test_partial_reader_still_yields_and_is_not_quiet(store, at):
@@ -89,4 +117,6 @@ def test_issue_lists_silent_readers_and_updates_when_the_set_changes(at):
 def test_known_cloud_blocks_and_seasonal_reader_are_configured():
     assert SOURCES['bubilet']['quiet_acknowledged'] and SOURCES['bubilet-bademler']['quiet_acknowledged']
     assert SOURCES['izmir-kultur']['quiet_after_hours'] == 720
+    # Regional feed filtered to Seferihisar: 290 h between local items in October.
+    assert SOURCES['izmir-belediye']['quiet_after_hours'] == 720
     assert all(isinstance(s.get('quiet_after_hours', 72), int) for s in SOURCES.values())

@@ -43,7 +43,8 @@
     "photo_article_selector": ".izbel-content",
     "body_selector": ".izbel-content",
     "photo_inline_selector": ".triple-slider .imageGallery1 img[src]",
-    "prefer_headline_category": true
+    "prefer_headline_category": true,
+    "quiet_after_hours": 720
   },
   {
     "id": "eshot",
