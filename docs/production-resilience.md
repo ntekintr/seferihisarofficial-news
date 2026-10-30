@@ -47,6 +47,17 @@ taşınmaz. Liste değişirse issue güncellenir. 30 Ekim verisiyle ilk liste:
 `izmir-belediye` (boş, son yeni kayıt 26 Ekim) ve `seferihisar-hem` (okunamıyor,
 19 Ekim); Ege Telgraf aynı gün 72 saati doldurur.
 
+Aynı gün yapılan inceleme iki düzeltme getirdi. Birincisi, `failed` tek başına
+yetmez: kaynak son 4 tamamlanmış turun her birinin `runs.errors` kaydında da
+bulunmalıdır. 27–30 Ekim'deki 100 turda ağ kesintileri en fazla 3 tur sürdü ve
+birçok kaynağı aynı turda düşürdü (Halk Eğitim 100 turda 8 kez, en fazla 2 tur
+üst üste); gerçek engeller 17–84 tur sürdü. Bu kural olmadan uyarı her kesintide
+açılıp kapanır, her değişiklik de issue'ya yorum yazar. İkincisi,
+`izmir-belediye` tüm İzmir haberlerini taşıyan, Seferihisar'a göre süzülen bir
+akıştır; yerel haberler arasında 290 saat geçti, bu yüzden 720 saat alır. Halk
+Eğitim okuyucusu çalışıyor; sitede 18 Ekim'den sonra haber yok. Yeni kuralla 30
+Ekim verisinde listede yalnız onaylı iki Bubilet kaynağı kalır.
+
 ## Yayın sonrası GET gözlemi
 
 Mevcut yayın ve hava işinin üretim kilidi içinde, salt GET kullanan
