@@ -58,7 +58,10 @@ jobs:
     needs: instagram_sources
     if: always() && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    timeout-minutes: 14
+    # Collect alone took 506–736 s on 30 Oct; at 14 min one run was cut off
+    # before persist. Runs queue (cancel-in-progress: false), so this only
+    # gives a slow crawl room to finish.
+    timeout-minutes: 20
     outputs:
       feedback_due: ${{ steps.feedback_due.outputs.due }}
     env:
