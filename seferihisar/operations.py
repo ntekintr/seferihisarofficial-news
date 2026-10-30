@@ -63,6 +63,16 @@ def record_check(store, result, at, mode):
     return clean
 
 
+def never_sent(post):
+    """An uncertain claim without a container never reached `media_publish`.
+
+    `instagram.deliver` stores the container id right after Meta returns it
+    and only then calls `media_publish`, so the exception came from container
+    creation. The claim still holds its slot and is never resent.
+    """
+    return post.get('status') == 'uncertain' and not post.get('container_id')
+
+
 def summary(store, at):
     from .schedule import SLOTS
     at = at.astimezone(TZ)
@@ -103,8 +113,9 @@ def summary(store, at):
                   'instagram_story': sum(p.get('publish_format') == 'story' for p in today_claims),
                   'facebook_feed': sum(r['format'] == 'feed' and today(r['claimed_at']) for r in deliveries),
                   'facebook_story': sum(r['format'] == 'story' and today(r['claimed_at']) for r in deliveries)},
-        'unresolved': {'instagram': sum(p['status'] != 'published' for p in claims),
+        'unresolved': {'instagram': sum(p['status'] != 'published' and not never_sent(p) for p in claims),
                        'facebook': sum(r['status'] != 'published' for r in deliveries)},
+        'not_sent': {'instagram': sum(never_sent(p) for p in claims)},
         'daily_feed_limit': NEWS_DAILY_LIMIT,
         'daily_story_limit': NEWS_DAILY_LIMIT, 'service_stories_extra': True,
         'evening_news': evening_summary(at),
