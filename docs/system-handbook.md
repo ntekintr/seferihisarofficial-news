@@ -166,6 +166,14 @@ o yanıt penceresinde uygun kayıt yok; `partial`: bazı ayrıntılar okunamadı
   silmek veya sıfırlamak çift yayın oluşturabilir. `published_at`, özellikle
   hava tablosunda Meta çağrısından önceki iddia zamanıdır; tamamlanma saatiyle
   karıştırılmamalıdır.
+- `container_id` boş bir `uncertain` haber iddiası Meta'ya hiç yayımlatılmadı:
+  `instagram.deliver` kapsayıcı kimliğini Meta döndürür döndürmez kaydeder ve
+  `media_publish` ancak ondan sonra çağrılır; hata kapsayıcı oluşturulurken
+  çıkmıştır. Bu iddia yerinde kalır (saat dilimini ve günlük bütçeyi tüketir,
+  tekrar gönderilmez), ama `operations.unresolved` yerine `not_sent` sayısına
+  girer ve panelde `not_published` olarak görünür. 30 Ekim 15:16'daki Urla
+  elektrik kesintisi duyurusu böyle kaldı; herkese açık profilde de yoktu.
+  Kapsayıcı oluştuktan sonraki hata `unresolved` kalır; yayım olmuş olabilir.
 
 ## Görsel ve metin kararları
 
