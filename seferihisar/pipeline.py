@@ -259,7 +259,9 @@ def _export(store: Store, public_dir: Path, sources: list[dict], at: datetime, d
     public_items = [{**{k: v for k, v in i.items() if k in PUBLIC_ITEM_FIELDS or k in ("id", "revision", "first_seen", "last_seen")}, "source_current": source_current(i, at, failed)} for i in safe_items]
     events = sorted((e for e in public_items if e["kind"] == "event" and parse_date(e["start"]).date() >= at.date() - timedelta(days=1)), key=lambda e: e["start"])
     news = sorted((i for i in public_items if i["kind"] == "news"), key=lambda i: i["published_at"], reverse=True)
-    public_posts = [{"id": p["id"], "kind": p["kind"], "title": p["title"], "due_at": p["due_at"], "status": p["status"],
+    from .operations import never_sent
+    public_posts = [{"id": p["id"], "kind": p["kind"], "title": p["title"], "due_at": p["due_at"],
+                     "status": "not_published" if never_sent(p) else p["status"],
                      "caption": p["caption"], "assets": assets.get(p["id"], {}), "category": p["category"],
                      **({'visual_review':p['visual_review']} if 'visual_review' in p else {})} for p in parents]
     snapshot = {"schema_version": 1, "generated_at": at.isoformat(), "demo": demo,
