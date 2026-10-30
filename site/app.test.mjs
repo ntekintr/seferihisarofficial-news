@@ -47,6 +47,11 @@ test('publication waits, missing media and uncertainty have separate safe labels
  assert.match(context.publicationLabel('event_metadata_stale'),/düzenleyicisi veya adresi/);
 });
 
+test('a claim that never reached Meta publish is labelled as not published',()=>{
+ assert.match(source,/not_published:'Yayımlanamadı · tekrar gönderilmez'/);
+ assert.match(source,/'uncertain','not_published','publishing'\]\.includes\(item\.status\)/);
+});
+
 test('editorial holds show only known safe reasons and integer counts',()=>{
  assert.deepEqual(JSON.parse(JSON.stringify(context.editorialRows({editorial_headline_required:2,unrenderable_card_text:1,PRIVATE_BODY:9}))),[['Anlaşılır haber başlığı bekleniyor',2],['Kart yazısı düzgün görüntülenemiyor',1]]);
  assert.deepEqual(JSON.parse(JSON.stringify(context.editorialRows({editorial_copy_required:'PRIVATE_BODY',editorial_context_required:-1}))),[]);
