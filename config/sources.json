@@ -133,12 +133,13 @@
     "enabled": true,
     "trusted": true,
     "access": "robots",
-    "max_pages": 6,
+    "max_pages": 8,
     "listing_format": "biletinial_json",
     "listing_urls": [
       "https://biletinial.com/tr-tr/List/GetMoreItems?region=tr-tr&cityUrl=izmir&organizerUrl=tiyatro&page=1",
-      "https://biletinial.com/tr-tr/List/GetMoreItems?region=tr-tr&cityUrl=izmir&organizerUrl=muzik&page=1",
-      "https://biletinial.com/tr-tr/List/GetMoreItems?region=tr-tr&cityUrl=izmir&organizerUrl=etkinlik&page=1"
+      "https://biletinial.com/tr-tr/List/GetMoreItems?region=tr-tr&cityUrl=izmir&organizerUrl=tiyatro&page=2",
+      "https://biletinial.com/tr-tr/List/GetMoreItems?region=tr-tr&cityUrl=izmir&organizerUrl=tiyatro&page=3",
+      "https://biletinial.com/tr-tr/List/GetMoreItems?region=tr-tr&cityUrl=izmir&organizerUrl=tiyatro&page=4"
     ]
   },
   {
@@ -680,6 +681,36 @@
     "local_links_only": false,
     "expected_venue": "Bademler Sanat Köyü",
     "recheck_parent_sessions": true
+  },
+  {
+    "id": "biletinial-bademler",
+    "name": "Bademler Sanat Köyü — Biletinial etkinlikleri",
+    "url": "https://biletinial.com/tr-tr/mekan/bademler-sanat-koyu",
+    "kind": "ticketing",
+    "enabled": true,
+    "trusted": true,
+    "access": "robots",
+    "max_pages": 12,
+    "link_selector": "a[href^=\"/tr-tr/muzik/\"], a[href^=\"/tr-tr/etkinlik/\"], a[href^=\"/tr-tr/tiyatro/\"], a[href^=\"/tr-tr/egitim/\"]",
+    "local_links_only": false,
+    "expected_venue": "Bademler Sanat Köyü",
+    "strip_detail_query": true
+  },
+  {
+    "id": "biletinial-sahne",
+    "name": "Biletinial — İzmir müzik ve etkinlik listeleri",
+    "url": "https://biletinial.com/tr-tr/muzik/izmir",
+    "kind": "ticketing",
+    "enabled": true,
+    "trusted": true,
+    "access": "robots",
+    "max_pages": 4,
+    "listing_urls": [
+      "https://biletinial.com/tr-tr/muzik/izmir",
+      "https://biletinial.com/tr-tr/etkinlik/izmir"
+    ],
+    "link_selector": "a[href^=\"/tr-tr/muzik/\"], a[href^=\"/tr-tr/etkinlik/\"]",
+    "local_links_only": true
   },
   {
     "id": "gercek-izmir",
