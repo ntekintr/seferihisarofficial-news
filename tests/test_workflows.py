@@ -7,6 +7,7 @@ def test_research_never_has_instagram_credentials_or_publish_command():
     workflow=yaml.load(Path('.github/workflows/automation.yml').read_text(),Loader=yaml.BaseLoader)
     assert workflow['on']['schedule'][0]['cron']=='7,22,37,52 * * * *'
     assert workflow['concurrency']['cancel-in-progress']=='false'
+    assert workflow['jobs']['research']['timeout-minutes']=='20'
     text=Path('.github/workflows/automation.yml').read_text()
     research=str(workflow['jobs']['research'])
     assert 'INSTAGRAM_ACCESS_TOKEN' not in research and 'IG_SOURCE_ACCESS_TOKEN' not in research
