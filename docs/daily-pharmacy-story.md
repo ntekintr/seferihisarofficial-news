@@ -110,3 +110,12 @@ dönmeyen kırsal satır uydurulmaz. Nöbetin henüz başlamayabileceği 17:00 k
 kaynağın gerçek saatleri ve Sığacık için 23:00 gibi kısıtlar aynen gösterilir.
 Kullanılan gerçek URL bültene/medya kimliğine yazılır; web sonucu API yanıtı
 gibi sunulmaz. Bulut erişiminin sonucu ayrıca önizleme kanıtıyla kaydedilir.
+
+### Boş API listesi (30 Ekim 2026)
+
+30 Ekim'de API 200 ile bütün İzmir için boş liste (`[]`) döndü; story 16:59 ve
+17:29 denemelerinde `source_unavailable` ile engellendi ve paylaşılmadı. Aynı
+saatte yukarıdaki resmî sayfa Melike (Seferihisar, 19:00–09:00) ve Teos
+(Sığacık) eczanelerini açık nöbet saatleriyle listeliyordu. API Seferihisar için
+hiç satır döndürmezse (`EmptyOfficialList`) artık bu sayfa da bir kez okunur.
+Eski tarihli veya çelişkili API satırları yine kesin hatadır; sayfaya geçilmez.
