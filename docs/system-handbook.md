@@ -13,6 +13,11 @@ saat kaydırır; Bademler okuyucusu sorgusuz adresi kullanır. Kanıt ve sınır
 [kaynak kapsamı](source-coverage.md), 30 Ekim bölümü;
 testler `tests/test_biletinial_sources.py`.
 
+Araştırma işinin süre sınırı 14 dakikadan 20 dakikaya çıkarıldı. 30 Ekim'de
+"Collect" adımı 506–736 saniye sürdü; 08:53 UTC turu 14. dakikada kesildi ve o
+turun durumu kaydedilmedi. Turlar sıraya girdiği için (`cancel-in-progress:
+false`) daha uzun sınır yalnız yavaş bir taramanın bitmesine izin verir.
+
 ### 26 Ekim: kaynak fotoğrafı, uygun üretim ve görselsiz yayını bekletme
 
 [Yeni görsel sözleşmesi](visual-first-publication.md), yalnız sonraki yayınlara
