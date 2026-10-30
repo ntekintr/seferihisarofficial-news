@@ -88,6 +88,18 @@ def test_external_actions_are_pinned_and_uploads_are_validated():
     assert all(i>check for i in uploads)
 
 
+def test_operations_watch_observes_every_trusted_research_run():
+    workflow=yaml.load(Path('.github/workflows/operations-watch.yml').read_text(),Loader=yaml.BaseLoader)
+    assert 'Research and prepare Seferihisar content' in workflow['on']['workflow_run']['workflows']
+    condition=workflow['jobs']['watch']['if']
+    assert "github.event.workflow_run.name == 'Research and prepare Seferihisar content'" in condition
+    assert "github.event.workflow_run.head_branch == 'main'" in condition
+    assert 'github.event.workflow_run.head_repository.full_name == github.repository' in condition
+    assert workflow['permissions']=={'contents':'read','actions':'read','issues':'write'}
+    assert workflow['concurrency']['cancel-in-progress']=='false'
+    assert 'state_git' not in str(workflow) and 'cli publish' not in str(workflow)
+
+
 def test_free_image_check_is_manual_and_cannot_publish_or_write_state():
     path=Path('.github/workflows/illustration-check.yml')
     workflow=yaml.load(path.read_text(),Loader=yaml.BaseLoader)
