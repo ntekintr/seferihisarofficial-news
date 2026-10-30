@@ -7,6 +7,13 @@ yedek/geri yükleme; sonra ölçüm, düzenli yerel seriler ve kaynak genişletm
 
 `operations-watch.yml` araştırmadan ve üretim kilidinden ayrı saatte bir çalışır.
 Ana dal araştırma/yayın/hava/bağlantı işindeki başarısızlık da tetikler.
+30 Ekim'den beri her tamamlanan ana dal araştırma turu da tetikler: GitHub saatlik
+zamanlamanın çoğunu atlıyor (30 Ekim 12:45'ten sonra iki saati aşkın hiç çalışmadı),
+araştırma ise Cloudflare tetiklemesiyle yaklaşık 30 dakikada bir düzenli gelir.
+Denetçi yalnız okur; sorun kümesi değişmedikçe issue'ya dokunmaz. Bilinen açık:
+Worker'ın "son 55 dakikada koşu var" kontrolü atlanan (`skipped`) koşuları da sayar;
+yayın/hava işleri bunları sık ürettiği için araştırma tamamen durursa Worker yedek
+çağrısı çıkmayabilir. Düzeltmesi Worker'ın elle yeniden dağıtılmasını gerektirir.
 Cloudflare araştırma yedeğine eklenen `checkOperations` Pages erişilemiyorsa,
 araştırma 90 dakikadan eskiyse, kaynakların en az yüzde 40'ı başarısız/kısmiyse,
 sabah hava penceresi sonrasında teslim yoksa veya çözülmemiş teslim varsa bu
