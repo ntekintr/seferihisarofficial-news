@@ -21,6 +21,25 @@ gereksiz issue oluşturmaz. E-posta/push teslimi kullanıcının GitHub bildirim
 ayarlarına bağlıdır. Cloudflare denetimi ayrı hizmette çalışsa da uyarının GitHub
 üzerinden gitmesi, GitHub genel kesintisinde bildirim garantisi sağlamaz.
 
+### Sessiz kaynak (30 Ekim 2026)
+
+Bubilet 403'ü, Biletinial'ın boş dönmesi ve Ege Telgraf'ın kesilmesi ancak
+denetimde fark edildi; yüzde 40 eşiği tek kaynak kaybını yakalamaz. Araştırma
+dışa aktarımı artık `quiet_sources` listesini panele yazar: daha önce kayıt
+vermiş, şu an `empty` veya `failed` olan ve en yeni kendi kaydı (`first_seen`)
+72 saatten eski kaynaklar. `last_seen` kullanılmaz; başka kaynak aynı kaydı
+yeniden bildirince de ilerler. `partial` kaynak okuma yapıyordur, sayılmaz.
+Süreli inceleme isteği (`requested_until`) dışarıda kalır. Seyrek kaynak
+`quiet_after_hours` ile kendi süresini alır (İzmir Kültür 720 saat). Aşılamayan
+bilinen engel `quiet_acknowledged` gerekçesiyle listede kalır ama uyarı vermez
+(Bubilet ve Bubilet Bademler bulut 403'ü).
+
+Denetçi onaylanmamış kayıt varsa `source_silent` kodunu ekler ve issue'da yalnız
+yapılandırma kimliğini, durumunu ve son yeni kayıt tarihini listeler; kaynak metni
+taşınmaz. Liste değişirse issue güncellenir. 30 Ekim verisiyle ilk liste:
+`izmir-belediye` (boş, son yeni kayıt 26 Ekim) ve `seferihisar-hem` (okunamıyor,
+19 Ekim); Ege Telgraf aynı gün 72 saati doldurur.
+
 ## Yayın sonrası GET gözlemi
 
 Mevcut yayın ve hava işinin üretim kilidi içinde, salt GET kullanan
