@@ -540,7 +540,8 @@
     "local_links_only": true,
     "reviewed_local_prefixes": [
       "https://www.bubilet.com.tr/izmir/etkinlik/urladam-"
-    ]
+    ],
+    "quiet_acknowledged": "27 Ekim 2026'dan beri bulut sunucularına HTTP 403; engel aşılmaz."
   },
   {
     "id": "biletino",
@@ -598,7 +599,8 @@
       "https://kultursanatapi.izmir.bel.tr/api/session/list",
       "https://kultursanatapi.izmir.bel.tr/api/event/list",
       "https://kultursanatapi.izmir.bel.tr/api/venue/list"
-    ]
+    ],
+    "quiet_after_hours": 720
   },
   {
     "id": "urla-ot",
@@ -680,7 +682,8 @@
     "link_selector": "a[href*=\"/izmir/etkinlik/\"]",
     "local_links_only": false,
     "expected_venue": "Bademler Sanat Köyü",
-    "recheck_parent_sessions": true
+    "recheck_parent_sessions": true,
+    "quiet_acknowledged": "27 Ekim 2026'dan beri bulut sunucularına HTTP 403; biletinial-bademler aynı mekânı okur."
   },
   {
     "id": "biletinial-bademler",
