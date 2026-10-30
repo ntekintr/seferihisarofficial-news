@@ -30,7 +30,7 @@
     "url": "https://bademlersanatkoyu.com/etkinlikler-ve-workshoplar/",
     "group": "etkinlik",
     "status": "date_missing",
-    "note": "Resmî sayfadaki 25 Aralık 20:00 duyurusunda yıl yok; etkinlik yılı tahmin edilmez. Alternatif olarak Bubilet’in Bademler mekân akışı bağlandı; her seansın tam tarihi, saati ve kendi mekân adresi ayrıca doğrulanır."
+    "note": "Resmî sayfadaki 25 Aralık 20:00 duyurusunda yıl yok; etkinlik yılı tahmin edilmez. Alternatif olarak Bubilet’in ve Biletinial’ın Bademler mekân akışları bağlandı; her seansın tam tarihi, saati ve kendi mekân adresi ayrıca doğrulanır."
   },
   {
     "id": "teosfest",
@@ -223,7 +223,15 @@
     "url": "https://biletinial.com/",
     "group": "bilet",
     "status": "connected",
-    "note": "İzmir tiyatro, müzik ve etkinlik listeleri okunur; gerçek ayrıntı seansları kullanılır. Mekân listesindeki saat, gösterinin saatinin yerine alınmaz."
+    "note": "İzmir tiyatro listesinin dört sayfası okunur; gerçek ayrıntı seansları kullanılır. Mekân listesindeki saat, gösterinin saatinin yerine alınmaz."
+  },
+  {
+    "id": "biletinial-sahne",
+    "name": "Biletinial — İzmir müzik ve etkinlik listeleri",
+    "url": "https://biletinial.com/tr-tr/muzik/izmir",
+    "group": "bilet",
+    "status": "connected",
+    "note": "İzmir müzik ve etkinlik listelerinde yalnız Seferihisar ve yakın ilçe mekânı yazan kartların ayrıntı seansları okunur. Merkez İzmir etkinlikleri otomatik kapsamda değildir."
   },
   {
     "id": "teos-kultur-sanat",
@@ -346,7 +354,18 @@
     "url": "https://www.bubilet.com.tr/mekan/bademler-sanat-koyu",
     "group": "etkinlik",
     "status": "connected",
-    "note": "Mekânın bilet sağlayıcısındaki açık seans verileri okunur. Yalnız kendi kaydında Bademler Sanat Köyü ve Urla adresi bulunan, tam başlangıç/bitişi açıklanan etkinlikler alınır. Liste tarihinden veya biyografiden tarih/mekân çıkarılmaz."
+    "note": "Mekânın bilet sağlayıcısındaki açık seans verileri okunur. Yalnız kendi kaydında Bademler Sanat Köyü ve Urla adresi bulunan, tam başlangıç/bitişi açıklanan etkinlikler alınır. Liste tarihinden veya biyografiden tarih/mekân çıkarılmaz.",
+    "fallback_reader_ids": [
+      "biletinial-bademler"
+    ]
+  },
+  {
+    "id": "biletinial-bademler",
+    "name": "Bademler Sanat Köyü — Biletinial etkinlikleri",
+    "url": "https://biletinial.com/tr-tr/mekan/bademler-sanat-koyu",
+    "group": "etkinlik",
+    "status": "connected",
+    "note": "Mekânın Biletinial sayfasındaki etkinliklerin sorgusuz ayrıntı adresleri okunur; mekâna bağlı sorgulu sürüm seans saatlerini 3 saat kaydırdığı için kullanılmaz. Yalnız kendi kaydında Bademler Sanat Köyü ve Urla adresi bulunan seanslar alınır."
   },
   {
     "id": "gercek-izmir",

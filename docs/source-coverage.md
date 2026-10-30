@@ -44,7 +44,7 @@ Bu okuma işi başarısız olursa web kaynakları çalışmaya devam eder. Insta
 | Urla Ot Bayramı | Tam yıl içeren 26–29 Mart 2026 program günleri okunur; geçtiği için yeni etkinlik gibi paylaşılmaz. |
 | Barbaros Oyuk Festivali | Programdaki 21, 22 ve 23 Ağustos 2026 tarihleri okunur; yeni sezon tarihi tahmin edilmez. |
 
-Biletix/Bubilet/Biletino listeleri ve Biletinial'ın her kategori için ilk İzmir sayfası sınırlı okunur. Her kaynakta en fazla 4–6 yerel ayrıntı sayfası kontrol edilir. İzmir Art ve belediye takvimleri ek etkinlik kanallarıdır; hiçbir bilet platformundaki bütün etkinliklerin eksiksiz alındığı iddia edilmez. Seansın gerçek mekânı yerel olmalıdır; turne adı veya başka ilçedeki gösteri bu kanıtın yerine geçmez.
+Biletix/Bubilet/Biletino listeleri sınırlı okunur; Biletinial'da İzmir tiyatro listesinin dört sayfası, müzik/etkinlik listeleri ve Bademler mekân sayfası okunur (30 Ekim güncellemesi aşağıda). Her kaynakta en fazla 4–12 ayrıntı sayfası kontrol edilir. İzmir Art ve belediye takvimleri ek etkinlik kanallarıdır; hiçbir bilet platformundaki bütün etkinliklerin eksiksiz alındığı iddia edilmez. Seansın gerçek mekânı yerel olmalıdır; turne adı veya başka ilçedeki gösteri bu kanıtın yerine geçmez.
 
 Gerçek seans adresi/kimliği varsa tarih değişiminde kimlik korunur. Kimlik vermeyen bilet sayfasında tarih ve mekân ayrı seans kaydı oluşturur; eski kayıt yeni kontrolde görülmezse güncel sayılmaz. Kaybolan seans otomatik olarak iptal edilmiş ilan edilmez. Program yılları farklı edisyonlarda ayrı kimlikte tutulur.
 
@@ -79,3 +79,21 @@ Valilik okuyucusu yalnız kendi başlığı, tam yayın tarihi ve `.icerik` göv
 İlk gerçek bulut turu 14 Ekim 16:41–16:50'de tamamlandı. GDZ aynı Urla planını hatasız aldı; Teos RSS ve Instagram kanalı hatasız okundu, uygun güncel kayıt yok. Valilikte iki ayrıntı bağlantısı bağlantı hatası verdi. Bu geçici hatalar için mevcut alan adı başına turda en fazla bir ek deneme mekanizması açıldı; 403 veya robots engeli tekrar edilmez ve sınırsız deneme yapılmaz. Gerçek son sağlık ölçümü bu tarihli başlangıç sonucunun yerine geçer.
 
 Bademler'in 25 Aralık 20:00 duyurusunda yıl hâlâ yok. Gerçek fakat boş RSS ve resmî iletişim sayfası incelendi; sayfanın yayın yılı etkinlik yılına çevrilmedi. Bu doğrudan etkinlik kapsamı açık kalır.
+
+## 30 Ekim 2026: Bubilet kaybı ve Biletinial etkinlik kaynakları
+
+Bubilet ve Bubilet Bademler 27 Ekim'den beri bulut turlarında HTTP 403 veriyor. Aynı tanıtıcı ve robots izniyle yerel bilgisayardan okuma 200 döndü; engel bulut sunucularının adresine yönelik. Bu engel aşılmaz; iki okuyucu açık kalır ve erişim düzelirse kendiliğinden sağlıklı görünür. Bademler son yedi günde 33 yeni etkinlikle en verimli etkinlik kaynağıydı.
+
+Aynı mekânın etkinlikleri Biletinial'da da satılıyor. 30 Ekim yerel salt okunur denemede, projenin kendi toplayıcısıyla:
+
+| Okuyucu | Sonuç |
+|---|---|
+| `biletinial-bademler` | Mekân sayfasındaki 11 etkinlikten 17 doğrulanmış Bademler seansı (konser, tiyatro, çini, yoga, nefes atölyesi). |
+| `biletinial` | İzmir tiyatro listesi dört sayfa (197 kayıt). Yerel salonlar 2. ve 4. sayfadaydı; yalnız 1. sayfa okunduğu için kaynak 26 Ekim'den beri `empty` kalıyordu. Yeni ayarla Urla AKM Fuaye, Urla Hakan Çeken ve Seferihisar Çağan Irmak salonlarından 7 seans. Müzik/etkinlik JSON uç noktası İzmir için boş döndüğünden çıkarıldı. |
+| `biletinial-sahne` | İzmir müzik ve etkinlik HTML listeleri. Avlu Urla ve Urla Sahne'den 3 seans; merkez İzmir kartları alınmaz. |
+
+Biletinial'ın mekâna bağlı `?cinemaBranchId=` sürümü schema.org seans saatlerini 3 saat ileri yazıyor: görünen 10:00, şemada 13:00. Sorgusuz gösteri sayfası doğru saati veriyor; Bademler okuyucusu ayrıntı adresindeki sorguyu `strip_detail_query` ile atar. 14 Ekim'deki "mekân listesinde 23:00" bulgusu aynı sorundur.
+
+Biletix'in robots dosyasında sunduğu etkinlik haritasındaki 156 İzmir etkinliğinin ayrıntı şeması tek seferlik okundu. Yalnız ikisi kapsamdaydı (Urla Hakan Çeken) ve biri Biletinial'da da var. Mekân sayfaları robots'un yasakladığı `bxcached` API'sini kullandığı için her turda 156 sayfa okumak yerine Biletix ayarı değiştirilmedi. Bademler'in kendi sitesinde yine yalnız yılsız 25 Aralık duyurusu var.
+
+Bubilet erişimi geri gelirse aynı Bademler seansı iki sağlayıcıdan gelebilir. Kart mekânı iki kaynakta da "Bademler Sanat Köyü" olarak üretilir; aynı kart içeriği mevcut tekrar denetimine takılır.

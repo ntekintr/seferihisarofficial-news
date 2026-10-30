@@ -4,6 +4,15 @@ Son gözden geçirme: **26 Ekim 2026**. Bu dosya kod haritası ve kalıcı çal�
 notudur. Anlık sağlık/teslim kanıtı zaman damgalı çıktılardan alınır; burada bir
 kez başarılı olması sonraki ay kesintisiz çalışacağı anlamına gelmez.
 
+### 30 Ekim: Bubilet yerine Biletinial etkinlik kaynakları
+
+Bubilet bulut sunucularına 403 verdiği için Bademler etkinlikleri Biletinial
+mekân sayfasından okunur; İzmir tiyatro listesinin dört sayfası ve müzik/etkinlik
+listeleri de bağlandı. Biletinial'ın `?cinemaBranchId=` sürümü seans saatini 3
+saat kaydırır; Bademler okuyucusu sorgusuz adresi kullanır. Kanıt ve sınırlar:
+[kaynak kapsamı](source-coverage.md), 30 Ekim bölümü;
+testler `tests/test_biletinial_sources.py`.
+
 ### 26 Ekim: kaynak fotoğrafı, uygun üretim ve görselsiz yayını bekletme
 
 [Yeni görsel sözleşmesi](visual-first-publication.md), yalnız sonraki yayınlara

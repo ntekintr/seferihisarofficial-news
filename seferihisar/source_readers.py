@@ -356,6 +356,10 @@ def collect_tickets(source, fetcher, known_events=(), reader=ticket_items):
         soup = BeautifulSoup(body,'html.parser')
         for anchor in soup.select(source['link_selector']):
             link = page_url(urljoin(base,anchor['href']))
+            if source.get('strip_detail_query') is True:
+                # Biletinial's venue-scoped ?cinemaBranchId variant shifts
+                # schema.org session times by +3h; the plain path is correct.
+                link = urlsplit(link)._replace(query='').geturl()
             if not public_url(link) or urlsplit(link).hostname!=urlsplit(base).hostname:
                 continue
             node = anchor.find_parent(['li','article']) or anchor.parent
