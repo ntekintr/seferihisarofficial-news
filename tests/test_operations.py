@@ -61,7 +61,7 @@ def test_summary_uses_turkish_publication_day_and_utc_illustration_day(store):
     store.queue({'id': 'a'*24, 'title': 'Frozen', 'kind': 'news', 'source_urls': [],
                  'due_at': at.isoformat(), 'published_at': at.isoformat()})
     with store.db:
-        store.db.execute("UPDATE posts SET status='uncertain'")
+        store.db.execute("UPDATE posts SET status='uncertain',container_id='17890000000000001'")
         store.db.execute('INSERT INTO illustration_days VALUES(?,?)', ('2026-10-14', 20))
     before = store.rows('SELECT * FROM posts')
     result = summary(store, at)

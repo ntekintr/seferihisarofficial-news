@@ -63,6 +63,31 @@ def test_uncertain_publish_is_not_retried(store,event,at):
     assert api.call.call_count==calls
 
 
+def test_failed_container_creation_is_known_unsent_but_still_never_retried(store,event,at):
+    from seferihisar.operations import summary
+    store.upsert(event,at.isoformat())
+    prepare(store,at)
+    api=adapter()
+    api.container.side_effect=requests.ConnectionError('hidden token should not be printed')
+    assert publish_one(store,at,'https://example.org/',assets_for(store),adapter=api)['status']=='uncertain'
+    api.call.assert_not_called()
+    result=summary(store,at)
+    assert result['unresolved']['instagram']==0 and result['not_sent']['instagram']==1
+    assert result['today']['instagram_feed']==1
+    publish_one(store,at+timedelta(hours=1),'https://example.org/',assets_for(store),adapter=api)
+    assert api.container.call_count==1
+
+
+def test_failure_after_container_creation_stays_unresolved(store,event,at):
+    from seferihisar.operations import summary
+    store.upsert(event,at.isoformat())
+    prepare(store,at)
+    # media_publish may have succeeded at Meta even though the response was lost.
+    assert publish_one(store,at,'https://example.org/',assets_for(store),adapter=adapter(fail=True))['status']=='uncertain'
+    result=summary(store,at)
+    assert result['unresolved']['instagram']==1 and result['not_sent']['instagram']==0
+
+
 def test_media_not_yet_deployed_prevents_meta_call(store,event,at):
     store.upsert(event,at.isoformat())
     prepare(store,at)
