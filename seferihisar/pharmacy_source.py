@@ -27,6 +27,10 @@ def phone(value):
     return digits
 
 
+class EmptyOfficialList(ValueError):
+    """The open API answered, but without any Seferihisar duty entry."""
+
+
 def parse_izmir(body, at):
     data = json.loads(body)
     if not isinstance(data,list) or len(data)>500:
@@ -48,6 +52,10 @@ def parse_izmir(body, at):
             raise ValueError('Official duty date is stale')
         entries.append(dict(name=clean(row['Adi']),address=clean(row['Adres']),
                             phone=phone(row.get('Telefon','')),region=area,note=clean(row.get('BolgeAciklama',''))))
+    if not entries:
+        # 30 Oct: the API answered [] for all of İzmir while the official
+        # filtered page listed both of the day's Seferihisar pharmacies.
+        raise EmptyOfficialList('No Seferihisar entry in the official API')
     return make_bulletin(entries,at.astimezone(TZ).date(),at)
 
 
@@ -151,7 +159,12 @@ def fetch_bulletin(at, fetcher=None):
     checked=now()
     if checked.astimezone(TZ).date()!=at.astimezone(TZ).date():
         raise ValueError('Source read crossed duty date')
-    return parser(body,checked)
+    try:
+        return parser(body,checked)
+    except EmptyOfficialList:
+        # A data gap, not a conflict: stale or contradictory rows stay hard failures.
+        body,_=fetcher.get(IZMIR_WEB)
+        return parse_izmir_web(body,checked)
 
 
 def main():
