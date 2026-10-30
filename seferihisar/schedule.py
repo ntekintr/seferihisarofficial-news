@@ -170,7 +170,7 @@ def queue_item(store: Store, item: dict, kind: str, due: datetime, at: datetime)
 def card_location(item: dict) -> str | None:
     """Use the named venue; leave its explicit street address in the caption."""
     location = event_metadata.location(item)
-    if (item.get('source_id') == 'bubilet-bademler' and location
+    if (item.get('source_id') in ('bubilet-bademler', 'biletinial-bademler') and location
             and location.startswith('Bademler Sanat Köyü ')):
         return 'Bademler Sanat Köyü'
     if location and " · " in location:
