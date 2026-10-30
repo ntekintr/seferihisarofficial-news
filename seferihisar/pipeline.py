@@ -272,8 +272,9 @@ def _export(store: Store, public_dir: Path, sources: list[dict], at: datetime, d
                 "source_health": store.rows('SELECT * FROM source_health ORDER BY source_id'),
                 "runs": [{**r, "errors": json.loads(r["errors"])} for r in store.rows("SELECT * FROM runs ORDER BY id DESC LIMIT 20")]}
     catalogue_path = Path(__file__).resolve().parents[1] / 'config/source_catalog.json'
-    from .operations import summary
+    from .operations import summary, quiet_sources
     snapshot['operations'] = summary(store, at)
+    snapshot['quiet_sources'] = quiet_sources(store, sources, at)
     from .factory import summary as factory_summary
     snapshot['factory'] = factory_summary(store, at)
     if not demo:

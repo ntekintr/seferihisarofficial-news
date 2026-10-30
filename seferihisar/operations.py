@@ -113,6 +113,31 @@ def summary(store, at):
             'reset_at': datetime.combine(utc_day + timedelta(days=1), datetime.min.time(), timezone.utc).astimezone(TZ).isoformat()}}
 
 
+QUIET_AFTER_HOURS = 72
+
+
+def quiet_sources(store, sources, at):
+    """Readers that produced items before but are now empty or failing.
+
+    `last_seen` also moves when another source re-reports a merged duplicate,
+    so the newest `first_seen` per source is the evidence of its own yield.
+    Finite reviewed requests stop by design; seasonal readers may set
+    `quiet_after_hours`, and a known, non-bypassable block `quiet_acknowledged`.
+    """
+    config = {s['id']: s for s in sources}
+    newest = {r['sid']: r['newest'] for r in store.rows(
+        "SELECT json_extract(payload,'$.source_id') AS sid, MAX(first_seen) AS newest FROM items GROUP BY sid")}
+    result = []
+    for row in store.rows("SELECT source_id,status FROM source_health WHERE status IN ('empty','failed') ORDER BY source_id"):
+        source, last = config.get(row['source_id']), parse_date(newest.get(row['source_id']))
+        if not source or not source.get('enabled', True) or source.get('requested_until') or not last:
+            continue
+        if at - last >= timedelta(hours=source.get('quiet_after_hours', QUIET_AFTER_HOURS)):
+            result.append({'source_id': row['source_id'], 'status': row['status'],
+                           'last_new_item_at': last.isoformat(), 'acknowledged': bool(source.get('quiet_acknowledged'))})
+    return result
+
+
 def write_job_summary(result):
     target = os.getenv('GITHUB_STEP_SUMMARY')
     if target:

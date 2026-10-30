@@ -25,7 +25,20 @@ LABELS = {
     'connection_failed': 'Günlük Meta bağlantı testi başarısız.',
     'publication_failed': 'Son ana dal yayın işi başarısız.',
     'backup_missing': 'Son iki gün içinde başarılı bağımsız yedek işi bulunamadı.',
+    'source_silent': 'Daha önce kayıt veren kaynak, beklenen süre boyunca yeni kayıt vermedi; şu an boş veya okunamıyor.',
 }
+
+
+def quiet(snapshot):
+    """Unacknowledged silent readers; only reviewed config ids and dates enter issues."""
+    rows = snapshot.get('quiet_sources', []) if isinstance(snapshot, dict) else []
+    result = []
+    for row in rows if isinstance(rows, list) else []:
+        stamp = parse_date(row.get('last_new_item_at')) if isinstance(row, dict) else None
+        if (stamp and row.get('acknowledged') is False and row.get('status') in ('empty', 'failed')
+                and re.fullmatch(r'[a-z0-9-]{1,80}', str(row.get('source_id', '')))):
+            result.append((row['source_id'], row['status'], stamp.astimezone(TZ).date().isoformat()))
+    return sorted(result)
 
 
 def evaluate(snapshot, at):
@@ -51,6 +64,8 @@ def evaluate(snapshot, at):
             problems.append('unresolved_delivery')
     if snapshot.get('factory', {}).get('delivery_audit', {}).get('recent_failures', 0):
         problems.append('delivery_audit_failed')
+    if quiet(snapshot):
+        problems.append('source_silent')
     return sorted(problems)
 
 
@@ -85,11 +100,16 @@ def workflow_problems(api, at):
     return result
 
 
-def notify(api, problems, at):
+def notify(api, problems, at, silent=()):
     problems = sorted(set(problems))
     if any(p not in LABELS for p in problems):
         raise ValueError('Unapproved incident code')
-    fingerprint = hashlib.sha256(','.join(problems).encode()).hexdigest()[:24]
+    silent = sorted(silent) if 'source_silent' in problems else []
+    if any(not re.fullmatch(r'[a-z0-9-]{1,80}', sid) or status not in ('empty', 'failed')
+           or not re.fullmatch(r'\d{4}-\d{2}-\d{2}', day) for sid, status, day in silent):
+        raise ValueError('Unapproved silent source detail')
+    # A changed set of silent readers is a new state, so the issue is updated.
+    fingerprint = hashlib.sha256((','.join(problems) + '|' + ','.join(s[0] for s in silent)).encode()).hexdigest()[:24]
     stamp = '<!-- state:' + fingerprint + ' -->'
     issues = api.call('GET', 'issues', params={'state': 'all', 'per_page': 100, 'creator': 'github-actions[bot]'})
     previous = next((r for r in issues if not r.get('pull_request') and MARKER in (r.get('body') or '')
@@ -98,7 +118,13 @@ def notify(api, problems, at):
         return 'unchanged'
     body = MARKER + '\n' + stamp + '\n\n'
     body += ('Kontrol: ' + at.astimezone(TZ).isoformat() + '\n\n')
-    body += '\n'.join('- ' + LABELS[p] for p in problems) if problems else 'Önceki işletim uyarıları bu kontrolde görülmedi.'
+    detail = {'failed': 'okunamıyor', 'empty': 'boş'}
+    lines = []
+    for p in problems:
+        lines.append('- ' + LABELS[p])
+        if p == 'source_silent':
+            lines += ['  - `' + sid + '`: ' + detail[status] + ', son yeni kayıt ' + day for sid, status, day in silent]
+    body += '\n'.join(lines) if problems else 'Önceki işletim uyarıları bu kontrolde görülmedi.'
     body += '\n\n[Sistem paneli](https://ntekintr.github.io/seferihisarofficial-news/#system) · [Kontrol işleri](https://github.com/' + REPO + '/actions/workflows/operations-watch.yml)\n\nBu kontrol paylaşım yapmaz; kayıtları sıfırlamaz.'
     if not previous:
         if not problems:
@@ -115,10 +141,12 @@ def main():
     import requests
     at = now()
     session = requests.Session()
-    problems = []
+    problems, silent = [], []
     try:
         r = session.get(PANEL, timeout=(5, 20), allow_redirects=False)
-        problems = evaluate(r.json(), at) if r.status_code == 200 else ['panel_unreachable']
+        snapshot = r.json() if r.status_code == 200 else None
+        problems = evaluate(snapshot, at) if snapshot is not None else ['panel_unreachable']
+        silent = quiet(snapshot) if snapshot is not None else []
     except (requests.RequestException, ValueError, TypeError, KeyError):
         problems = ['panel_unreachable']
     result = {'version': 'operations-watch-v1', 'checked_at': at.isoformat(), 'problems': problems,
@@ -128,7 +156,8 @@ def main():
         if token:
             api = Github(token, session)
             problems = sorted(set(problems + workflow_problems(api, at)))
-            result.update(problems=problems, notification=notify(api, problems, at))
+            result.update(problems=problems, silent_sources=[s[0] for s in silent],
+                          notification=notify(api, problems, at, silent))
     except (requests.RequestException, RuntimeError, ValueError, KeyError, TypeError):
         result['notification'] = 'failed'
     path = Path('work/operations-watch/summary.json')
