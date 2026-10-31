@@ -93,3 +93,29 @@ def test_long_essential_facts_step_down_once_instead_of_blocking_the_card(tmp_pa
     editorial_card('Geleceğim Meslekte', body, 'event', tmp_path/'long.jpg', event_details=True, caption_note=True,
                    illustration=photo(tmp_path))
     assert seen['details'] == {28}
+
+
+def test_ten_page_calendar_renders_on_every_page(tmp_path):
+    # 1 Nov monthly calendar, held in the cloud as unrenderable_card_text.
+    cover = ('01.11.2026 – 01.12.2026\n\n9 etkinlikten seçki\n\nAyşin Koruk ile Çini Atölyeleri (Yetişkin)\n01.11.2026'
+             '\n\nHatice Yıldız Bali ile Nefes Atölyesi\n07.11.2026\n\nKlasik Gitar ve Perdesiz Gitar Dinletisi - Halil Özok'
+             ' — Konser\n07.11.2026\n\nDevamı sonraki kartlarda →')
+    workshop = ('Ayşin Koruk ile Çini Atölyeleri (Yetişkin)', '01.11.2026 · 14:30\n\nBademler Sanat Köyü\n\n'
+                'Düzenleyen: Bademler Sanat Köyü\n\nÜcret: 1568.0 TL', 'culture')
+    breath = ('Hatice Yıldız Bali ile Nefes Atölyesi', '07.11.2026 · 12:00\n\nBademler Sanat Köyü\n\n'
+              'Düzenleyen: Bademler Sanat Köyü\n\nÜcret: 560.0 TL', 'culture')
+    guitar = ('Klasik Gitar ve Perdesiz Gitar Dinletisi - Halil Özok — Konser',
+              '07.11.2026 · 19:30\n\nAnart - Gösteri ve Sanat Evi\n\nÜcretsiz', 'concert')
+    insect = ('BÖCEK OTELİ — Aile ve çocuk etkinliği', '08.11.2026 · 11:00\n\nUrla AKM Fuaye Sahnesi Sıra Mahallesi '
+              'Zafer Caddesi No:80 Urla / İZMİR\n\nÜcret: 145.01 TL', 'family')
+    butterfly = ('Maviş Baba Kelebek Avcısı — Festival', '12.11.2026 · 15:30\n\nSeferihisar Çağan Irmak Kültür Merkezi '
+                 'Hıdırlık Mahallesi 11 Eylül CAD. No:4/c Seferihisar İzmir\n\nDüzenleyen: FRK Organizasyon\n\n'
+                 'Ücret: 448.0 TL', 'festival')
+    events = [workshop, breath, guitar, insect, insect, workshop, butterfly, butterfly, breath]
+    slides = [{'title': 'Seferihisar ve Çevresi Etkinlik Takvimi', 'body': cover}]
+    slides += [{'title': title, 'body': body, 'category': category} for title, body, category in events]
+    post = {'id': 'b'*24, 'kind': 'monthly', 'status': 'prepared', 'category': 'event', 'card_layout': VERSION,
+            'title': slides[0]['title'], 'slides': slides}
+    image = photo(tmp_path)
+    assets = render_post(post, tmp_path, {index: image for index in range(len(slides))})
+    assert len(assets['feed']) == len(assets['story']) == 10
