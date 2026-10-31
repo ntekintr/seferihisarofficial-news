@@ -8,6 +8,7 @@ from seferihisar.facebook import publish_outage_story as mirror
 from seferihisar.instagram import publish_automatic, publish_one, publish_outage_story, publish_requested
 from seferihisar.operations import failed, safe_result, validate_result
 from seferihisar.publication_policy import OUTAGE_STORY_LIMIT, day_claims, story_only
+from seferihisar.render import render_post
 from seferihisar.schedule import prepare
 from tests.test_automatic_publication import api, claim, news
 
@@ -179,3 +180,12 @@ def test_check_log_keeps_outage_results_and_flags_failures():
     validate_result(value)
     assert value=={'status':'empty','outage_story':'published','outage_facebook':'uncertain'}
     assert failed(value) and not failed({'status':'empty','outage_story':'empty','outage_facebook':'disabled'})
+
+def test_story_card_does_not_point_to_a_caption_it_does_not_have(store,tmp_path,monkeypatch):
+    outage(store,AT)
+    post=next(p for p in store.posts() if not p.get('publish_format'))
+    seen={}
+    monkeypatch.setattr('seferihisar.render.inline_note',lambda post:True)
+    monkeypatch.setattr('seferihisar.render.card',lambda title,body,category,target,story=False,*a,**k:seen.update({story:k['caption_note']}))
+    render_post(post,tmp_path)
+    assert seen=={False:True,True:False}
