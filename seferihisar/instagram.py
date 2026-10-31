@@ -20,6 +20,17 @@ from .publication_policy import (NEWS_DAILY_LIMIT, daily_limit_reason, duplicate
                                  day_claims, dispatch_window, evening_post, evening_window)
 
 
+def delivery_error(exc: Exception) -> str:
+    """A short code for the panel; never a response body, URL or token."""
+    if isinstance(exc, requests.Timeout):
+        return 'timeout'
+    if isinstance(exc, requests.RequestException):
+        return 'connection'
+    if match := re.search(r'\(HTTP (\d{3})\)', str(exc)):
+        return 'http_' + match[1]
+    return 'media_processing' if str(exc).startswith('Meta media') else 'unverified_response'
+
+
 class Instagram:
     def __init__(self, session=None):
         self.session = session or requests.Session()
@@ -161,9 +172,10 @@ def publish_one(store: Store, at: datetime, site_url: str, assets: dict[str, dic
         if checkpoint:
             checkpoint()
         return {"status": "published", "post_id": post["id"]}
-    except (requests.RequestException, RuntimeError, KeyError, ValueError):
+    except (requests.RequestException, RuntimeError, KeyError, ValueError) as exc:
+        post["delivery_error"] = delivery_error(exc)
         with store.db:
-            store.db.execute("UPDATE posts SET status='uncertain' WHERE id=?", (post["id"],))
+            store.db.execute("UPDATE posts SET status='uncertain',payload=? WHERE id=?", (json.dumps(post, ensure_ascii=False), post["id"]))
         if checkpoint:
             checkpoint()
         return {"status": "uncertain", "post_id": post["id"]}
