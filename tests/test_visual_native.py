@@ -1,13 +1,18 @@
 """Real CPU-model regression, independent of mock-based pipeline tests."""
+import io
+import json
 import os
 from pathlib import Path
 
 import pytest
+from PIL import Image, ImageDraw, ImageFont
 
-from seferihisar.visual_match import MatchRejected, validate_match,validate_news_photo,validate_event_photo
+from seferihisar.editorial_stock import DIRECTORY
+from seferihisar.visual_match import MatchRejected, _validate_occasion, validate_match,validate_news_photo,validate_event_photo
 
 pytestmark=pytest.mark.skipif(os.getenv('RUN_VISUAL_NATIVE')!='true',reason='Explicit pinned CPU visual model job')
 ROOT=Path('tests/fixtures/visual-match')
+STOCK=json.loads((DIRECTORY/'manifest.json').read_text())['scenes']
 
 
 @pytest.mark.parametrize('file,expected',[
@@ -44,3 +49,24 @@ def test_source_event_images_keep_subject_in_all_full_frame_formats(expected):
 
 def test_traffic_does_not_become_a_source_event_concert():
     with pytest.raises(MatchRejected):validate_event_photo((ROOT/'traffic-meeting.jpg').read_bytes(),'concert')
+
+
+def flyer(background,foreground,lines):
+    image=Image.new('RGB',(1200,800),background);draw=ImageDraw.Draw(image)
+    for index,line in enumerate(lines):
+        draw.text((80,120+index*170),line,fill=foreground,font=ImageFont.load_default(72))
+    buffer=io.BytesIO();image.save(buffer,'JPEG',quality=90)
+    return buffer.getvalue()
+
+
+@pytest.mark.parametrize('background,foreground,lines',[
+    ('#b3122a','white',['3. ZEYTIN FESTIVALI','31 EKIM - 1 KASIM','ORHANLI KOYU']),
+    ('white','#112233',['DUYURU','BELEDIYE MECLIS','TOPLANTISI 14:00']),
+])
+def test_text_flyer_is_not_a_real_occasion_photograph(background,foreground,lines):
+    with pytest.raises(MatchRejected):validate_news_photo(flyer(background,foreground,lines),'festival')
+
+
+@pytest.mark.parametrize('row',STOCK,ids=lambda r:r['subject'])
+def test_empty_reviewed_stock_scene_is_not_a_real_occasion_photograph(row):
+    with pytest.raises(MatchRejected):_validate_occasion((DIRECTORY/row['file']).read_bytes(),row['subject'])
