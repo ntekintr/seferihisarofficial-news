@@ -1,4 +1,5 @@
 """Transport fallback must retain actual source, region and duty interval."""
+import json
 from datetime import timedelta
 from pathlib import Path
 from unittest.mock import Mock
@@ -46,6 +47,26 @@ def test_transport_fallback_is_single_and_uses_actual_official_url(monkeypatch):
     value=source.fetch_bulletin(AT,fetcher)
     assert value['source_url']==IZMIR_WEB
     assert [c.args[0] for c in fetcher.get.call_args_list]==[source.profile()['source_url'],IZMIR_WEB]
+
+
+@pytest.mark.parametrize('api',['[]', json.dumps([{'Bolge':'URLA','Adi':'Başka Eczanesi','Adres':'Urla',
+                                                   'Tarih':'2026-10-22T00:00:00','Telefon':'','BolgeAciklama':''}])])
+def test_empty_api_list_falls_back_once_to_the_official_page(monkeypatch,api):
+    # 30 Oct: the open API answered [] for all of İzmir; the page listed the day's pharmacies.
+    fetcher=Mock();fetcher.get.side_effect=[(api,'application/json'),(html(),'text/html')]
+    monkeypatch.setattr(domain,'now',lambda:AT)
+    value=source.fetch_bulletin(AT,fetcher)
+    assert value['source_url']==IZMIR_WEB and len(value['entries'])==2
+    assert [c.args[0] for c in fetcher.get.call_args_list]==[source.profile()['source_url'],IZMIR_WEB]
+
+
+def test_stale_api_rows_are_never_hidden_by_the_page(monkeypatch):
+    row={'Bolge':'SEFERİHİSAR','Adi':'Eski Eczanesi','Adres':'Camikebir Mah. Seferihisar',
+         'Tarih':'2026-10-21T00:00:00','Telefon':'','BolgeAciklama':''}
+    fetcher=Mock();fetcher.get.side_effect=[(json.dumps([row]),'application/json'),(html(),'text/html')]
+    monkeypatch.setattr(domain,'now',lambda:AT)
+    with pytest.raises(ValueError,match='stale'):source.fetch_bulletin(AT,fetcher)
+    assert fetcher.get.call_count==1
 
 
 @pytest.mark.parametrize('error',[requests.exceptions.SSLError(),requests.HTTPError(),PermissionError()])
