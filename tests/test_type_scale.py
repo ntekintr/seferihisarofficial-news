@@ -95,6 +95,13 @@ def test_long_essential_facts_step_down_once_instead_of_blocking_the_card(tmp_pa
     assert seen['details'] == {28}
 
 
+def test_text_past_the_right_edge_moves_back_into_its_field():
+    from PIL import Image, ImageDraw
+    fields = TextFields(ImageDraw.Draw(Image.new('RGB', (300, 60))))
+    fields.line('10/10', 150, 10, 23, '#000000', 'page', (0, 0, 180, 60))
+    assert fields.bounds[0][0][2] <= 180
+
+
 def test_ten_page_calendar_renders_on_every_page(tmp_path):
     # 1 Nov monthly calendar, held in the cloud as unrenderable_card_text.
     cover = ('01.11.2026 – 01.12.2026\n\n9 etkinlikten seçki\n\nAyşin Koruk ile Çini Atölyeleri (Yetişkin)\n01.11.2026'
