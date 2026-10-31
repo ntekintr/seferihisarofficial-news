@@ -58,6 +58,27 @@ akıştır; yerel haberler arasında 290 saat geçti, bu yüzden 720 saat alır.
 Eğitim okuyucusu çalışıyor; sitede 18 Ekim'den sonra haber yok. Yeni kuralla 30
 Ekim verisinde listede yalnız onaylı iki Bubilet kaynağı kalır.
 
+### Kilit iş seviyesinde (31 Ekim 2026)
+
+31 Ekim sabahı hava story'si gönderilmedi ve işletim uyarısı yeniden açıldı. Her
+araştırma tamamlanması yayın, hava ve eczane iş akışlarını aynı saniyede başlatır;
+üçü de `seferihisar-production` kilidini iş akışı seviyesinde alıyordu. GitHub bir
+kilitte bir çalışan ve bir bekleyen tutar; yeni gelen bekleyeni iptal eder. Koşulu
+tutmadığı için birazdan atlanacak eczane koşusu da kilide girip bekleyen hava işini
+düşürdü: 07:45, 08:16 ve 08:29 tamamlanmalarından sonraki hava işleri iptal oldu;
+07:13 işi bekleme penceresinden önce, 09:00 işi pencere kapandıktan sonra çalıştı.
+Zamanlanmış yedekler son günlerde ancak 13:00–14:00'te geldiği için kurtarmadı.
+Aynı yarış o sabah dört yayın işini de iptal etti ve 17:00 eczane işini de tehdit
+ediyordu. Denetçi de aynı nedenle araştırma sonrası kontrollerini kaybediyordu.
+
+Yayın, hava, eczane ve denetçi artık kilidi iş seviyesinde alır. Koşulu tutmayan iş
+atlanır ve kilide hiç girmez. Çalışan işler aynı kilit adını paylaştığı için yine
+sırayla çalışır; SQLite yazımları ayrılmaz. Araştırma iş akışı seviyesinde kalır:
+araştırma → kalıcılaştırma → dağıtım zinciri kilidi bütün koşu boyunca tutmalıdır.
+Kalan dar açık: bir story işi beklerken yeni bir araştırma koşusu kilide girerse
+bekleyen işi yine düşürür. Yayın 1–3 dakika sürer, araştırma yaklaşık 15 dakikada
+bir başlar; sonraki tamamlanma aynı pencere içinde işi yeniden tetikler.
+
 ## Yayın sonrası GET gözlemi
 
 Mevcut yayın ve hava işinin üretim kilidi içinde, salt GET kullanan

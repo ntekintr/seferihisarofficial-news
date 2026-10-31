@@ -202,8 +202,9 @@ def test_workflow_is_cloud_scheduled_trusted_and_serialized():
     workflow=yaml.load(Path('.github/workflows/weather-story.yml').read_text(),Loader=yaml.BaseLoader)
     assert workflow['on']['schedule']==[{'cron':'35 4 * * *'},{'cron':'0,17,32,47 5 * * *'}]
     assert 'workflow_dispatch' not in workflow['on']
-    assert workflow['concurrency']=={'group':'seferihisar-production','cancel-in-progress':'false'}
+    assert 'concurrency' not in workflow
     job=workflow['jobs']['weather']
+    assert job['concurrency']=={'group':'seferihisar-production','cancel-in-progress':'false'}
     assert job['environment']=='instagram-production' and job['permissions']=={'contents':'write'}
     assert 'head_repository.full_name == github.repository' in job['if'] and "conclusion == 'success'" in job['if']
     assert job['steps'][0]['with']['ref']=='main'

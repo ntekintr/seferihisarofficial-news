@@ -9,9 +9,6 @@ on:
     branches: [main]
 permissions:
   contents: read
-concurrency:
-  group: seferihisar-production
-  cancel-in-progress: false
 jobs:
   weather:
     if: >-
@@ -21,6 +18,11 @@ jobs:
         github.event.workflow_run.head_branch == 'main' &&
         github.event.workflow_run.head_repository.full_name == github.repository &&
         (contains(github.event.workflow_run.created_at, 'T04:') || contains(github.event.workflow_run.created_at, 'T05:'))))
+    # Job-level lock: a skipped run never enters the queue, so it cannot evict
+    # the one pending real job (31 Oct: weather lost to skipped pharmacy runs).
+    concurrency:
+      group: seferihisar-production
+      cancel-in-progress: false
     runs-on: ubuntu-latest
     timeout-minutes: 35 # At most 25 minutes waiting, plus setup and the bounded publication call.
     environment: instagram-production

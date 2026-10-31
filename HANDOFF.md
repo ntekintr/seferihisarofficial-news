@@ -25,7 +25,7 @@ Son belgelenen yapılandırma 55 okuyucu (46 web/özel, 9 Instagram); güncel ge
 
 Meta Facebook Login bağlantısı ve Page/Instagram kimlikleri Isparta Instagram Login'den farklıdır. Tokenları değiştirme; connected sonucu süresiz yetki değildir. Cloudflare Workers AI üretim ve `ops/cron-worker.mjs` mevcut araştırma için yedek tetikleyici; Pages paneli https://ntekintr.github.io/seferihisarofficial-news/ . Worker dağıtımı/secret'ı yalnız kod var diye doğrulanmış sayılmaz.
 
-`automation.yml` UTC saatte 07/22/37/52 araştırma → persist → deploy. `publish.yml` ayrı haber teslimi; `weather-story.yml` 08:00 TR hedef, `pharmacy-story.yml` 17:00 TR; günlük GET `instagram-connection-check.yml` 08:10 TR; saatlik operations-watch; `state-backup.yml` günlük yedek. Üretim concurrency `seferihisar-production`. Bağımsız watch/backup jobs üretim kilidini değiştirme yetkisi vermez. Github cron gecikmesine karşı kapılar vardır, 7/24 garantili servis değildir.
+`automation.yml` UTC saatte 07/22/37/52 araştırma → persist → deploy. `publish.yml` ayrı haber teslimi; `weather-story.yml` 08:00 TR hedef, `pharmacy-story.yml` 17:00 TR; günlük GET `instagram-connection-check.yml` 08:10 TR; saatlik operations-watch; `state-backup.yml` günlük yedek. Üretim concurrency `seferihisar-production`; araştırma iş akışı seviyesinde, yayın/hava/eczane iş seviyesinde kilitler (31 Ekim: atlanan koşu bekleyen işi düşürmesin). Bağımsız watch/backup jobs üretim kilidini değiştirme yetkisi vermez. Github cron gecikmesine karşı kapılar vardır, 7/24 garantili servis değildir.
 
 ## Son tamamlanan işler ve gerçek açık sınır
 

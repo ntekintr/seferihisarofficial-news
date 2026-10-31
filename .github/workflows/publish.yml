@@ -21,9 +21,6 @@ on:
         required: false
 permissions:
   contents: read
-concurrency:
-  group: seferihisar-production
-  cancel-in-progress: false
 jobs:
   publish:
     if: >-
@@ -31,6 +28,10 @@ jobs:
       ((github.event_name == 'workflow_dispatch' && inputs.confirm == 'PUBLISH') ||
        (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' &&
         github.event.workflow_run.head_branch == 'main' && github.event.workflow_run.head_repository.full_name == github.repository))
+    # Job-level lock, shared by name with research, weather and pharmacy jobs.
+    concurrency:
+      group: seferihisar-production
+      cancel-in-progress: false
     runs-on: ubuntu-latest
     timeout-minutes: 10
     environment: instagram-production
