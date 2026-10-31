@@ -65,3 +65,9 @@ test('observer is not requeued every fifteen minutes for the same persistent fau
   const result=await checkOperations(env,async()=>++calls===1?response(state(120)):response({workflow_runs:[{head_branch:'main',status:'completed',created_at:new Date(now-30*60000).toISOString()}]}),now);
   assert.equal(result.status,'already_observed');assert.equal(calls,2);
 });
+test('a skipped watch run does not count as having observed the fault',async()=>{
+  const skipped={head_branch:'main',status:'completed',conclusion:'skipped',created_at:new Date(now-5*60000).toISOString()};
+  let calls=0;
+  const result=await checkOperations(env,async()=>++calls===1?response(state(120)):calls===2?response({workflow_runs:[skipped]}):{status:204},now);
+  assert.equal(result.status,'observer_dispatched');assert.equal(calls,3);
+});
