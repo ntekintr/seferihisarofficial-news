@@ -10,8 +10,9 @@ from PIL import Image, ImageDraw, ImageFont, ImageOps
 from .domain import CATEGORIES
 from .editor import event_activity, event_type_label, news_type_label
 from .text_quality import TextRenderError, plain_display, ensure_glyphs
-from .card_layout import CAPTION_NOTE, inline_note, editorial
+from .card_layout import CAPTION_NOTE, fixed_scale, inline_note, editorial
 from .brand import VERSION as BRAND_VERSION, logo_path, version_for
+from .publication_policy import story_only
 
 NAVY, IVORY, ORANGE, TURQUOISE = '#06244a', '#f4efe4', '#f58220', '#20b8c9'
 ASSETS = Path(__file__).with_name('assets')
@@ -22,6 +23,8 @@ def font(size: int, bold: bool = False):
     suffix = '-Bold' if bold else ''
     candidates = (
         f'/usr/share/fonts/truetype/dejavu/DejaVuSans{suffix}.ttf',
+        # A card made on any other machine keeps the production typeface.
+        str(ASSETS / 'fonts' / f'DejaVuSans{suffix}.ttf'),
         f'/usr/share/fonts/truetype/liberation2/LiberationSans{suffix}.ttf',
         'C:/Windows/Fonts/segoeuib.ttf' if bold else 'C:/Windows/Fonts/segoeui.ttf',
     )
@@ -168,14 +171,16 @@ def card(title: str, body: str, category: str, target: Path, story: bool = False
          index: str = '', illustration: Path | None = None, preview: bool = False,
          event_details: bool = False, photo_centering: tuple[float, float] = (0.5, 0.5), compact: bool = False,
          legacy_outage: bool = False, story_details: bool = False, text_review: bool = False, source_photo: bool = False,
-         caption_note: bool = False, brand_version: str = BRAND_VERSION, editorial_layout: bool = False):
+         caption_note: bool = False, brand_version: str = BRAND_VERSION, editorial_layout: bool = False,
+         one_scale: bool = True):
     """Fixed branding and a per-item illustration, never a shared news scene."""
     if editorial_layout:
         from .editorial_render import editorial_card
         return editorial_card(title, body, category, target, story=story, index=index,
                               illustration=illustration, preview=preview, event_details=event_details,
                               photo_centering=photo_centering, story_details=story_details,
-                              source_photo=source_photo, caption_note=caption_note, brand_version=brand_version)
+                              source_photo=source_photo, caption_note=caption_note, brand_version=brand_version,
+                              fixed_scale=one_scale)
     width, height = 1080, 1920 if story else 1350
     block = partial(text_block, strict=text_review)
     top, bottom = (260, 1600) if story else (0, 1260)
@@ -308,7 +313,10 @@ def render_post(post: dict, public_dir: Path, illustrations: dict[int, Path] | N
                  story_details=(review.get('version') in ('content-visual-v2','content-visual-v3') or mutable and not review),
                  text_review=review.get('version') == 'content-visual-v3' or mutable and not review,
                  source_photo=bool(post.get('source_photo_keys',{}).get(str(i))),
-                 caption_note=note and i==0, brand_version=version_for(post), editorial_layout=editorial(post))
+                 # A power-cut story has no feed post whose caption it could point to.
+                 caption_note=note and i==0 and not (fmt == 'story' and mutable and story_only(post)),
+                 brand_version=version_for(post), editorial_layout=editorial(post),
+                 one_scale=fixed_scale(post))
             assets[fmt].append(relative)
     return assets
 

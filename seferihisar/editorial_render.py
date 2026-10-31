@@ -17,6 +17,12 @@ from .text_quality import TextRenderError, plain_display, ensure_glyphs
 TEAL = '#08717a'
 BODY = '#18364a'
 LEFT, RIGHT = 80, 1000
+# One size per role on every card. Only a headline that cannot fit steps down.
+SCALE = {'heading': (52, 44), 'date': (34,), 'details': (30,), 'summary': (30,), 'note': (26,), 'label': (28, 24)}
+# Claimed v1 cards keep the per-card fitting they were published with.
+FITTED_SCALE = {'heading': (76, 70, 64, 58, 54, 50, 46, 42), 'date': (40, 36, 34, 32, 30),
+                'details': (36, 34, 32, 30, 28), 'summary': (40, 38, 36, 34, 32, 30),
+                'note': (28, 26, 24), 'label': (28, 26, 24, 22)}
 
 
 class TextFields:
@@ -111,7 +117,9 @@ def _event_body(value):
 
 def editorial_card(title: str, body: str, category: str, target: Path, *, story=False, index='',
                    illustration=None, preview=False, event_details=False, photo_centering=(0.5, 0.5),
-                   story_details=False, source_photo=False, caption_note=False, brand_version=BRAND_VERSION):
+                   story_details=False, source_photo=False, caption_note=False, brand_version=BRAND_VERSION,
+                   fixed_scale=True):
+    sizes = SCALE if fixed_scale else FITTED_SCALE
     width, height = 1080, 1920 if story else 1350
     top, bottom = (260, 1600) if story else (0, 1260)
     brand_top = bottom - 70
@@ -147,7 +155,7 @@ def editorial_card(title: str, body: str, category: str, target: Path, *, story=
     if notice and not preview:
         label += ' • ' + notice
     category_top = hero_bottom + 30
-    for size in (28, 26, 24, 22):
+    for size in sizes['label']:
         label_width = int(draw.textlength(label, font=font(size, True))) + 36
         if label_width <= RIGHT - LEFT:
             break
@@ -164,7 +172,7 @@ def editorial_card(title: str, body: str, category: str, target: Path, *, story=
     content_bottom = brand_top - 28 - (52 if caption_note else 0)
     title_end = fields.block(display_title,
                             (LEFT, title_top, RIGHT, min(title_top + heading_height, content_bottom - 150)),
-                            (76, 70, 64, 58, 54, 50, 46, 42), 'heading',
+                            sizes['heading'], 'heading',
                             bold=True, complete=True, heading=True, max_lines=4 if not photo else 3)
     content = graphic_body(body, display_title)
     y = title_end + 24
@@ -172,14 +180,14 @@ def editorial_card(title: str, body: str, category: str, target: Path, *, story=
         date_line, _, rest = content.partition('\n')
         date_end = fields.block(readable_date_line(date_line),
                                (LEFT, y, RIGHT, min(y + 100, content_bottom - 40)),
-                               (40, 36, 34, 32, 30), 'date', bold=True, color=NAVY, complete=True)
+                               sizes['date'], 'date', bold=True, color=NAVY, complete=True)
         y = date_end + 20
         details = _event_body(rest)
         # Every venue and fee is literal source-derived text. If the minimum
         # readable size cannot hold the essential details, withhold the card.
         try:
             content_end = fields.block(details, (LEFT, y, RIGHT, content_bottom),
-                                       (36, 34, 32, 30, 28), 'details', complete=True)
+                                       sizes['details'], 'details', complete=True)
         except TextRenderError:
             # An organizer is supplementary on the card; it stays complete in
             # the caption. Do not discard a date, venue or fee to retain it.
@@ -187,15 +195,15 @@ def editorial_card(title: str, body: str, category: str, target: Path, *, story=
                 raise
             essential = '\n'.join(line for line in details.splitlines() if not line.startswith('Düzenleyen:'))
             content_end = fields.block(essential, (LEFT, y, RIGHT, content_bottom),
-                                       (36, 34, 32, 30, 28), 'details', complete=True)
+                                       sizes['details'], 'details', complete=True)
     else:
         # This is an explicitly shortened on-card excerpt, not a rewritten
         # claim. The complete factual text and source remain in the caption.
         content_end = fields.block(content, (LEFT, y, RIGHT, content_bottom),
-                                   (40, 38, 36, 34, 32, 30), 'summary', max_lines=7 if not photo else 5)
+                                   sizes['summary'], 'summary', max_lines=7 if not photo else 5)
     if caption_note:
         fields.block(CAPTION_NOTE, (LEFT, content_end + 12, RIGHT, brand_top - 24),
-                     (28, 26, 24), 'note', color=TEAL, complete=True)
+                     sizes['note'], 'note', color=TEAL, complete=True)
     draw.line((LEFT, brand_top - 8, RIGHT, brand_top - 8), fill=TURQUOISE, width=2)
     fields.line('@seferihisarofficial', LEFT, brand_top + 23, 23, IVORY, 'handle',
                 (LEFT, brand_top, RIGHT, bottom), True)

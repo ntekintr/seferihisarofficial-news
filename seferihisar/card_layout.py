@@ -1,8 +1,9 @@
 """Versioned card policy; standard library only for durable-state validation."""
 
 LEGACY='caption-note-v1'
-VERSION='editorial-cream-v1'
-SUPPORTED=(LEGACY,VERSION)
+FITTED='editorial-cream-v1'
+VERSION='editorial-cream-v2'
+SUPPORTED=(LEGACY,FITTED,VERSION)
 CAPTION_NOTE='Detaylar açıklamada.'
 
 
@@ -21,5 +22,10 @@ def inline_note(post):
 def editorial(post):
     # Explicit legacy claims retain their old bytes. New claims retain their
     # selected layout after publication, independent of later defaults.
-    return (post.get('card_layout')==VERSION
+    return (post.get('card_layout') in (FITTED,VERSION)
             or post.get('status','prepared') in ('prepared','blocked_source'))
+
+
+def fixed_scale(post):
+    # A claimed v1 card keeps the sizes it was published with.
+    return post.get('card_layout')!=FITTED
