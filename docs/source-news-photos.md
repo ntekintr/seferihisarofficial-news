@@ -61,3 +61,26 @@ yukarıdaki ilk sürüm portre sınırı yalnız haber fotoğrafları için sür
 Güncel kapsam ve kalan dar sınırlar [ilgili görsel politikası](relevant-visual-first.md)
 belgesindedir. Mevcut isteğe bağlı tek Instagram haber fotoğrafı hattı ayrı
 [Instagram fotoğrafı](instagram-source-photos.md) kurallarını korur.
+
+31 Ekim genişlemesi: kullanıcı, haberde gerçek fotoğraf varsa önce onun
+kullanılmasını istedi. Yayımlanmış 40 gönderinin yalnız birinde gerçek fotoğraf
+vardı. Nedeni: festival, belediye, konser ve kültür haberlerinin gerçek fotoğrafı
+da üretilmiş sahnenin etiketiyle ("ipli ışıklar ve kurdeleler", "boş pano ve ofis
+malzemesi") karşılaştırılıyordu. Orhanlı festivalinin zeytin tezgâhı fotoğrafı 0,20
+alıp reddedildi, aynı haberin kartına flamalı kasaba sokağı üretimi kondu.
+
+Konu eşikleri değişmedi. Konu eşleşmezse, yalnız bir olay çevresinde anlatılan
+konularda (`OCCASION_SUBJECTS`: festival, belediye/kamu, konser, tiyatro, sinema,
+kültür, eğitim, sağlık, pazar, yemek, toplantı) ikinci bir kontrol yapılır: üç
+yayın kırpmasında da "bir etkinlikte insanlar" etiketi en az 0,22 olmalı ve afiş,
+el ilanı, ekran görüntüsü, logo, çizim/üretilmiş görsel ve boş görsel etiketlerini
+en az 0,015 geçmelidir. Bu etiketler ayrı puanlanır; üretilmiş görsellerin, etkinlik
+görsellerinin ve kapalı olay konularının (su baskını, trafik, yol çalışması, hasat,
+futbol) kararı değişmez. Kalabalık, bir sel veya yol onarımının kanıtı sayılmaz.
+
+Ayar örneği 21 gerçek haber fotoğrafı ile 22 olumsuz örnektir (6 afiş/el ilanı,
+12 üretilmiş görsel, logo, ekran görüntüsü, atölye ve hasat fotoğrafı). Olumsuzların
+hiçbiri geçmedi; gerçek fotoğrafların 11'i geçti. Metin bindirmeli veya kurgulanmış
+tasarımlar, yakın portreler ve eşiğin altında kalan kareler reddedilmeye devam eder
+ve eski yola, yani uygun üretime döner. Makale bağı, kimlik, tekrar ve arşiv
+korumaları aynen sürer.

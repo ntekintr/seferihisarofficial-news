@@ -11,9 +11,11 @@ kaynak fotoğrafı araştırması ve iki üretim denemesi, eski/uzak kuyruk öğ
 
 Önce makaleye bağlı kaynak fotoğrafı denenir. Mandalina hasadı artık yalnız
 Gerçek İzmir'e özel değildir; açık hasat başlığı, güvenilir yapılandırılmış
-kaynak, kendi makalesi ve konu kontrolü yine gerekir. Haber fotoğrafının kapalı
-konu kümesi toplantı, trafik, su baskını ve mandalina hasadıdır. Genel kategori,
-kişinin adı veya “belediye haberi” rastgele bir fotoğraf seçtirmez.
+kaynak, kendi makalesi ve konu kontrolü yine gerekir. Trafik, su baskını, yol
+çalışması ve mandalina hasadı kapalı olay konularıdır. Etkinlik çevresinde anlatılan
+haberlerde 31 Ekim'den beri makalenin kendi gerçek fotoğrafı
+[ayrı kontrolden](source-news-photos.md) geçebilir; genel kategori veya kişinin adı
+tek başına fotoğraf seçtirmez.
 
 ## Etkinlik fotoğrafı ve afişi
 
