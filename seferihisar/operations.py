@@ -17,7 +17,7 @@ STATUSES = frozenset(('complete', 'published', 'already_published', 'outside_win
     'visual_review_missing', 'visual_review_stale', 'visual_review_unavailable',
     'editorial_review_required', 'editorial_copy_stale', 'event_metadata_stale',
     'duplicate_story', 'stale_parent', 'owner_excluded', 'awaiting_content_visual'))
-RESULT_FIELDS = frozenset(('status', 'feed', 'story', 'facebook'))
+RESULT_FIELDS = frozenset(('status', 'feed', 'story', 'facebook', 'outage_story', 'outage_facebook'))
 FAILURES = frozenset(('media_missing', 'media_not_deployed', 'awaiting_resolution',
     'uncertain', 'account_mismatch', 'check_failed',
     'visual_review_missing', 'visual_review_stale', 'visual_review_unavailable',
@@ -28,7 +28,7 @@ def safe_result(result):
     # Provider text, captions, URLs and identifiers have no place in this log.
     status = result.get('status')
     clean = {'status': status if isinstance(status, str) and status in STATUSES else 'check_failed'}
-    for key in ('feed', 'story'):
+    for key in ('feed', 'story', 'outage_story', 'outage_facebook'):
         if key in result:
             clean[key] = result[key] if isinstance(result[key], str) and result[key] in STATUSES else 'check_failed'
     if isinstance(result.get('facebook'), dict):
@@ -49,7 +49,8 @@ def validate_result(result, nested=False):
 
 
 def failed(result):
-    return (result['status'] == 'disabled' or any(result.get(k) in FAILURES for k in ('status', 'feed', 'story'))
+    return (result['status'] == 'disabled'
+            or any(result.get(k) in FAILURES for k in ('status', 'feed', 'story', 'outage_story', 'outage_facebook'))
             or any(result.get('facebook', {}).get(k) in FAILURES for k in ('status', 'feed', 'story')))
 
 

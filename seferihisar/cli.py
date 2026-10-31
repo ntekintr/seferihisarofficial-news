@@ -63,6 +63,11 @@ def main():
                 from .facebook import publish_recent
                 result['facebook'] = publish_recent(store, at, args.site_url, assets, checkpoint=checkpoint, require_visual_review=True,
                                                     target_id=args.post_id or (owner_request['post_id'] if owner_result is not None and owner_request else None))
+            if args.automatic and not args.post_id and owner_result is None:
+                from .instagram import publish_outage_story
+                from .facebook import publish_outage_story as mirror_outage_story
+                result['outage_story'] = publish_outage_story(store, at, args.site_url, assets, checkpoint=checkpoint, require_visual_review=True)['status']
+                result['outage_facebook'] = mirror_outage_story(store, at, args.site_url, checkpoint=checkpoint, require_visual_review=True)['status']
             from .operations import record_check, write_job_summary, failed
             observation = record_check(store, result, at, 'automatic' if args.automatic else 'story' if args.story else 'feed')
             write_job_summary(observation)
