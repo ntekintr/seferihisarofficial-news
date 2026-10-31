@@ -25,7 +25,7 @@ def test_publication_requires_trusted_completed_research_or_explicit_dispatch():
     assert 'github.event.workflow_run.head_repository.full_name == github.repository' in workflow['jobs']['publish']['if']
     assert workflow['jobs']['publish']['steps'][0]['with']['ref']=='main'
     assert workflow['jobs']['publish']['environment']=='instagram-production'
-    assert workflow['concurrency']['group']=='seferihisar-production'
+    assert workflow['jobs']['publish']['concurrency']['group']=='seferihisar-production'
     facebook_steps=[s for s in workflow['jobs']['publish']['steps'] if 'FACEBOOK_PAGE_ACCESS_TOKEN' in s.get('env',{}) and 'seferihisar.cli publish' in s.get('run','')]
     assert len(facebook_steps)==1
     assert facebook_steps[0]['env']['FACEBOOK_PUBLISH_ENABLED']=='${{ vars.FACEBOOK_PUBLISH_ENABLED }}'
@@ -96,8 +96,26 @@ def test_operations_watch_observes_every_trusted_research_run():
     assert "github.event.workflow_run.head_branch == 'main'" in condition
     assert 'github.event.workflow_run.head_repository.full_name == github.repository' in condition
     assert workflow['permissions']=={'contents':'read','actions':'read','issues':'write'}
-    assert workflow['concurrency']['cancel-in-progress']=='false'
+    assert workflow['jobs']['watch']['concurrency']['cancel-in-progress']=='false'
     assert 'state_git' not in str(workflow) and 'cli publish' not in str(workflow)
+
+
+def test_research_triggered_workflows_lock_only_jobs_that_run():
+    # One running and one pending job per group: a skipped run holding a
+    # workflow-level lock evicted the pending real job (31 Oct 08:16 and 08:29
+    # TR weather lost to pharmacy runs that were about to skip).
+    for name,job,group in (('weather-story','weather','seferihisar-production'),
+                           ('pharmacy-story','pharmacy','seferihisar-production'),
+                           ('pharmacy-story','preview','seferihisar-pharmacy-preview'),
+                           ('publish','publish','seferihisar-production'),
+                           ('operations-watch','watch','seferihisar-operations-watch')):
+        workflow=yaml.load(Path(f'.github/workflows/{name}.yml').read_text(),Loader=yaml.BaseLoader)
+        assert 'concurrency' not in workflow
+        assert workflow['jobs'][job]['concurrency']=={'group':group,'cancel-in-progress':'false'}
+    # Research keeps the run-wide lock: research, persist and deploy must not interleave.
+    research=yaml.load(Path('.github/workflows/automation.yml').read_text(),Loader=yaml.BaseLoader)
+    assert research['concurrency']=={'group':'seferihisar-production','cancel-in-progress':'false'}
+    assert not any('concurrency' in j for j in research['jobs'].values())
 
 
 def test_free_image_check_is_manual_and_cannot_publish_or_write_state():
