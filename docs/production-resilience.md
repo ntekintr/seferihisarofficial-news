@@ -79,6 +79,19 @@ Kalan dar açık: bir story işi beklerken yeni bir araştırma koşusu kilide g
 bekleyen işi yine düşürür. Yayın 1–3 dakika sürer, araştırma yaklaşık 15 dakikada
 bir başlar; sonraki tamamlanma aynı pencere içinde işi yeniden tetikler.
 
+### Teslim hatasının kodu (31 Ekim 2026)
+
+30 Ekim 15:16 feed denemesi kapsayıcı oluşturulamadan bitti ve nedeni hiçbir yerde
+yazmıyordu. Başarısız teslim artık gönderi kaydına tek bir kısa kod yazar:
+`timeout`, `connection`, `http_400` gibi HTTP kodu, `media_processing` veya
+`unverified_response`. Yanıt gövdesi, adres ve anahtar saklanmaz. Panel
+`operations.delivery_errors` altında kodları sayar. Claim davranışı değişmedi:
+gönderi tekrar denenmez ve günlük hakkını tutar. Bir kez daha denenip
+denenmeyeceği, kod birikince verilecek kullanıcı kararıdır.
+
+Worker'ın `checkOperations` kontrolü artık `skipped` koşuları saymaz ve son 30
+koşuya bakar. Bu değişiklik Worker elle yeniden dağıtılana kadar canlıda değildir.
+
 ## Yayın sonrası GET gözlemi
 
 Mevcut yayın ve hava işinin üretim kilidi içinde, salt GET kullanan
