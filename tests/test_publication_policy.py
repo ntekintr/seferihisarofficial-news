@@ -6,7 +6,7 @@ from datetime import timedelta
 import pytest
 
 from seferihisar.domain import digest, parse_date
-from seferihisar.instagram import prepare_story_jobs, publish_automatic, publish_one
+from seferihisar.instagram import prepare_story_jobs, publish_automatic, publish_one, publish_outage_story
 from seferihisar.publication_policy import daily_limit_reason, duplicate_reason, owner_exclusion
 from seferihisar.schedule import prepare
 from seferihisar.store import Store
@@ -70,14 +70,14 @@ def test_unchanged_outage_card_cannot_repeat_under_new_source_revision_or_story_
     store.upsert(item, morning.isoformat())
     prepare(store, morning)
     adapter = api()
-    assert publish_automatic(store, morning, 'https://example.org/', all_assets(store), adapter)['status'] == 'complete'
+    assert publish_outage_story(store, morning, 'https://example.org/', all_assets(store), adapter)['status'] == 'published'
     frozen = store.rows("SELECT * FROM posts WHERE status IN ('published','publishing','uncertain') ORDER BY id")
     afternoon = morning.replace(hour=12, minute=44, second=33)
     # Source metadata can change the item revision without changing displayed facts.
     store.upsert({**item, 'source_name': 'GDZ Elektrik Dağıtım'}, afternoon.isoformat())
     prepare(store, afternoon)
-    assert publish_automatic(store, afternoon, 'https://example.org/', all_assets(store), adapter)['status'] == 'empty'
-    assert adapter.container.call_count == 2
+    assert publish_outage_story(store, afternoon, 'https://example.org/', all_assets(store), adapter)['status'] == 'empty'
+    assert adapter.container.call_count == 1
     assert store.rows("SELECT * FROM posts WHERE status IN ('published','publishing','uncertain') ORDER BY id") == frozen
     old = next(p for p in store.posts() if p['status'] == 'published' and p.get('publish_format') == 'story')
     other = {**old, 'id': digest('other-story-revision'), 'parent_post_id': digest('other-parent')}
@@ -91,7 +91,7 @@ def test_real_outage_fact_change_is_eligible_and_is_not_an_identical_card(store,
     store.upsert(item, morning.isoformat())
     prepare(store, morning)
     adapter = api()
-    assert publish_automatic(store, morning, 'https://example.org/', all_assets(store), adapter)['status'] == 'complete'
+    assert publish_outage_story(store, morning, 'https://example.org/', all_assets(store), adapter)['status'] == 'published'
     afternoon = morning.replace(hour=12, minute=44, second=33)
     changed = {**item}
     if change == 'time': changed['end'] = afternoon.replace(hour=16, minute=0).isoformat()
@@ -99,8 +99,8 @@ def test_real_outage_fact_change_is_eligible_and_is_not_an_identical_card(store,
     else: changed['status'] = 'cancelled'
     store.upsert(changed, afternoon.isoformat())
     prepare(store, afternoon)
-    assert publish_automatic(store, afternoon, 'https://example.org/', all_assets(store), adapter)['status'] == 'complete'
-    assert adapter.container.call_count == 4
+    assert publish_outage_story(store, afternoon, 'https://example.org/', all_assets(store), adapter)['status'] == 'published'
+    assert adapter.container.call_count == 2
 
 
 def test_story_cannot_resurrect_yesterdays_expired_outage_or_old_revision(store):
