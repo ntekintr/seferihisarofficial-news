@@ -10,12 +10,12 @@ on:
     branches: [main]
 permissions:
   contents: read
-concurrency:
-  group: ${{ github.event_name == 'workflow_dispatch' && 'seferihisar-pharmacy-preview' || 'seferihisar-production' }}
-  cancel-in-progress: false
 jobs:
   preview:
     if: github.event_name == 'workflow_dispatch' && github.repository == 'ntekintr/seferihisarofficial-news' && github.ref == 'refs/heads/main'
+    concurrency:
+      group: seferihisar-pharmacy-preview
+      cancel-in-progress: false
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -44,6 +44,10 @@ jobs:
         github.event.workflow_run.head_branch == 'main' &&
         github.event.workflow_run.head_repository.full_name == github.repository &&
         (contains(github.event.workflow_run.created_at, 'T13:') || contains(github.event.workflow_run.created_at, 'T14:'))))
+    # Job-level lock: skipped runs outside 16:00-17:59 TR must not evict a pending real job.
+    concurrency:
+      group: seferihisar-production
+      cancel-in-progress: false
     runs-on: ubuntu-latest
     timeout-minutes: 35
     environment: instagram-production
