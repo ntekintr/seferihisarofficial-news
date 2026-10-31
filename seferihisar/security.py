@@ -12,7 +12,7 @@ ITEM_FIELDS = {"kind", "title", "description", "url", "source_id", "source_name"
                "identity", "start", "end", "time_known", "location", "organizer", "free", "price", "currency", "ticket_url", "status", "previous_start", "valid_until"}
 PUBLIC_ITEM_FIELDS = ITEM_FIELDS - {"identity"}
 POST_FIELDS = {"id", "item_id", "revision", "kind", "due_at", "title", "caption", "category", "source_urls", "slides", "created_at", "formats",
-               "publish_format", "parent_post_id", "story_asset", "story_index", "published_at", "status", "container_id", "media_id", "illustration_keys", "source_photo_keys", "visual_review", "card_layout", "brand_version"}
+               "publish_format", "parent_post_id", "story_asset", "story_index", "published_at", "status", "container_id", "media_id", "illustration_keys", "source_photo_keys", "visual_review", "card_layout", "brand_version", "delivery_error"}
 SECRET_PATTERN = re.compile(
     r"AIza[\w-]{35}|(?:gh[pousr]_[A-Za-z0-9]{20,})|github_pat_[A-Za-z0-9_]{20,}|EAA[A-Za-z0-9]{50,}|"
     r"-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----|"
@@ -267,6 +267,9 @@ def validate_state(path: Path):
                         from .source_photo_data import valid_bindings
                         if not valid_bindings(payload['source_photo_keys']):
                             raise ValueError('Invalid source photo bindings')
+                    if table=='posts' and 'delivery_error' in payload:
+                        if not re.fullmatch(r'[a-z0-9_]{1,30}', str(payload['delivery_error'])):
+                            raise ValueError('Invalid delivery error code')
                     if table=='posts' and 'card_layout' in payload:
                         from .card_layout import SUPPORTED
                         if payload['card_layout'] not in SUPPORTED:

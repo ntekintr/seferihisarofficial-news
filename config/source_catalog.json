@@ -271,7 +271,7 @@
     "url": "https://www.instagram.com/shgundem/",
     "group": "yerel_basın",
     "status": "access_failed",
-    "note": "Resmî site @shgundem profilini doğruluyor. Bu hedef mevcut API bağlantısıyla okunamıyor; hesap türü veya kesin kısıt sebebi bilinmiyor. Diğer hedefler okunabildiğinde genel Meta izni yenilemek çözüm sayılmaz. Web akışı ayrı kaynaktır; yalnız Instagram’da yayımlanan içerikleri kapsamayabilir.",
+    "note": "Resmî site @shgundem profilini doğruluyor. Bu hedef mevcut API bağlantısıyla okunamıyor; 31 Ekim 2026'da profil gizli görünüyordu (0 takipçi, 1 gönderi). Diğer hedefler okunabildiğinde genel Meta izni yenilemek çözüm sayılmaz. Web akışı ayrı kaynaktır; yalnız Instagram’da yayımlanan içerikleri kapsamayabilir.",
     "fallback_reader_ids": [
       "seferihisar-gundem"
     ]

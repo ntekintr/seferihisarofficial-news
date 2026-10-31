@@ -62,11 +62,12 @@ export async function checkOperations(env, fetcher = fetch, now = Date.now()) {
   const headers = {'Authorization':'Bearer '+env.GITHUB_ACTIONS_TOKEN, 'Accept':'application/vnd.github+json',
                    'User-Agent':'SeferihisarOfficialOperationsWatch', 'X-GitHub-Api-Version':'2022-11-28'};
   try {
-    const response = await fetcher(workflow+'/runs?branch=main&per_page=5', {headers, redirect:'manual'});
+    const response = await fetcher(workflow+'/runs?branch=main&per_page=30', {headers, redirect:'manual'});
     if (!response.ok) return {status:'notification_service_unreachable'};
     const runs = await response.json();
     if (!Array.isArray(runs.workflow_runs)) return {status:'invalid_runs'};
-    if (runs.workflow_runs.some(r=>r.head_branch==='main' &&
+    // A watch run skipped after a successful job observed nothing.
+    if (runs.workflow_runs.some(r=>r.head_branch==='main' && r.conclusion!=='skipped' &&
         (['queued','in_progress','waiting','requested','pending'].includes(r.status) || now-Date.parse(r.created_at)<55*60000))) return {status:'already_observed'};
     const result = await fetcher(workflow+'/dispatches', {method:'POST', headers:{...headers,'Content-Type':'application/json'},
                                       body:JSON.stringify({ref:'main'}), redirect:'manual'});

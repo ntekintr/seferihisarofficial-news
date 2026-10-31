@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import os
+from collections import Counter
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -116,6 +117,7 @@ def summary(store, at):
         'unresolved': {'instagram': sum(p['status'] != 'published' and not never_sent(p) for p in claims),
                        'facebook': sum(r['status'] != 'published' for r in deliveries)},
         'not_sent': {'instagram': sum(never_sent(p) for p in claims)},
+        'delivery_errors': dict(Counter(p['delivery_error'] for p in claims if p.get('delivery_error'))),
         'daily_feed_limit': NEWS_DAILY_LIMIT,
         'daily_story_limit': NEWS_DAILY_LIMIT, 'service_stories_extra': True,
         'evening_news': evening_summary(at),
