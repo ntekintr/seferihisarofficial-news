@@ -18,7 +18,7 @@ concurrency:
 jobs:
   instagram_sources:
     if: github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 6
     continue-on-error: true # Web research continues if this optional source job fails.
     environment: instagram-production
@@ -57,7 +57,7 @@ jobs:
   research:
     needs: instagram_sources
     if: always() && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     # Collect alone took 506–736 s on 30 Oct; at 14 min one run was cut off
     # before persist. Runs queue (cancel-in-progress: false), so this only
     # gives a slow crawl room to finish.
@@ -150,7 +150,7 @@ jobs:
 
   persist:
     needs: research
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
       contents: write # Only this job writes the isolated automation-state branch.
@@ -174,7 +174,7 @@ jobs:
     needs: [research, persist]
     if: needs.research.outputs.feedback_due == 'true'
     continue-on-error: true # Insights access is optional; news publication continues.
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 7
     environment: instagram-production
     permissions:
@@ -205,7 +205,7 @@ jobs:
 
   deploy:
     needs: [research, persist]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
       contents: read
