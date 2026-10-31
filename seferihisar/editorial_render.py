@@ -17,8 +17,9 @@ from .text_quality import TextRenderError, plain_display, ensure_glyphs
 TEAL = '#08717a'
 BODY = '#18364a'
 LEFT, RIGHT = 80, 1000
-# One size per role on every card. Only a headline that cannot fit steps down.
-SCALE = {'heading': (52, 44), 'date': (34,), 'details': (30,), 'summary': (30,), 'note': (26,), 'label': (28, 24)}
+# One size per role on every card. Only a headline or essential facts that cannot
+# fit step down once; a shortened summary stays at its size.
+SCALE = {'heading': (52, 44), 'date': (34,), 'details': (30, 28), 'summary': (30,), 'note': (26,), 'label': (28, 24)}
 # Claimed v1 cards keep the per-card fitting they were published with.
 FITTED_SCALE = {'heading': (76, 70, 64, 58, 54, 50, 46, 42), 'date': (40, 36, 34, 32, 30),
                 'details': (36, 34, 32, 30, 28), 'summary': (40, 38, 36, 34, 32, 30),
