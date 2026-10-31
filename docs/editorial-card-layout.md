@@ -35,6 +35,19 @@ ve yeni sürümü kabul eder; bilinmeyen sürümü reddeder. Başlamış, yayım
 ve belirsiz kartlar işaretli/eski sürümlerini, eski içerik anahtarlarını,
 slayt sayılarını ve medya bağlarını korur.
 
+31 Ekim 2026 kullanıcı geri bildirimi: her kart farklı yazı boyutuyla çıkıyordu.
+Başlık metnin uzunluğuna göre 76'dan 42'ye sekiz kademede seçiliyordu. Sürüm 2
+(`editorial-cream-v2`) her rol için tek boyut kullanır: başlık 52, tarih 34, metin 30,
+açıklama notu 26, kategori 28, marka 34/24, kullanıcı adı 23. Yalnız sığmayan başlık
+44'e, sığmayan kategori 24'e iner. Bu düşüşün dışında kartlar arasında boyut farkı
+olmaz. 261 gerçek kartta başlıkların yüzde 93'ü 52'de kaldı; yazıya sığmadığı için
+bekleyen kart sayısı artmadı. Uzun özet kartta eskisi gibi üç noktayla kısalır.
+
+Bulut kartları DejaVu Sans ile çizilir. Windows'ta üretilen elle kart Segoe UI ile
+çıktığı için marka yazısı da farklı görünmüştü; aynı yazı tipi artık `assets/fonts`
+içindedir ve sistemde DejaVu yoksa kullanılır. Hava ve eczane story'lerinin kendi
+tasarımı bu kurala dahil değildir.
+
 Testler her iki formatta gerçek yazı kutularının ayrılığını, uzun başlık/metni,
 fotoğraflı etkinliği, elektrik kesintisini, tarih/mekân/ücret görünürlüğünü,
 Türkçe karakterleri ve eski/yeni dondurulmuş sürümleri kapsar. Kod yeteneği,
