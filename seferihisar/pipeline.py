@@ -234,11 +234,12 @@ def _export(store: Store, public_dir: Path, sources: list[dict], at: datetime, d
             from .text_quality import TextRenderError
             try:
                 assets[post["id"]] = render_post(post, public_dir, illustrations)
-            except TextRenderError:
+            except TextRenderError as error:
                 # A bad draft cannot abort research for every other source or
                 # become an approved image with tofu/truncated heading.
                 if post['status'] != 'prepared':
                     raise
+                print(f"unrenderable_card_text {post['id']}: {error}")
                 store.withhold(post['id'], 'unrenderable_card_text', at.isoformat())
                 with store.db:
                     store.db.execute("UPDATE posts SET status='blocked_source' WHERE id=? AND status='prepared'", (post['id'],))
