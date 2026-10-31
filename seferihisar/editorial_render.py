@@ -42,6 +42,11 @@ class TextFields:
         if bounds[0] < box[0]:
             x += box[0] - bounds[0]
             bounds = self.draw.textbbox((x, y), value, font=face, anchor='lt')
+        # Right-aligned text is placed by its advance, which can round past the
+        # field. Ten-page cards failed this way on Linux text layout.
+        if bounds[2] > box[2]:
+            x -= bounds[2] - box[2]
+            bounds = self.draw.textbbox((x, y), value, font=face, anchor='lt')
         l, t, r, b = bounds
         if l < box[0] or t < box[1] or r > box[2] or b > box[3] or l >= r or t >= b:
             raise TextRenderError('Editorial text exceeds its reserved field')
