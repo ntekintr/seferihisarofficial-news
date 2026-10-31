@@ -10,8 +10,15 @@ from .domain import TZ, normalized, parse_date
 
 NEWS_DAILY_LIMIT = 3
 NEWS_EVENING_LIMIT = 4
+OUTAGE_STORY_LIMIT = 2
+OUTAGE_STORY_HOURS = (time(8, 30), time(21))
 EVENING_EFFECTIVE_FROM = date.min
 CLAIMED = frozenset(('publishing', 'published', 'uncertain'))
+
+
+def story_only(value):
+    """Owner decision, 31 Oct: a power cut is a service notice, never a feed post."""
+    return value.get('category') == 'outage' and 'elektrik' in normalized(value.get('title', ''))
 
 
 def evening_enabled(at):
@@ -54,8 +61,40 @@ def day_claims(store, at, *, story=False):
     day = at.astimezone(TZ).date()
     return [p for p in store.posts() if p['status'] in CLAIMED
             and (p.get('publish_format') == 'story') == story
+            and not (story and story_only(p))
             and (stamp := parse_date(p.get('published_at'))) is not None
             and stamp.astimezone(TZ).date() == day]
+
+
+def outage_story_claims(store, at):
+    day = at.astimezone(TZ).date()
+    return [p for p in store.posts() if p['status'] in CLAIMED
+            and p.get('publish_format') == 'story' and story_only(p)
+            and (stamp := parse_date(p.get('published_at'))) is not None
+            and stamp.astimezone(TZ).date() == day]
+
+
+def outage_story_due(item, at):
+    if item.get('kind') != 'event':
+        return True
+    start, end = parse_date(item.get('start')), parse_date(item.get('end'))
+    return bool(start and end and end > at
+                and start.astimezone(TZ).date() <= at.astimezone(TZ).date() + timedelta(days=1))
+
+
+def outage_story_parents(store, at):
+    """Today's and tomorrow's cuts, nearest area first.
+
+    `duplicate_reason` blocks the story of an unchanged card, so the many
+    revisions of one cut stay one story while a real change gets its own.
+    """
+    from .selection import prioritize
+    items = {i['id']: i for i in store.items()}
+    ready = {p.get('parent_post_id') for p in store.posts()
+             if p['status'] == 'prepared' and p.get('publish_format') == 'story'}
+    parents = [p for p in store.posts() if p['status'] == 'prepared' and p['id'] in ready and story_only(p)
+               and p.get('item_id') in items and outage_story_due(items[p['item_id']], at)]
+    return prioritize(store, parents, at)
 
 
 def fourth_parent(store, parent, at):
@@ -95,6 +134,8 @@ def owner_exclusion(value):
 
 
 def daily_limit_reason(store, at, post=None, *, story=False):
+    if story and post and story_only(post):
+        return 'daily_limit' if len(outage_story_claims(store, at)) >= OUTAGE_STORY_LIMIT else None
     count = len(day_claims(store, at, story=story))
     if count < NEWS_DAILY_LIMIT:
         return None
@@ -113,6 +154,12 @@ def post_reason(store, post, at):
             return 'stale_parent'
     if post.get('publish_format') == 'story':
         parent = next((p for p in store.posts() if p['id'] == post.get('parent_post_id')), None)
+        if story_only(post):
+            # No feed goes first, so the parent stays unclaimed until the cut ends.
+            if (not parent or parent['status'] != 'prepared' or post.get('story_index') != 0
+                    or post.get('revision') != parent.get('revision')):
+                return 'stale_parent'
+            return None
         stamp = parse_date(parent.get('published_at')) if parent else None
         if (not parent or parent['status'] != 'published' or not stamp
                 or stamp.astimezone(TZ).date() != at.astimezone(TZ).date()

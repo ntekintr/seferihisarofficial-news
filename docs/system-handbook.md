@@ -4,6 +4,25 @@ Son gözden geçirme: **26 Ekim 2026**. Bu dosya kod haritası ve kalıcı çal�
 notudur. Anlık sağlık/teslim kanıtı zaman damgalı çıktılardan alınır; burada bir
 kez başarılı olması sonraki ay kesintisiz çalışacağı anlamına gelmez.
 
+### 31 Ekim: elektrik kesintisi yalnız story
+
+Kullanıcı kararı: elektrik kesintileri feed'e girmez, yalnız story olur. Bu karar
+gelmeden son 30 feed'in 11'i kesintiydi. Kural `publication_policy.story_only`
+içindedir; başlığında elektrik geçen `outage` kayıtlarını kapsar, su kesintisi
+eskisi gibi feed ve story olarak çıkar. Sahibin elle istediği yayın da feed'e
+çıkaramaz.
+
+`publish_outage_story` her otomatik yayın kontrolünde, 08:30–21:00 arasında en
+fazla bir story dener. Bugünkü ve yarınki kesintiler alınır, yakın bölge önce
+gelir, günde en fazla 2 story çıkar. Haberlerin 3 story hakkını tüketmez ve hava
+ile eczane gibi haberi geciktirmez; kendisi haberden sonra 45 dakika bekler.
+Facebook'a aynı story yansıtılır. Feed çıkmadığı için üst kayıt `prepared` kalır
+ve kesinti bitince süresi dolar. Sıradaki sayısında görünmesi bu yüzdendir.
+
+GDZ aynı kesintiyi yüzlerce kez revize eder, ama kart metni değişmez (bir kayıtta
+165 revizyon, tek metin). `duplicate_reason` bunları tek story'de tutar. Saat,
+bölge veya iptal gibi gerçek değişiklik kartı değiştirir ve yeni story olur.
+
 ### 30 Ekim: Bubilet yerine Biletinial etkinlik kaynakları
 
 Bubilet bulut sunucularına 403 verdiği için Bademler etkinlikleri Biletinial

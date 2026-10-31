@@ -16,8 +16,8 @@ import requests
 from .domain import digest, parse_date
 from .media_caption import generated_image_caption
 from .store import Store
-from .publication_policy import (NEWS_DAILY_LIMIT, daily_limit_reason, duplicate_reason, post_reason,
-                                 day_claims, dispatch_window, evening_post, evening_window)
+from .publication_policy import (NEWS_DAILY_LIMIT, OUTAGE_STORY_HOURS, daily_limit_reason, duplicate_reason, post_reason,
+                                 day_claims, dispatch_window, evening_post, evening_window, outage_story_parents, story_only)
 
 
 def delivery_error(exc: Exception) -> str:
@@ -97,6 +97,8 @@ def publish_one(store: Store, at: datetime, site_url: str, assets: dict[str, dic
     prepared = sorted((p for p in store.posts() if p["status"] == "prepared" and
                        (parse_date(p["due_at"]) <= at or (requested and target_id == p['id'] and (not story or paired_story)))
                        and (p.get("publish_format") == "story") == story), key=lambda p: p["due_at"])
+    if not story:
+        prepared = [p for p in prepared if not story_only(p)]
     # Automatic announcements/reminders must not consume the daily feed slots
     # for the same event. Explicit corrections and cancellation notices remain eligible.
     if exclude_event_ids and not story:
@@ -132,6 +134,9 @@ def publish_one(store: Store, at: datetime, site_url: str, assets: dict[str, dic
     # share its publication window. Other content retains the 45-minute limit.
     parent = next((p for p in store.posts() if post and p['id'] == post.get('parent_post_id') and p['status'] == 'published'), None)
     allowed_parent = parent['id'] if story and paired_story and post and post.get('story_index') == 0 and parent else None
+    # A power-cut story waits for news, but like the weather it never delays news.
+    if not (post and story_only(post)):
+        recent_posts = [p for p in recent_posts if not (p.get('publish_format') and story_only(p))]
     if any(at - parse_date(p['published_at']) < timedelta(minutes=45) and p['id'] != allowed_parent for p in recent_posts):
         return {"status": "rate_limited"}
     if not prepared:
@@ -275,6 +280,29 @@ def publish_automatic(store: Store, at: datetime, site_url: str, assets: dict[st
         return {'status':'complete' if child['status']=='published' else 'awaiting_resolution', 'feed':feed['status'], 'story':child['status']}
     story_result = publish_one(store, at, site_url, assets, story=True, adapter=api, checkpoint=checkpoint, target_id=child_id, paired_story=True, require_visual_review=require_visual_review)
     return {'status':'complete' if story_result['status']=='published' else 'story_pending', 'feed':feed['status'], 'story':story_result['status']}
+
+
+def publish_outage_story(store: Store, at: datetime, site_url: str, assets: dict[str, dict], adapter=None, checkpoint=None, *, require_visual_review: bool = False) -> dict:
+    """At most one power-cut story per run, beside the daily news pairs."""
+    from .domain import TZ
+    from .schedule import prepare
+    api = adapter or Instagram()
+    if not api.enabled():
+        return {'status':'disabled'}
+    at = at.astimezone(TZ)
+    if not OUTAGE_STORY_HOURS[0] <= at.time().replace(tzinfo=None) < OUTAGE_STORY_HOURS[1]:
+        return {'status':'outside_window'}
+    prepare(store, at, refresh_digests=False)
+    prepare_story_jobs(store, assets)
+    prepare(store, at, refresh_digests=False)  # Newly created frames also need fresh source evidence.
+    parents = outage_story_parents(store, at)
+    if require_visual_review or isinstance(api, Instagram):
+        from .visual_policy import image_reason
+        parents = [p for p in parents if image_reason(p) is None]
+    if not parents:
+        return {'status':'empty'}
+    return publish_one(store, at, site_url, assets, story=True, adapter=api, checkpoint=checkpoint,
+                       target_id=digest(parents[0]['id'] + ':story:0'), require_visual_review=require_visual_review)
 
 
 def prepare_story_jobs(store: Store, assets: dict[str, dict]):
