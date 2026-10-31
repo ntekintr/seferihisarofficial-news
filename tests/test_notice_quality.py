@@ -77,3 +77,15 @@ def test_numeric_play_name_and_other_sources_resolved_news_are_not_reclassified(
     from seferihisar.timeliness import publication_reason
     assert publication_reason({**event, 'title': '1984'}, at) is None
     assert publication_reason({**notice(at, 'Sahibi bulundu'), 'source_id': 'other-news'}, at) is None
+
+
+def test_shop_sale_is_held_but_a_public_discount_is_not(at):
+    from seferihisar.quality import news_quality_reason
+    # Isparta's 31 Oct menswear sale, which reached that queue as local news.
+    shop = {'kind': 'news', 'title': 'JAKAMEN’DEN EFSANE KASIM KAMPANYASI! YÜZDE 70’E VARAN İNDİRİM FIRSATI',
+            'description': 'JAKAMEN, Kasım ayına özel başlattığı dev indirim kampanyasıyla alışveriş tutkunlarına '
+                           'kaçırılmayacak fırsatlar sunuyor.'}
+    assert news_quality_reason(shop) == 'promotional_copy_requires_review'
+    public = {'kind': 'news', 'title': 'Seferihisar’da su faturalarına yüzde 50’ye varan indirim',
+              'description': 'Belediye ihtiyaç sahibi ailelerin su faturalarında indirim uygulanacağını açıkladı.'}
+    assert news_quality_reason(public) is None

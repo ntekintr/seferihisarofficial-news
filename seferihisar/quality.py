@@ -4,6 +4,14 @@ import re
 from .domain import normalized
 from .text_quality import plain_display, source_body
 
+# One phrase can appear in real news, such as a public discount. Three different
+# ones in a story mean a shop or developer sales text.
+SALES_PHRASES = ('ayricalikli', 'konforlu', 'modern yaşam', 'yaşam alan', 'yaşam kalite', 'yeni adres', 'prestijli',
+                 'lüks', 'daire seçenek', 'satiş ofis', 'uygun fiyat', 'müşteri memnuniyet', 'kaliteli hizmet',
+                 'varan indirim', 'indirim kampanya', 'indirim firsat', 'kaçirilmayacak firsat', 'alişveriş tutkun',
+                 'cazip fiyat')
+SALES_THRESHOLD = 3
+
 
 def news_quality_reason(item: dict) -> str | None:
     if item.get('kind') != 'news':
@@ -17,6 +25,9 @@ def news_quality_reason(item: dict) -> str | None:
         # This source retains the earlier appeal/contact instructions below its
         # resolved heading. Do not republish that old call for help as current.
         return 'resolved_community_notice'
+    combined = normalized(title + ' ' + str(item.get('description') or ''))
+    if sum(phrase in combined for phrase in SALES_PHRASES) >= SALES_THRESHOLD:
+        return 'promotional_copy_requires_review'
     return None
 
 
