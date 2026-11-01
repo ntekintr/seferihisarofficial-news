@@ -4,6 +4,22 @@ Son gözden geçirme: **26 Ekim 2026**. Bu dosya kod haritası ve kalıcı çal�
 notudur. Anlık sağlık/teslim kanıtı zaman damgalı çıktılardan alınır; burada bir
 kez başarılı olması sonraki ay kesintisiz çalışacağı anlamına gelmez.
 
+### 1 Kasım: güncelleme kartları story, kaynak fotoğrafı önce
+
+Kullanıcı kararı: duyurulmuş etkinliğin güncellemesi feed'e girmez, yalnız story
+olur (`story_only`, `kind='update'`; su kesintisi güncellemesi kapsam dışı). Yayın
+yolu elektrik kesintisiyle aynıdır, günde 2 story hakkını paylaşır. Takipçiye hiç
+duyurulmamış etkinliğin yeni revizyonu güncelleme değil normal duyurudur.
+Kartta görünen bilgi değişmediyse `unchanged_update` story'yi de tutar: Isparta ve
+Seferihisar kayıtlarında duyurulmuş 10 güncellemenin hiçbirinde kart bilgisi
+değişmemişti.
+
+Fotoğraf: kaynağın o habere bağlı kendi fotoğrafı konu etiketine uymadı diye
+elenmesin diye `OCCASION_SUBJECTS` genişledi ve konusu sınıflanmayan haberlere
+`article_photo` eklendi. Denetim artık "bu gerçek bir fotoğraf mı" sorusudur:
+üstünde manşet yazısı olan görsel OCR ile, poster ve logo CLIP ile elenir. Sel,
+trafik, yol çalışması, hasat ve maç gibi olay konuları hâlâ kendi kanıtını ister.
+
 ### 31 Ekim: elektrik kesintisi yalnız story
 
 Kullanıcı kararı: elektrik kesintileri feed'e girmez, yalnız story olur. Bu karar
