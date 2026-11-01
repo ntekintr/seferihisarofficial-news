@@ -58,6 +58,20 @@ SCENES = {
 }
 
 
+# An advance notice cannot prove a photograph of an incident.
+ADVANCE_NOTICE = re.compile(r'\b(?:uyari\w*|beklen\w*|risk\w*|iptal\w*|planlan\w*|yarin|yapilacak|gerçekleşecek|önlenecek)\b')
+
+
+def unclassified_news(item):
+    """Current news outside the reviewed topics: own photo first, then a brief.
+
+    Advance notices and stories whose photo subject is deliberately withheld
+    (a generated subject without a photo subject) keep their existing paths.
+    """
+    return (item.get('kind') == 'news' and news_subjects(item) == (None, None)
+            and not ADVANCE_NOTICE.search(normalized(item.get('title', ''))))
+
+
 def news_subjects(item):
     """Return (source-photo subject, generic generated subject) when supported."""
     if item.get('kind') not in ('news', 'event'):
@@ -98,9 +112,7 @@ def news_subjects(item):
         return 'public_park','public_park'
     for pattern, photo, generated in rules:
         if re.search(pattern, title):
-            # An advance notice cannot prove a photograph of an incident.
-            if photo in ('flood', 'meeting', 'hiking', 'football', 'traffic', 'roadworks') and re.search(
-                    r'\b(?:uyari\w*|beklen\w*|risk\w*|iptal\w*|planlan\w*|yarin|yapilacak|gerçekleşecek|önlenecek)\b', title):
+            if photo in ('flood', 'meeting', 'hiking', 'football', 'traffic', 'roadworks') and ADVANCE_NOTICE.search(title):
                 photo = None
             return photo, generated
     fallback = {

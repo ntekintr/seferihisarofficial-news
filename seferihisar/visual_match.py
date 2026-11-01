@@ -50,12 +50,16 @@ LABELS.update(NEWS_LABELS)
 LABELS.setdefault('roadworks', 'a news photograph of a street or sidewalk being renovated with bare ground and road maintenance equipment')
 LABELS['event_calendar'] = 'a photograph of a desk calendar with blank pages and colourful blank admission tickets beside a pen'
 
-# A real article photograph shows people at an occasion, which the empty scenes
+# A real article photograph shows people and places, which the empty scenes
 # above were never written to describe. Scored apart, so generated images and
 # every threshold above stay exactly as they were.
 OCCASION_LABELS = {
     'public_event': 'a news photograph of people at a public event, ceremony or festival',
     'community_event': 'a photograph of people at a local community event',
+    'real_scene': 'a news photograph of a real scene',
+    'people_together': 'a press photograph of people standing together',
+    'people_indoors': 'a photograph of people sitting in a room',
+    'real_place': 'a photograph of a real place or street',
 }
 NON_PHOTO_LABELS = {
     'graphic': 'a graphic design poster with large printed text and logos',
@@ -66,10 +70,11 @@ NON_PHOTO_LABELS = {
     'blank': LABELS['blank'],
 }
 PHOTO_LABELS = {**OCCASION_LABELS, **NON_PHOTO_LABELS}
-# Stories told through an occasion. Incident subjects keep their own evidence:
-# a crowd beside a road is not a photograph of that road's flood or repair.
+# Stories told through people and places. Incident subjects keep their own
+# evidence: a crowd beside a road is not a photograph of that road's flood or repair.
 OCCASION_SUBJECTS = frozenset(('festival', 'public_service', 'concert', 'theatre', 'cinema', 'culture',
-                               'education', 'health_workspace', 'market', 'food', 'meeting'))
+                               'education', 'health_workspace', 'market', 'food', 'meeting', 'bus', 'parking',
+                               'landscape', 'land_planning', 'public_park', 'citrus_processing', 'animal_care'))
 
 
 class MatchUnavailable(ValueError):
@@ -187,9 +192,10 @@ def occasion_accepted(result: dict[str, float]) -> bool:
             type(value) in (int, float) and math.isfinite(value) for value in result.values()):
         return False
     positive = max(result[label] for label in OCCASION_LABELS)
-    # Calibrated 31 Oct on real article photographs against posters, logos and
-    # generated images. Also a cosine rejection heuristic, never a fact check.
-    return positive >= 0.22 and positive - max(result[label] for label in NON_PHOTO_LABELS) >= 0.015
+    # Calibrated 1 Nov on 39 real article images: every photograph accepted here
+    # scored from .212 up, every headline banner under .20 or inside the margin.
+    # Also a cosine rejection heuristic, never a fact check.
+    return positive >= 0.20 and positive - max(result[label] for label in NON_PHOTO_LABELS) >= 0.015
 
 
 def validate_match(data: bytes, expected: str) -> dict:
@@ -201,7 +207,9 @@ def validate_match(data: bytes, expected: str) -> dict:
 def validate_news_photo(data: bytes, expected: str) -> dict:
     # These remain forbidden generated scenes. Only a separately verified,
     # article-bound source photograph may reach this narrow news taxonomy.
-    from .source_photo_data import SUBJECTS
+    from .source_photo_data import ARTICLE_PHOTO, SUBJECTS
+    if expected == ARTICLE_PHOTO:
+        return _validate_occasion(data,expected)
     if expected not in SUBJECTS:
         raise MatchRejected('Unsupported news photograph')
     try:
@@ -273,6 +281,16 @@ def validate_event_photo(data: bytes, expected: str) -> dict:
 
 
 def _validate_occasion(data: bytes, expected: str) -> dict:
+    """The publisher bound this file to the exact article; it must be a photograph."""
+    from .image_safety import IllustrationCheckUnavailable, IllustrationTextRejected, validate_photo_not_text_graphic
+    try:
+        validate_photo_not_text_graphic(data)
+    except IllustrationTextRejected:
+        raise MatchRejected('Headline graphic') from None
+    except IllustrationCheckUnavailable:
+        raise
+    except ValueError:
+        raise MatchRejected('Unsupported photograph') from None
     try:
         with Image.open(io.BytesIO(data)) as image:
             image.load()

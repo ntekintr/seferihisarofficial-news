@@ -313,7 +313,7 @@ def render_post(post: dict, public_dir: Path, illustrations: dict[int, Path] | N
                  story_details=(review.get('version') in ('content-visual-v2','content-visual-v3') or mutable and not review),
                  text_review=review.get('version') == 'content-visual-v3' or mutable and not review,
                  source_photo=bool(post.get('source_photo_keys',{}).get(str(i))),
-                 # A power-cut story has no feed post whose caption it could point to.
+                 # A story-only card has no feed post whose caption it could point to.
                  caption_note=note and i==0 and not (fmt == 'story' and mutable and story_only(post)),
                  brand_version=version_for(post), editorial_layout=editorial(post),
                  one_scale=fixed_scale(post))

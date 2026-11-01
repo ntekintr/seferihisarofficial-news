@@ -17,8 +17,10 @@ CLAIMED = frozenset(('publishing', 'published', 'uncertain'))
 
 
 def story_only(value):
-    """Owner decision, 31 Oct: a power cut is a service notice, never a feed post."""
-    return value.get('category') == 'outage' and 'elektrik' in normalized(value.get('title', ''))
+    """Owner decisions: a power cut (31 Oct) and a revised event card (1 Nov) never take a feed slot."""
+    if value.get('category') == 'outage':
+        return 'elektrik' in normalized(value.get('title', ''))
+    return value.get('kind') == 'update'
 
 
 def evening_enabled(at):
@@ -78,8 +80,11 @@ def outage_story_due(item, at):
     if item.get('kind') != 'event':
         return True
     start, end = parse_date(item.get('start')), parse_date(item.get('end'))
-    return bool(start and end and end > at
-                and start.astimezone(TZ).date() <= at.astimezone(TZ).date() + timedelta(days=1))
+    if not start or not end or end <= at:
+        return False
+    # A cut matters only when close; a changed event matters until it happens.
+    return (item.get('category') != 'outage'
+            or start.astimezone(TZ).date() <= at.astimezone(TZ).date() + timedelta(days=1))
 
 
 def outage_story_parents(store, at):
@@ -192,8 +197,21 @@ def story_pixels(post):
             if isinstance(proof, dict) else None)
 
 
+def unchanged_update(store, post):
+    """A new source revision says nothing until a fact on the card has changed."""
+    if post.get('kind') != 'update' or not story_only(post) or post.get('category') == 'outage':
+        return False
+    family = post.get('parent_post_id', post['id'])
+    claims = [p for p in store.posts() if p.get('item_id') == post.get('item_id') and p['status'] in CLAIMED
+              and p.get('published_at') and family not in (p['id'], p.get('parent_post_id'))]
+    latest = max(claims, key=lambda p: parse_date(p['published_at']), default=None)
+    return bool(latest) and latest['slides'][0]['body'] == post['slides'][0]['body']
+
+
 def duplicate_reason(store, post):
     """Identical rendered facts stay one delivery across revisions and restarts."""
+    if unchanged_update(store, post):
+        return 'duplicate_story'
     story = post.get('publish_format') == 'story'
     current_card, pixels = card_key(post), story_pixels(post) if story else None
     for old in store.posts():
