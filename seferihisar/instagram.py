@@ -119,8 +119,13 @@ def publish_one(store: Store, at: datetime, site_url: str, assets: dict[str, dic
         if eligible_before_visual and not prepared:
             return {'status': 'awaiting_content_visual'}
     if editorial and not story:
-        from .selection import prioritize
+        from .selection import EDITIONS, prioritize
         prepared = prioritize(store, prepared, at)
+        # An edition leads the queue, so it must not hold the slot when it
+        # cannot go out, and one a day leaves the other slots for news.
+        taken = any(p['kind'] in EDITIONS for p in day_claims(store, at))
+        prepared = [p for p in prepared if p['kind'] not in EDITIONS
+                    or not taken and edition_ready(store, p, site_url, assets, api, require_visual_review)]
     post = prepared[0] if prepared else None
     if post:
         if reason := daily_limit_reason(store, at, post, story=story):
@@ -184,6 +189,14 @@ def publish_one(store: Store, at: datetime, site_url: str, assets: dict[str, dic
         if checkpoint:
             checkpoint()
         return {"status": "uncertain", "post_id": post["id"]}
+
+
+def edition_ready(store, post, site_url, assets, api, require_visual_review) -> bool:
+    media = assets.get(post['id'], {}).get('feed', [])
+    if not media or not (require_visual_review or isinstance(api, Instagram)):
+        return bool(media)
+    from .visual_gate import deployed
+    return deployed(store, post, site_url, media, session=api.session) is None
 
 
 def publish_requested(store: Store, at: datetime, site_url: str, assets: dict[str, dict], target_id: str,

@@ -4,6 +4,15 @@ Son gözden geçirme: **26 Ekim 2026**. Bu dosya kod haritası ve kalıcı çal�
 notudur. Anlık sağlık/teslim kanıtı zaman damgalı çıktılardan alınır; burada bir
 kez başarılı olması sonraki ay kesintisiz çalışacağı anlamına gelmez.
 
+### 1 Kasım: takvimler feed'de yer buluyor
+
+`weekly`, `monthly`, `weekend` ve `free_week` en alttaki sıradaydı; haber olan her
+gün geride kalıp süresi doluyordu. Ekimde çıkan tek haftalık ve aylık takvim, sırası
+boş günlere denk gelenlerdi. Artık uyarı ve iptallerden sonra, sıradan haberin
+önünde gelirler (`selection.EDITIONS`). Günde en fazla biri çıkar, kalan iki hak
+haberindir. Yayımlanamayacak baskı (medya yok, görsel kanıt bayat) sırayı tutmaz,
+aynı aralıkta sıradaki gönderi çıkar (`instagram.edition_ready`).
+
 ### 1 Kasım: güncelleme kartları story, kaynak fotoğrafı önce
 
 Kullanıcı kararı: duyurulmuş etkinliğin güncellemesi feed'e girmez, yalnız story
