@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 import math
 import re
+import time
 from datetime import datetime, timedelta
 from urllib.parse import urljoin, urlsplit
 
@@ -16,6 +17,7 @@ from .security import contains_secret, public_url
 
 EVENT_CATEGORIES = {'concert','festival','theatre','cinema','family','sport','market','culture','event','food','education'}
 UUID = re.compile(r'[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}')
+GDZ_RETRY_SECONDS = 20
 
 
 def official_notice_items(body, base, source):
@@ -126,14 +128,26 @@ def collect_gdz_planned(source,fetcher,known_events):
     from urllib.parse import urlencode
     found,errors = [],[]
     at = now()
-    for district in ('SEFERİHİSAR','URLA','GÜZELBAHÇE','MENDERES'):
-        url = source['url']+'?'+urlencode({'city':'İZMİR','district':district,'action':'outages'})
-        try:
-            body,base=fetcher.get(url)
-            found.extend(gdz_planned_items(body,base,source,district,at,known_events))
-        except (ValueError,OSError,requests.RequestException) as exc:
-            errors.append({'source_id':source['id'],'code':detail_error_code(exc)})
-    return found,[],errors
+    pending = ('SEFERİHİSAR','URLA','GÜZELBAHÇE','MENDERES')
+    # GDZ can answer with a broken body for a moment, which would hold every
+    # power cut story. Only such a district gets one more read after a pause.
+    for attempt in range(2):
+        broken = {}
+        for district in pending:
+            url = source['url']+'?'+urlencode({'city':'İZMİR','district':district,'action':'outages'})
+            try:
+                body,base=fetcher.get(url)
+                found.extend(gdz_planned_items(body,base,source,district,at,known_events))
+            except json.JSONDecodeError as exc:
+                broken[district] = exc
+            except (ValueError,OSError,requests.RequestException) as exc:
+                errors.append({'source_id':source['id'],'code':detail_error_code(exc)})
+        pending = tuple(broken)
+        if not pending:
+            break
+        if not attempt:
+            time.sleep(GDZ_RETRY_SECONDS)
+    return found,[],errors+[{'source_id':source['id'],'code':detail_error_code(exc)} for exc in broken.values()]
 
 
 def news(source, url, title, description, published, topic, **extra):

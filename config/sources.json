@@ -445,7 +445,7 @@
     "name": "Seferihisar Gündem Instagram",
     "url": "https://www.instagram.com/shgundem/",
     "kind": "instagram_api",
-    "enabled": true,
+    "enabled": false,
     "trusted": true,
     "access": "api",
     "instagram_username": "shgundem",
