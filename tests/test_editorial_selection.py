@@ -144,3 +144,65 @@ def test_verified_venue_outweighs_brand_or_incidental_district():
                      'source_name': 'Seferihisar Belediyesi'}) == 1
     assert locality({'location': 'Ürkmez kültür salonu', 'title': 'Urla ekibinden konser'}) == 0
     assert locality({'title': 'Yoga', 'source_name': 'SeferihisarOfficial'}) == 2
+
+
+NOON = parse_date('2026-10-15T12:35:00+03:00')
+CONCERT = {'title': 'Seferihisar konseri', 'kind': 'event', 'category': 'concert', 'starts': 48}
+NEWS = {'title': 'Seferihisar yeni hizmet duyurusu', 'age': 1}
+
+
+def with_editions(store, cases, kinds=('monthly',)):
+    _, ids = seed(store, NOON, cases)
+    with store.db:
+        for post in store.posts():
+            if post['kind'] in kinds:
+                post['due_at'] = (NOON - timedelta(hours=1)).isoformat()
+                store.db.execute("UPDATE posts SET status='prepared',due_at=?,payload=? WHERE id=?",
+                                 (post['due_at'], json.dumps(post), post['id']))
+    return ids
+
+
+def feed(store):
+    return [p for p in store.posts() if p['status'] == 'published' and not p.get('publish_format')]
+
+
+def test_due_calendar_takes_a_slot_ahead_of_fresh_news(store):
+    with_editions(store, [NEWS, CONCERT])
+    api = adapter()
+    assert publish_automatic(store, NOON, 'https://example.org/', assets(store), api)['status'] == 'complete'
+    assert [p['kind'] for p in feed(store)] == ['monthly']
+
+
+def test_warning_still_leads_a_due_calendar(store):
+    ids = with_editions(store, [NEWS, CONCERT, {'title': 'Seferihisar su kesintisi', 'kind': 'event', 'category': 'outage', 'starts': 3}])
+    assert publish_automatic(store, NOON, 'https://example.org/', assets(store), adapter())['status'] == 'complete'
+    assert [p['item_id'] for p in feed(store)] == [ids[2]]
+
+
+def test_one_edition_a_day_leaves_the_next_slot_for_news(store):
+    ids = with_editions(store, [NEWS, CONCERT], ('weekly', 'monthly'))
+    api = adapter()
+    assert publish_automatic(store, NOON, 'https://example.org/', assets(store), api)['status'] == 'complete'
+    later = parse_date('2026-10-15T15:05:00+03:00')
+    with store.db:
+        store.db.execute('UPDATE items SET last_seen=?', (later.isoformat(),))
+    assert publish_automatic(store, later, 'https://example.org/', assets(store), api)['status'] == 'complete'
+    assert sum(p['kind'] in ('weekly', 'monthly') for p in feed(store)) == 1
+    assert ids[0] in [p.get('item_id') for p in feed(store)]
+
+
+def test_calendar_without_media_does_not_hold_the_slot(store):
+    ids = with_editions(store, [NEWS, CONCERT])
+    media = {key: value for key, value in assets(store).items()
+             if key != next(p['id'] for p in store.posts() if p['kind'] == 'monthly')}
+    assert publish_automatic(store, NOON, 'https://example.org/', media, adapter())['status'] == 'complete'
+    assert feed(store)[0]['item_id'] in ids
+
+
+def test_stale_calendar_does_not_hold_the_slot(store, monkeypatch):
+    with_editions(store, [NEWS, CONCERT])
+    monkeypatch.setattr('seferihisar.visual_policy.image_reason', lambda post: None)
+    monkeypatch.setattr('seferihisar.visual_gate.deployed', lambda store, post, *args, **kwargs:
+                        'visual_review_stale' if post['kind'] == 'monthly' else None)
+    result = publish_automatic(store, NOON, 'https://example.org/', assets(store), adapter(), require_visual_review=True)
+    assert result['status'] == 'complete' and feed(store)[0]['kind'] != 'monthly'
