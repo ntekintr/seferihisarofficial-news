@@ -309,7 +309,8 @@ def prepare_story_jobs(store: Store, assets: dict[str, dict]):
     """Persist only the first matching news card; never build extra story frames."""
     import json
     parents = [p for p in store.posts() if not p.get("publish_format") and p["status"] in ("prepared", "published")]
-    valid_parents = {p["id"] for p in parents}
+    # A blocked parent can come back, so only a parent that is gone drops its story.
+    valid_parents = {p["id"] for p in store.posts() if not p.get("publish_format") and p["status"] in ("prepared", "published", "blocked_source")}
     with store.db:
         for child in store.posts():
             if child.get("publish_format") == "story" and child["status"] in ("prepared", "blocked_source") and child.get("parent_post_id") not in valid_parents:
@@ -325,4 +326,8 @@ def prepare_story_jobs(store: Store, assets: dict[str, dict]):
             child.pop("published_at", None)
             store.queue(child)
             with store.db:
+                # A story id never changes, so a story dropped while its parent
+                # was blocked can only return here, before the parent is claimed.
+                if parent["status"] == "prepared":
+                    store.db.execute("UPDATE posts SET status='prepared' WHERE id=? AND status='superseded'", (child["id"],))
                 store.db.execute("UPDATE posts SET payload=? WHERE id=? AND status='prepared'", (json.dumps(child, ensure_ascii=False), child["id"]))

@@ -29,6 +29,17 @@ def source_current(item: dict, at: datetime, failed: set[str]) -> bool:
     return item["source_id"] not in failed and seen is not None and at - SOURCE_MAX_AGE <= seen <= at + timedelta(minutes=5)
 
 
+def post_references(post: dict, items: dict[str, dict]) -> list:
+    """Items a post depends on. A digest names its events, because recurring
+    sessions share one URL and a stale sibling must not block the current one."""
+    if post.get("item_id"):
+        return [items.get(post["item_id"])]
+    if post.get("event_ids"):
+        return [items.get(key) for key in post["event_ids"]]
+    by_url = {url: i for i in items.values() for url in i.get("sources", []) + [i["url"]]}
+    return [by_url.get(url) for url in post["source_urls"]]
+
+
 def next_slot(at: datetime, event: bool = False) -> datetime:
     slots = (time(15),) if event else SLOTS
     for slot in slots:
@@ -41,12 +52,11 @@ def next_slot(at: datetime, event: bool = False) -> datetime:
 def prepare(store: Store, at: datetime, *, refresh_digests: bool = True):
     failed = blocked_sources(store)
     current = {i["id"]: i for i in store.items()}
-    by_url = {url: i for i in current.values() for url in i.get("sources", []) + [i["url"]]}
     with store.db:
         for post in store.posts():
             if post["status"] not in ("prepared", "blocked_source"):
                 continue
-            references = [current.get(post["item_id"])] if post.get("item_id") else [by_url.get(url) for url in post["source_urls"]]
+            references = post_references(post, current)
             from .publication_policy import post_reason
             valid = (bool(references) and all(item and source_current(item, at, failed) for item in references)
                      and post_reason(store, post, at) is None)
@@ -241,7 +251,8 @@ def prepare_digest(store: Store, at: datetime, kind: str, days: int):
     content = "\n\n".join([title, description] + [event_title(e) + " · " + event_date_label(e, include_time=False) + "\nKaynak: " + plain_source_text(e["source_name"]) + "\n" + e["url"] for e in selected])
     post = {"id": key, "kind": kind, "revision": 1, "due_at": next_slot(at, event=True).isoformat(),
             "title": title, "caption": caption_with_hashtags(content, digest_hashtags(selected)), "category": "event", "slides": slides,
-            "source_urls": [e["url"] for e in selected], "created_at": at.isoformat(), "formats": ["carousel", "story"]}
+            "source_urls": [e["url"] for e in selected], "event_ids": [e["id"] for e in selected],
+            "created_at": at.isoformat(), "formats": ["carousel", "story"]}
     if existing:
         # Keep original due date so frequent runs cannot postpone it indefinitely.
         post["due_at"] = existing["due_at"]

@@ -14,7 +14,7 @@ from urllib.parse import urljoin, urlsplit
 import requests
 
 from .domain import TZ, digest, parse_date
-from .schedule import blocked_sources, source_current
+from .schedule import blocked_sources, post_references, source_current
 from .security import public_url
 from .store import Store
 from .publication_policy import (NEWS_DAILY_LIMIT, NEWS_EVENING_LIMIT, owner_exclusion, evening_post, fourth_parent,
@@ -72,11 +72,7 @@ class Facebook:
 def current_post(store, post, at):
     if owner_exclusion(post):
         return False
-    items = store.items()
-    by_id = {i['id']: i for i in items}
-    by_url = {url: i for i in items for url in i.get('sources', []) + [i['url']]}
-    refs = ([by_id.get(post['item_id'])] if post.get('item_id')
-            else [by_url.get(url) for url in post['source_urls']])
+    refs = post_references(post, {i['id']: i for i in store.items()})
     failed = blocked_sources(store)
     if not refs or not all(i and source_current(i, at, failed) for i in refs):
         return False
