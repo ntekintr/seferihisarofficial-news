@@ -11,7 +11,7 @@ from seferihisar.collect import collect_source
 from seferihisar.editor import caption,verify
 from seferihisar.schedule import prepare,source_current
 from seferihisar.security import validate_state
-from seferihisar.source_readers import gdz_planned_items,official_notice_items
+from seferihisar.source_readers import collect_gdz_planned,gdz_planned_items,official_notice_items
 from seferihisar.store import Store
 
 SOURCES={s['id']:s for s in json.loads(Path('config/sources.json').read_text(encoding='utf-8'))}
@@ -27,6 +27,36 @@ def row(**changes):
 def read(rows,district='URLA',known=()):
     body=json.dumps({'success':True,'level':'district_outages','city':'İZMİR','district':district,'data':rows,'count':len(rows)})
     return gdz_planned_items(body,SOURCES['gdz']['url'],SOURCES['gdz'],district,AT,known)
+
+def response(district,rows=()):
+    rows=list(rows)
+    return json.dumps({'success':True,'level':'district_outages','city':'İZMİR','district':district,'data':rows,'count':len(rows)})
+
+def gdz_collect(monkeypatch,replies):
+    fetcher=Mock()
+    fetcher.get.side_effect=[(body,SOURCES['gdz']['url']) for body in replies]
+    naps=[]
+    monkeypatch.setattr('seferihisar.source_readers.now',lambda:AT)
+    monkeypatch.setattr('seferihisar.source_readers.time.sleep',naps.append)
+    return collect_gdz_planned(SOURCES['gdz'],fetcher,())+(fetcher,naps)
+
+DISTRICTS=('SEFERİHİSAR','URLA','GÜZELBAHÇE','MENDERES')
+
+def test_gdz_broken_body_is_read_once_more_after_a_pause(monkeypatch):
+    found,_,errors,fetcher,naps=gdz_collect(monkeypatch,['<html>']*4+[response('SEFERİHİSAR'),response('URLA',[row()]),response('GÜZELBAHÇE'),response('MENDERES')])
+    assert len(found)==1 and errors==[] and fetcher.get.call_count==8 and naps==[20]
+
+def test_gdz_second_read_covers_only_the_failed_district(monkeypatch):
+    found,_,errors,fetcher,naps=gdz_collect(monkeypatch,[response('SEFERİHİSAR'),'<html>',response('GÜZELBAHÇE'),response('MENDERES'),response('URLA',[row()])])
+    assert len(found)==1 and errors==[] and fetcher.get.call_count==5 and naps==[20]
+
+def test_gdz_still_reports_a_district_that_stays_broken(monkeypatch):
+    found,_,errors,fetcher,naps=gdz_collect(monkeypatch,[response(d) for d in DISTRICTS[:1]]+['<html>']+[response(d) for d in DISTRICTS[2:]]+['<html>'])
+    assert errors==[{'source_id':'gdz','code':'detail_parse_failed'}] and fetcher.get.call_count==5 and naps==[20]
+
+def test_gdz_healthy_read_does_not_pause(monkeypatch):
+    found,_,errors,fetcher,naps=gdz_collect(monkeypatch,[response(d) for d in DISTRICTS])
+    assert errors==[] and fetcher.get.call_count==4 and naps==[]
 
 def test_future_planned_interval_has_no_invented_article_date_or_fees():
     item=read([row()])[0]
