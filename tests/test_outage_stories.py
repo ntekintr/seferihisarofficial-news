@@ -39,6 +39,9 @@ def feeds(adapter):
     ({'category':'outage','title':'Urla’da planlı elektrik kesintisi · Story 1'},True),
     ({'category':'outage','title':'Urla’da su kesintisi'},False),
     ({'category':'municipality','title':'Elektrikli otobüs hattı açıldı'},False),
+    ({'category':'concert','kind':'update','title':'Etkinlik bilgisi güncellendi: Konser'},True),
+    ({'category':'concert','kind':'announcement','title':'Konser'},False),
+    ({'category':'outage','kind':'update','title':'Urla’da su kesintisi'},False),
 ])
 def test_only_power_cuts_are_story_only(value,expected):
     assert story_only(value) is expected
@@ -189,3 +192,54 @@ def test_story_card_does_not_point_to_a_caption_it_does_not_have(store,tmp_path,
     monkeypatch.setattr('seferihisar.render.card',lambda title,body,category,target,story=False,*a,**k:seen.update({story:k['caption_note']}))
     render_post(post,tmp_path)
     assert seen=={False:True,True:False}
+
+
+def concert(store, at, location='Kültür Merkezi', note=''):
+    begin = AT + timedelta(days=10)
+    item = {'kind':'event','identity':'https://example.org/konser','title':'Seferihisar yaz konseri',
+            'description':'Seferihisar açık hava konseri kaynak tarafından duyuruldu.'+note,
+            'url':'https://example.org/konser','sources':['https://example.org/konser'],
+            'source_id':'example','source_name':'Yerel kaynak','category':'concert','start':begin.isoformat(),
+            'end':(begin+timedelta(hours=2)).isoformat(),'status':'scheduled','time_known':True,'location':location}
+    store.upsert(item,at.isoformat())
+    prepare(store,at)
+    return {p['id']:{'feed':[f"media/{p['id']}/feed-1.jpg"],'story':[f"media/{p['id']}/story-1.jpg"]}
+            for p in store.posts() if not p.get('publish_format')}
+
+
+def announce(store, at):
+    first=next(p for p in store.posts() if p['kind']=='announcement')
+    import json
+    with store.db:
+        store.db.execute("UPDATE posts SET status='published',payload=? WHERE id=?",
+                         (json.dumps({**first,'published_at':at.isoformat()}),first['id']))
+    return first
+
+
+def test_changed_event_is_one_story_ten_days_ahead_and_never_a_feed_post(store):
+    concert(store,AT);announce(store,AT-timedelta(days=1))
+    later=AT+timedelta(minutes=30);assets=concert(store,later,location='Yeni Sahne');adapter=api()
+    update=next(p for p in store.posts() if p['kind']=='update' and not p.get('publish_format'))
+    assert story_only(update)
+    assert publish_automatic(store,later,SITE,assets,adapter)['status']=='empty'
+    assert publish_outage_story(store,later,SITE,assets,adapter)['status']=='published'
+    assert adapter.container.call_count==1 and adapter.container.call_args.args[2] is True
+    assert publish_outage_story(store,later+timedelta(minutes=46),SITE,assets,adapter)['status']=='empty'
+    assert adapter.container.call_count==1
+
+
+def test_source_revision_without_a_changed_card_fact_stays_silent(store):
+    concert(store,AT);announce(store,AT-timedelta(days=1))
+    later=AT+timedelta(minutes=30);assets=concert(store,later,note=' Yeni ayrıntılar eklendi.');adapter=api()
+    assert store.items()[0]['revision']==2
+    assert publish_outage_story(store,later,SITE,assets,adapter)['status']=='empty'
+    adapter.container.assert_not_called()
+
+
+def test_first_notice_after_a_source_revision_is_an_ordinary_announcement(store):
+    concert(store,AT)
+    later=AT+timedelta(minutes=30);concert(store,later,location='Yeni Sahne')
+    assert not any(p['kind']=='update' and p['status'] in ('prepared','blocked_source') for p in store.posts())
+    current=[p for p in store.posts() if p['status']=='prepared' and p.get('item_id') and not p.get('publish_format')]
+    assert [(p['kind'],p['revision']) for p in current]==[('announcement',2)]
+    assert not story_only(current[0])

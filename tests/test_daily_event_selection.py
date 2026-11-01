@@ -6,7 +6,7 @@ from unittest.mock import Mock
 import pytest
 
 from seferihisar.domain import parse_date
-from seferihisar.instagram import publish_automatic
+from seferihisar.instagram import publish_automatic, publish_outage_story
 from seferihisar.schedule import prepare
 
 
@@ -54,7 +54,7 @@ def test_same_event_reminder_does_not_take_second_daily_slot(store, claim_status
     api.container.assert_not_called()
 
 
-def test_source_correction_stays_eligible_for_same_event(store):
+def test_source_correction_reaches_followers_as_a_story_only(store):
     morning = parse_date('2026-10-13T08:35:00+03:00')
     item, _, assets = seed_event(store, morning)
     first = next(p for p in store.posts() if p['kind'] == 'announcement')
@@ -68,6 +68,6 @@ def test_source_correction_stays_eligible_for_same_event(store):
     assets[update['id']] = {'feed': [f"media/{update['id']}/feed-1.jpg"],
                             'story': [f"media/{update['id']}/story-1.jpg"]}
     api = adapter()
-    result = publish_automatic(store, afternoon, 'https://example.org/', assets, api)
-    assert result == {'status': 'complete', 'feed': 'published', 'story': 'published'}
-    assert api.container.call_count == 2
+    assert publish_automatic(store, afternoon, 'https://example.org/', assets, api)['status'] == 'empty'
+    assert publish_outage_story(store, afternoon, 'https://example.org/', assets, api)['status'] == 'published'
+    assert api.container.call_count == 1 and api.container.call_args.args[2] is True
