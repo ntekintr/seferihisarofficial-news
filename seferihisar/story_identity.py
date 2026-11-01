@@ -2,15 +2,18 @@
 import re
 from datetime import timedelta
 
-from .domain import normalized, parse_date
+from .domain import CATEGORIES, normalized, parse_date
+
+LABELS = '|'.join(normalized(label) for label in CATEGORIES.values())
 
 
 def words(title):
     value = normalized(title)
-    value = re.sub(r'^(?:yerel haberler|ulaşim|belediye|kamu duyurulari) ', '', value)
+    value = re.sub(rf'^(?:{LABELS}) ', '', value)
     value = re.sub(r'\bbir araya (?:geldi|geliyor|gelecek|gelerek)\b|\bbuluştu\b', 'toplanti', value)
     value = re.sub(r'\bmuhtar(?:iyla|lariyla|imizla|larimizla)\b', 'muhtar', value)
-    return set(value.split()) - {'ve', 'ile', 'bir'}
+    value = re.sub(r'\byer (?:aldi|aliyor|alacak)\b', '', value)
+    return set(value.split()) - {'ve', 'ile', 'bir', 'en', 'da', 'de'}
 
 
 def harvest_start(title):
