@@ -16,8 +16,10 @@ değişmemişti.
 
 Fotoğraf: kaynağın o habere bağlı kendi fotoğrafı konu etiketine uymadı diye
 elenmesin diye `OCCASION_SUBJECTS` genişledi ve konusu sınıflanmayan haberlere
-`article_photo` eklendi. Denetim artık "bu gerçek bir fotoğraf mı" sorusudur:
-üstünde manşet yazısı olan görsel OCR ile, poster ve logo CLIP ile elenir. Sel,
+`article_photo` eklendi. Manşet yazılı görsel OCR ile, poster ve logo CLIP ile
+elenir. Toplantı, tören, etkinlik gibi insanla anlatılan konularda fotoğrafta
+insan aranır: toplantı haberindeki sokak ya da boş salon yanlış fotoğraftır, bu
+yüzden elenir. Yer ve nesne konuları (`SCENE_SUBJECTS`) insansız da geçer. Sel,
 trafik, yol çalışması, hasat ve maç gibi olay konuları hâlâ kendi kanıtını ister.
 
 ### 31 Ekim: elektrik kesintisi yalnız story
