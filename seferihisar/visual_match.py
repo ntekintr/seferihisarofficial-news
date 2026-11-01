@@ -192,8 +192,8 @@ def occasion_accepted(result: dict[str, float]) -> bool:
             type(value) in (int, float) and math.isfinite(value) for value in result.values()):
         return False
     positive = max(result[label] for label in OCCASION_LABELS)
-    # Calibrated 1 Nov on 39 real article images: every photograph accepted here
-    # scored from .212 up, every headline banner under .20 or inside the margin.
+    # Calibrated 1 Nov on 42 real article images: every photograph accepted here
+    # scored from .204 up, every headline banner under .20 or inside the margin.
     # Also a cosine rejection heuristic, never a fact check.
     return positive >= 0.20 and positive - max(result[label] for label in NON_PHOTO_LABELS) >= 0.015
 
