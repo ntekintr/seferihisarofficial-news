@@ -98,8 +98,10 @@ def occasion_vision(monkeypatch,**values):
 @pytest.mark.parametrize('subject,values,passes',[
     ('festival',{'public_event':.25},True),
     ('public_service',{'community_event':.23},True),
-    ('festival',{'public_event':.199},False),
-    ('bus',{'people_together':.21},True),
+    ('festival',{'public_event':.189},False),
+    ('meeting',{'real_place':.3},False),
+    ('meeting',{'people_indoors':.3,'empty_hall':.29},False),
+    ('bus',{'real_place':.21},True),
     ('parking',{'people_indoors':.21},True),
     ('article_photo',{'real_scene':.21},True),
     ('festival',{'public_event':.25,'flyer':.24},False),
