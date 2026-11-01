@@ -197,6 +197,35 @@ def validate_text_free_illustration(data: bytes):
         raise IllustrationTextRejected(findings=findings)
 
 
+def validate_photo_not_text_graphic(data: bytes):
+    """Allow incidental scene text in a real photo, never a headline graphic.
+
+    An article-bound photograph may show a shop sign or a banner, but a collage
+    of headline lettering or a date card is not a photograph of the story.
+    Words count only when both full-scene segmentations agree on the same
+    token in the same area. Missing OCR fails closed.
+    """
+    import io
+    import re
+    import shutil
+    from PIL import Image
+    validate_jpeg(data)
+    binary = shutil.which('tesseract')
+    if not binary:
+        raise IllustrationCheckUnavailable('Illustration text check unavailable')
+    first, second = (_scan_words(binary, data, mode) for mode in (11, 6))
+    confirmed = [word for word in first
+                 if len(word['letters']) >= 3 and word['confidence'] >= 60
+                 and any(other['token'] == word['token'] and _same_region(word['box'], other['box'])
+                         for other in second)]
+    with Image.open(io.BytesIO(data)) as image:
+        area = image.width * image.height
+    lettering = sum(word['box']['width'] * word['box']['height'] for word in confirmed)
+    if (len(confirmed) >= 4 or lettering >= area * 0.03
+            or any(re.search(r'(?:19|20)\d{2}', word['letters']) for word in confirmed)):
+        raise IllustrationTextRejected('Text graphic rejected', findings=confirmed)
+
+
 def validate_jpeg(data: bytes):
     if not isinstance(data, bytes) or not 20 <= len(data) <= MAX_IMAGE_BYTES or data[:2] != b'\xff\xd8':
         raise ValueError('Invalid illustration bytes')

@@ -31,7 +31,9 @@ def test_all_new_content_has_one_hint_on_first_card_without_extra_asset(tmp_path
     assert len(assets['feed'])==len(assets['story'])==len(p['slides'])
     for offset in (0,len(p['slides'])):
         group=calls[offset:offset+len(p['slides'])]
-        assert [kw['caption_note'] for _,kw in group]==[True]+[False]*(len(p['slides'])-1)
+        # A story-only update has no feed caption to point at.
+        hint=not (kind=='update' and offset>0)
+        assert [kw['caption_note'] for _,kw in group]==[hint]+[False]*(len(p['slides'])-1)
         assert not any(args[0]=='Ayrıntılar açıklamada' for args,_ in group)
 
 

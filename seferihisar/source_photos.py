@@ -38,7 +38,9 @@ def photo_subject(item):
             return None
         from .visual_subject import subject
         return subject(item) or ('event_poster' if item.get('category')=='event' else None)
-    return news_subject(item)
+    from .visual_topics import unclassified_news
+    from .source_photo_data import ARTICLE_PHOTO
+    return news_subject(item) or (ARTICLE_PHOTO if unclassified_news(item) else None)
 
 
 def identity_dates(item):

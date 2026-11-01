@@ -1,3 +1,4 @@
+import json
 from copy import deepcopy
 from datetime import timedelta
 
@@ -44,6 +45,10 @@ def test_delayed_schedule_catches_up_without_false_3_day_claim(store, event, at)
 def test_reschedule_supersedes_old_cards_and_rearms_reminders(store, event, at):
     key, _ = store.upsert(event, at.isoformat())
     prepare(store, at)
+    first = next(p for p in store.posts() if p["kind"] == "announcement")
+    with store.db:
+        store.db.execute("UPDATE posts SET status='published',payload=? WHERE id=?",
+                         (json.dumps({**first, "published_at": at.isoformat()}), first["id"]))
     event["start"] = (at + timedelta(days=15)).isoformat()
     event["end"] = (at + timedelta(days=15, hours=2)).isoformat()
     event["status"] = "rescheduled"

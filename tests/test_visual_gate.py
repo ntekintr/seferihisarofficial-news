@@ -83,8 +83,13 @@ def test_both_actual_wide_crops_must_match_not_only_source_square(monkeypatch):
 OCCASION={label:.1 for label in PHOTO_LABELS}
 
 
+def no_lettering(monkeypatch):
+    monkeypatch.setattr('seferihisar.image_safety.validate_photo_not_text_graphic',lambda data:None)
+
+
 def occasion_vision(monkeypatch,**values):
     photo=Mock(return_value=[{**OCCASION,**values}]*3)
+    no_lettering(monkeypatch)
     monkeypatch.setattr('seferihisar.visual_match.scores',lambda images:[{label:.1 for label in LABELS}]*3)
     monkeypatch.setattr('seferihisar.visual_match.photo_scores',photo)
     return photo
@@ -93,7 +98,12 @@ def occasion_vision(monkeypatch,**values):
 @pytest.mark.parametrize('subject,values,passes',[
     ('festival',{'public_event':.25},True),
     ('public_service',{'community_event':.23},True),
-    ('festival',{'public_event':.219},False),
+    ('festival',{'public_event':.189},False),
+    ('meeting',{'real_place':.3},False),
+    ('meeting',{'people_indoors':.3,'empty_hall':.29},False),
+    ('bus',{'real_place':.21},True),
+    ('parking',{'people_indoors':.21},True),
+    ('article_photo',{'real_scene':.21},True),
     ('festival',{'public_event':.25,'flyer':.24},False),
     ('festival',{'public_event':.25,'illustration':.24},False),
     ('festival',{'public_event':float('nan')},False),
@@ -107,10 +117,19 @@ def test_article_photograph_of_people_at_an_occasion_passes_without_its_stock_sc
 
 
 def test_every_crop_must_show_the_occasion(monkeypatch):
+    no_lettering(monkeypatch)
     good,bad={**OCCASION,'public_event':.25},{**OCCASION,'logo':.3}
     monkeypatch.setattr('seferihisar.visual_match.scores',lambda images:[{label:.1 for label in LABELS}]*3)
     monkeypatch.setattr('seferihisar.visual_match.photo_scores',lambda images:[good,bad,good])
     with pytest.raises(MatchRejected):validate_news_photo(jpeg(),'festival')
+
+
+def test_headline_banner_is_rejected_before_vision_and_can_still_reach_its_photo_check(monkeypatch):
+    from seferihisar.image_safety import IllustrationTextRejected
+    photo=occasion_vision(monkeypatch,public_event=.3)
+    monkeypatch.setattr('seferihisar.image_safety.validate_photo_not_text_graphic',Mock(side_effect=IllustrationTextRejected()))
+    with pytest.raises(MatchRejected):validate_news_photo(jpeg(),'article_photo')
+    photo.assert_not_called()
 
 
 @pytest.mark.parametrize('subject',['flood','traffic','roadworks','citrus_harvest','football'])
@@ -136,6 +155,7 @@ def test_subject_match_needs_no_occasion_score(monkeypatch):
 
 
 def test_unavailable_occasion_check_is_not_a_rejection(monkeypatch):
+    no_lettering(monkeypatch)
     monkeypatch.setattr('seferihisar.visual_match.scores',lambda images:[{label:.1 for label in LABELS}]*3)
     monkeypatch.setattr('seferihisar.visual_match.photo_scores',Mock(side_effect=MatchUnavailable('down')))
     with pytest.raises(MatchUnavailable):validate_news_photo(jpeg(),'festival')

@@ -61,6 +61,8 @@ def prepare(store: Store, at: datetime, *, refresh_digests: bool = True):
             valid = (bool(references) and all(item and source_current(item, at, failed) for item in references)
                      and post_reason(store, post, at) is None)
             store.db.execute("UPDATE posts SET status=? WHERE id=?", ("prepared" if valid else "blocked_source", post["id"]))
+    from .publication_policy import CLAIMED
+    announced = {p.get("item_id") for p in store.posts() if p["status"] in CLAIMED}
     for item in store.items():
         from .quality import news_editorial_reason
         if reason := news_editorial_reason(item):
@@ -86,7 +88,11 @@ def prepare(store: Store, at: datetime, *, refresh_digests: bool = True):
             continue
         if start.date() < at.date():
             continue
-        if item["revision"] > 1:
+        # Followers can only be told of a change to something they were told about.
+        if item["revision"] > 1 and item["id"] not in announced:
+            with store.db:
+                store.db.execute("UPDATE posts SET status='superseded' WHERE item_id=? AND kind='update' AND status IN ('prepared','blocked_source')", (item["id"],))
+        if item["revision"] > 1 and item["id"] in announced:
             queue_item(store, item, "update", at, at)
         elif start <= at + timedelta(days=30):
             queue_item(store, item, "announcement", min(next_slot(at, event=True), start) if item.get("time_known") else at, at)

@@ -6,7 +6,7 @@ from unittest.mock import Mock
 import pytest
 
 from seferihisar.domain import digest, parse_date
-from seferihisar.instagram import publish_automatic, publish_one
+from seferihisar.instagram import publish_automatic, publish_one, publish_outage_story
 from seferihisar.schedule import prepare
 from seferihisar.selection import locality
 
@@ -116,7 +116,7 @@ def test_manual_publish_retains_due_order(store):
     assert next(p for p in store.posts() if p['status'] == 'published')['item_id'] == ids[0]
 
 
-def test_announced_event_correction_leads_without_rewriting_original_claim(store):
+def test_announced_event_correction_is_a_story_and_leaves_the_slot_and_original_claim(store):
     at = parse_date('2026-10-15T12:35:00+03:00')
     items, ids = seed(store, at, [{'title': 'Seferihisar yeni haber', 'waiting': 20},
                                 {'title': 'Seferihisar ay sonu festivali', 'kind': 'event', 'starts': 360}])
@@ -129,8 +129,13 @@ def test_announced_event_correction_leads_without_rewriting_original_claim(store
     store.upsert({**items[1], 'location': 'Seferihisar yeni açıklanan mekân'}, at.isoformat())
     prepare(store, at)
     assert publish_automatic(store, at, 'https://example.org/', assets(store), adapter())['status'] == 'complete'
-    assert any(p.get('item_id') == ids[1] and p['revision'] == 2 and p['status'] == 'published'
-               for p in store.posts() if not p.get('publish_format'))
+    assert any(p.get('item_id') == ids[0] and p['status'] == 'published' for p in store.posts() if not p.get('publish_format'))
+    assert not any(p.get('item_id') == ids[1] and p['revision'] == 2 and p['status'] == 'published'
+                   for p in store.posts() if not p.get('publish_format'))
+    later = at + timedelta(minutes=46)
+    store.upsert({**items[1], 'location': f'{items[1]["title"].split()[0]} yeni açıklanan mekân'}, later.isoformat())
+    assert publish_outage_story(store, later, 'https://example.org/', assets(store), adapter())['status'] == 'published'
+    assert any(p.get('item_id') == ids[1] and p['status'] == 'published' for p in store.posts() if p.get('publish_format'))
     assert store.rows('SELECT * FROM posts WHERE id=?', (parent['id'],))[0] == before
 
 
