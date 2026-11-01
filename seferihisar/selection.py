@@ -6,6 +6,8 @@ from datetime import timedelta
 
 from .domain import NEARBY_PLACES, PLACES, TZ, normalized, parse_date
 
+EDITIONS = ('weekly', 'monthly', 'weekend', 'free_week')
+
 
 def locality(item):
     # A verified venue takes precedence over a district mentioned incidentally
@@ -58,10 +60,11 @@ def prioritize(store, posts, at):
             service = item['category'] == 'outage' and start <= at + timedelta(days=1) and end > at
             if upcoming and (correction or service):
                 tier, timing = 0, 0
-        elif post.get('kind') in ('weekend', 'free_week'):
-            # The curated edition may take one existing daily slot, but never
-            # outrank warnings, cancellations or urgent public services.
-            tier, timing = 1, 0
+        elif post.get('kind') in EDITIONS:
+            # A curated edition takes one existing daily slot ahead of ordinary
+            # news, or it expires unseen as most October calendars did. It
+            # never outranks warnings, cancellations or urgent public services.
+            tier, timing = .5, 0
             refs = [i for i in items.values() if i.get('url') in post.get('source_urls', [])]
             item = min(refs, key=locality) if refs else {}
         # Prefer the applicable reminder to a duplicate announcement for the
