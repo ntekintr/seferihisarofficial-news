@@ -26,8 +26,8 @@ def test_live_long_concert_story_retains_date_venue_price_and_organizer(tmp_path
     # in the feed must not satisfy the story regression.
     # The actual story begins with the second brand header.
     headers=[i for i,(text,_) in enumerate(captured) if text=='SEFERİHİSAR']
-    assert len(headers)==2  # One content card per format; no caption-only appendix.
-    story=captured[headers[1]:]
+    assert len(headers)==4  # Measured, then drawn, once per format; no caption-only appendix.
+    story=captured[headers[3]:]
     value=' '.join(text for text,_ in story)
     for expected in ('24 Ekim 2026','20:30','Güzelbahçe Kültür Merkezi','Ücret: 500.00 TL','Urla Rotary Kulübü'):
         assert expected in value

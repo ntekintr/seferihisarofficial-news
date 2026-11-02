@@ -9,7 +9,7 @@ from PIL import Image
 from seferihisar.domain import parse_date
 from seferihisar.operations import failed, record_check, safe_result
 from seferihisar.security import validate_state
-from seferihisar.source_photos import SourcePhotos, MAX_READS, MAX_SOURCE_CHECKS
+from seferihisar.source_photos import SourcePhotos, MAX_SOURCE_CHECKS
 from seferihisar.store import Store
 from seferihisar.visual_match import MatchRejected
 
@@ -72,7 +72,8 @@ def test_empty_sources_have_their_own_bounded_check_limit(tmp_path, monkeypatch)
         assert photos.stats['deferred'] == 2
 
 
-def test_rejected_image_downloads_still_consume_existing_two_slots(tmp_path, monkeypatch):
+def test_rejected_image_downloads_still_consume_the_read_budget(tmp_path, monkeypatch):
+    monkeypatch.setattr('seferihisar.source_photos.MAX_READS', 2)
     with closing(Store(tmp_path/'state.sqlite')) as store:
         rows = [item(store, n) for n in range(3)]
         photos, fetcher = manager(store, tmp_path, monkeypatch)
@@ -82,7 +83,7 @@ def test_rejected_image_downloads_still_consume_existing_two_slots(tmp_path, mon
         monkeypatch.setattr('seferihisar.source_photos.validate_news_photo', reject)
         monkeypatch.setattr('seferihisar.visual_match.validate_headline_photo', reject)
         assert all(photos.image(row) is None for row in rows)
-        assert photos.reads == fetcher.image.call_count == fetcher.get.call_count == MAX_READS == 2
+        assert photos.reads == fetcher.image.call_count == fetcher.get.call_count == 2
         assert photos.stats['deferred'] == 1
         assert store.rows('SELECT * FROM source_photos') == []
 
