@@ -286,6 +286,60 @@ def validate_event_photo(data: bytes, expected: str) -> dict:
     return _validate_crops(data,expected,source_photo=True)
 
 
+# A photograph or generated scene must look more like its own description than
+# like a text graphic, logo, screenshot or blank frame.
+GRAPHIC_LABELS = ('a page of printed text', 'a graphic with large headline lettering',
+                  'a logo on a plain background', 'a screenshot of a website',
+                  'a blank solid colour image without objects')
+# A generated generic scene must also not drift into people or a skyline, or
+# back into the empty living room every 30 Oct person story became.
+SCENE_DISTRACTORS = GRAPHIC_LABELS + ('a portrait photograph of a person', 'a crowd of people',
+                                      'a city skyline with buildings', 'an abstract colourful pattern',
+                                      'a photograph of hanging red paper lanterns',
+                                      'a photograph of an empty living room with a sofa',
+                                      'a view of a city through a window')
+
+
+def described_scores(images: list[Image.Image], labels: tuple[str, ...]) -> list[list[float]]:
+    try:
+        torch, processor, model, _ = runtime()
+        with torch.inference_mode():
+            text = model.get_text_features(**processor(text=list(labels), padding=True, return_tensors='pt'))
+            text = text / text.norm(dim=-1, keepdim=True)
+            features = model.get_image_features(**processor(images=images, return_tensors='pt'))
+            features = features / features.norm(dim=-1, keepdim=True)
+            return (features @ text.T).tolist()
+    except Exception:
+        raise MatchUnavailable('Visual match unavailable') from None
+
+
+def validate_described(data: bytes, description: str, distractors=SCENE_DISTRACTORS, *,
+                       source_photo=False, minimum=0.24) -> dict:
+    """Check pixels against their own reviewed description, not a fixed topic.
+
+    The same three card crops and alternative-class margin as the fixed
+    taxonomy apply; only the positive text comes from the reviewed brief.
+    """
+    import math
+    if not isinstance(description, str) or not 10 <= len(description) <= 160:
+        raise MatchRejected('Invalid visual description')
+    try:
+        with Image.open(io.BytesIO(data)) as image:
+            image.load()
+            crops = [ImageOps.pad(image.convert('RGB'), (224, 224), Image.Resampling.LANCZOS, color='#777777') if source_photo
+                     else ImageOps.fit(image.convert('RGB'), size, Image.Resampling.LANCZOS)
+                     for size in ((1080, 436), (1080, 506), (1080, 586))]
+    except Exception:
+        raise MatchUnavailable('Visual match unavailable') from None
+    rows = described_scores(crops, (description, *distractors))
+    if len(rows) != 3 or any(len(row) != 1 + len(distractors) or not all(
+            type(value) in (int, float) and math.isfinite(value) for value in row) for row in rows):
+        raise MatchUnavailable('Visual match unavailable')
+    if not all(row[0] >= minimum and row[0] - max(row[1:]) >= 0.015 for row in rows):
+        raise MatchRejected('Visual description mismatch')
+    return {'subject': description, 'version': VERSION, 'image_sha256': hashlib.sha256(data).hexdigest()}
+
+
 def _validate_occasion(data: bytes, expected: str) -> dict:
     """The publisher bound this file to the exact article; it must be a photograph."""
     from .image_safety import IllustrationCheckUnavailable, IllustrationTextRejected, validate_photo_not_text_graphic
@@ -300,7 +354,11 @@ def _validate_occasion(data: bytes, expected: str) -> dict:
     try:
         with Image.open(io.BytesIO(data)) as image:
             image.load()
-            crops = [ImageOps.pad(image.convert('RGB'),size,Image.Resampling.LANCZOS,color='#06244a')
+            # A portrait frame padded to a wide card scores as a blank colour band:
+            # real road photos failed this way on 1 Nov (Rampaya Bariyer). OCR
+            # has already read the whole file, so a crop hides no lettering.
+            crops = [ImageOps.fit(image.convert('RGB'),size,Image.Resampling.LANCZOS) if image.height > image.width
+                     else ImageOps.pad(image.convert('RGB'),size,Image.Resampling.LANCZOS,color='#06244a')
                      for size in ((1080, 436), (1080, 506), (1080, 586))]
         results = photo_scores(crops)
         if len(results) != 3 or not all(occasion_accepted(result, expected) for result in results):

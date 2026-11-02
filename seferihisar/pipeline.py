@@ -14,7 +14,7 @@ from .domain import now, parse_date
 from .editor import ai_priority, verify
 from .render import render_post
 from .illustrations import Illustrator, CALENDAR_ITEM_ID
-from .media_caption import generated_image_caption
+from .media_caption import generated_image_caption, photo_credit_caption
 from .schedule import prepare
 from .store import Store
 from .timeliness import with_validity
@@ -187,7 +187,7 @@ def _export(store: Store, public_dir: Path, sources: list[dict], at: datetime, d
     # Public output always rebuilt; removed/sensitive/superseded images cannot linger.
     shutil.rmtree(public_dir / "media", ignore_errors=True)
     from .selection import prioritize
-    # Spend the unchanged two-attempt budgets on the next editorial candidates,
+    # Spend the bounded photo and generation budgets on the next editorial candidates,
     # before distant/old queue entries. Frozen cards retain their stored bytes.
     pending = [p for p in parents if p['status']=='prepared']
     from .visual_policy import image_reason
@@ -219,6 +219,8 @@ def _export(store: Store, public_dir: Path, sources: list[dict], at: datetime, d
                 # assets. Clean legacy caption notes only before a claim.
                 generated = bool(illustrations) if illustrator.enabled else bool(post.get("illustration_keys"))
                 post["caption"] = generated_image_caption(post["caption"], generated)
+                if photos.enabled:
+                    post["caption"] = photo_credit_caption(post["caption"], photos.credit(post))
                 rows = store.rows("SELECT payload FROM posts WHERE id=? AND status='prepared'", (post["id"],))
                 if rows:
                     payload = json.loads(rows[0]["payload"])
