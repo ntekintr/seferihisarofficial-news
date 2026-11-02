@@ -91,7 +91,7 @@ def news_subjects(item):
         (r'\b(?:otopark\w*)\b', 'parking', 'parking'),
         (r'\b(?:otobüs\w*|eshot|dolmuş\w*|toplu ulaşim)\b', 'bus', 'bus'),
         (r'\b(?:asfalt\w*|yol çaliş\w*|yol yap\w*|yol onar\w*|yol(?:u|lar\w*)?\b.{0,40}\b(?:yenilen\w*|yenile\w*|bakim\w*)|cadde\w*.*(?:yenile\w*|değişim\w*))\b', 'roadworks', 'maintenance_tools'),
-        (r'\b(?:trafik|çevre yolu|kavşak\w*)\b', 'traffic', 'traffic'),
+        (r'\b(?:trafi[kğ]\w*|çevre ?yol\w*|kavşak\w*|ulaşim\w*|yol açil\w*)\b', 'traffic', 'traffic'),
         (r'\b(?:elektrik\w*)\b', 'electrical', 'electrical'),
         (r'\b(?:su kesinti\w*|su ariza\w*|su hatt\w*)\b', 'water_utility', 'water_utility'),
         (r'\b(?:hava durumu|meteoroloji\w*|yağmur\w*|yağiş\w*|sağanak\w*)\b', 'weather_sky', 'weather_sky'),
@@ -117,7 +117,6 @@ def news_subjects(item):
             return photo, generated
     fallback = {
         'education': ('education', 'education'), 'health': ('health_workspace', 'health_workspace'),
-        'public': ('public_service', 'public_service'), 'municipality': ('public_service', 'public_service'),
         'weather': ('weather_sky', 'weather_sky'), 'tourism': ('landscape', 'travel_gear'),
         'food': ('food', 'food'), 'market': ('market', 'market'),
         'concert': ('concert', 'concert'), 'theatre': ('theatre', 'theatre'),

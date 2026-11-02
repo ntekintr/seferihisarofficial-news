@@ -20,6 +20,7 @@ LEFT, RIGHT = 80, 1000
 # One size per role on every card. Only a headline or essential facts that cannot
 # fit step down once; a shortened summary stays at its size.
 SCALE = {'heading': (52, 44), 'date': (34,), 'details': (30, 28), 'summary': (30,), 'note': (26,), 'label': (28, 24)}
+MAX_HERO_GROWTH = 240
 # Claimed v1 cards keep the per-card fitting they were published with.
 FITTED_SCALE = {'heading': (76, 70, 64, 58, 54, 50, 46, 42), 'date': (40, 36, 34, 32, 30),
                 'details': (36, 34, 32, 30, 28), 'summary': (40, 38, 36, 34, 32, 30),
@@ -121,10 +122,19 @@ def _event_body(value):
     return '\n'.join(venues + fees + organizers)
 
 
-def editorial_card(title: str, body: str, category: str, target: Path, *, story=False, index='',
-                   illustration=None, preview=False, event_details=False, photo_centering=(0.5, 0.5),
-                   story_details=False, source_photo=False, caption_note=False, brand_version=BRAND_VERSION,
-                   fixed_scale=True):
+def editorial_card(title: str, body: str, category: str, target: Path, *, fill_hero=False, **options):
+    image, spare = _compose(title, body, category, **options)
+    if fill_hero and options.get('illustration') is not None and spare > 0:
+        # Every field moves down by the same distance, so the second pass wraps
+        # exactly as the first; only the picture grows.
+        image, _ = _compose(title, body, category, grow=min(spare, MAX_HERO_GROWTH), **options)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    image.save(target, 'JPEG', quality=95, subsampling=0)
+
+
+def _compose(title, body, category, *, story=False, index='', illustration=None, preview=False,
+             event_details=False, photo_centering=(0.5, 0.5), story_details=False, source_photo=False,
+             caption_note=False, brand_version=BRAND_VERSION, fixed_scale=True, grow=0):
     sizes = SCALE if fixed_scale else FITTED_SCALE
     width, height = 1080, 1920 if story else 1350
     top, bottom = (260, 1600) if story else (0, 1260)
@@ -145,7 +155,7 @@ def editorial_card(title: str, body: str, category: str, target: Path, *, story=
 
     hero_bottom = header_bottom + 20
     if illustration is not None:
-        hero_bottom = top + (650 if story and story_details else 730 if story else 580)
+        hero_bottom = top + (650 if story and story_details else 730 if story else 580) + grow
         with Image.open(illustration) as original:
             photo = (ImageOps.pad(original.convert('RGB'), (width, hero_bottom - header_bottom),
                                  method=Image.Resampling.LANCZOS, color=NAVY) if source_photo
@@ -175,7 +185,7 @@ def editorial_card(title: str, body: str, category: str, target: Path, *, story=
     heading_height = (180 if event_details else 228) if photo else 350
     # Footer and note are reserved before fitting any content. The title can
     # never borrow space from the following date, body or caption note.
-    content_bottom = brand_top - 28 - (52 if caption_note else 0)
+    content_bottom = brand_top - 28 - (52 if caption_note else 0) + grow
     title_end = fields.block(display_title,
                             (LEFT, title_top, RIGHT, min(title_top + heading_height, content_bottom - 150)),
                             sizes['heading'], 'heading',
@@ -208,8 +218,8 @@ def editorial_card(title: str, body: str, category: str, target: Path, *, story=
         content_end = fields.block(content, (LEFT, y, RIGHT, content_bottom),
                                    sizes['summary'], 'summary', max_lines=7 if not photo else 5)
     if caption_note:
-        fields.block(CAPTION_NOTE, (LEFT, content_end + 12, RIGHT, brand_top - 24),
-                     sizes['note'], 'note', color=TEAL, complete=True)
+        content_end = fields.block(CAPTION_NOTE, (LEFT, content_end + 12, RIGHT, brand_top - 24 + grow),
+                                   sizes['note'], 'note', color=TEAL, complete=True)
     draw.line((LEFT, brand_top - 8, RIGHT, brand_top - 8), fill=TURQUOISE, width=2)
     fields.line('@seferihisarofficial', LEFT, brand_top + 23, 23, IVORY, 'handle',
                 (LEFT, brand_top, RIGHT, bottom), True)
@@ -218,5 +228,4 @@ def editorial_card(title: str, body: str, category: str, target: Path, *, story=
         fields.line(index, RIGHT - draw.textlength(index, font=face), brand_top + 23, 23, ORANGE,
                     'page', (LEFT, brand_top, RIGHT, bottom))
     _footer_band(image)
-    target.parent.mkdir(parents=True, exist_ok=True)
-    image.save(target, 'JPEG', quality=95, subsampling=0)
+    return image, brand_top - 24 - content_end

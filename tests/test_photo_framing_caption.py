@@ -46,11 +46,12 @@ def test_yoga_floor_subject_is_visible_without_changing_claimed_photo_frames(tmp
     render_post(post,tmp_path/'public',{0:source})
     # Bottom anchoring retains the mat in feed and story. Centered frames
     # exclude it; published media retains that established crop unchanged.
-    for fmt,point in [('feed',(500,560)),('story',(500,880 if status=='prepared' else 960))]:
+    for fmt,point in [('feed',(500,560)),('story',(500,960))]:
         with Image.open(tmp_path/'public/media'/post['id']/(fmt+'-1.jpg')) as card:
-            pixel=card.getpixel(point)
-            if center[1]==1.0:assert pixel[0]>150 and pixel[1]<30
-            else:assert min(pixel)>220
+            # A prepared card's picture also grows into any unused text space.
+            if center[1]==1.0:
+                assert any(r>150 and g<30 for r,g,_ in (card.getpixel((500,y)) for y in range(point[1]-400,point[1]+400,10)))
+            else:assert min(card.getpixel(point))>220
 
 
 def test_theatre_named_yoga_keeps_centered_frame_and_branding(tmp_path,monkeypatch):

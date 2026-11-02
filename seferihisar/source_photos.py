@@ -4,7 +4,7 @@ import json
 import os
 import re
 from datetime import timedelta
-from urllib.parse import urljoin,urlsplit
+from urllib.parse import unquote,urljoin,urlsplit
 
 import requests
 from bs4 import BeautifulSoup
@@ -14,13 +14,17 @@ from .collect import Fetcher,structured
 from .domain import canonical,normalized,parse_date
 from .illustrations import clean_image
 from .security import public_url,contains_secret
-from .source_photo_data import VERSION,EVENT_VERSION,key,validate_record,valid_bindings,MAX_CACHE_BYTES,MAX_CACHED_IMAGES,approved_image_url,IMAGE_ORIGINS,delivery_sources,reviewed_ticket_source,same_event_artwork
+from .source_photo_data import VERSION,EVENT_VERSION,key,validate_record,valid_bindings,MAX_CACHE_BYTES,MAX_CACHED_IMAGES,approved_image_url,IMAGE_ORIGINS,delivery_sources,reviewed_ticket_source,same_event_artwork,own_photo,ARTICLE_PHOTO,STORY_VERSION
 from .visual_gate import fingerprint
 from .visual_match import validate_news_photo,MatchRejected,MatchUnavailable
 from .image_safety import IllustrationCheckUnavailable
 
-MAX_READS=2
-MAX_SOURCE_CHECKS=6
+# One run renews every draft's photograph; two reads left most drafts to a
+# generated scene, and the same-story search needs its own reads.
+MAX_READS=6
+MAX_SOURCE_CHECKS=12
+MAX_STORY_REPORTS=3
+MAX_ARTICLE_IMAGES=2
 ARCHIVE=re.compile(r'\b(?:ar[şs]iv\w*|temsili\w*|illustration\w*|ill[uü]strasyon\w*|stok|stock|yapay zek[aâ]\w*|ai generated)\b')
 
 
@@ -150,14 +154,15 @@ def candidate_urls(html,final_url,item,source,*,feed_html=None):
     # editorial collage. The same strict subject check still accepts/rejects
     # each actual file; choosing a URL never grants visual approval.
     if inline_images:
-        return inline_images[:MAX_READS]
+        return inline_images[:MAX_ARTICLE_IMAGES]
     primary=soup.select_one('meta[property="og:image"][content]')
     if primary:
         url=urljoin(final_url,primary['content'])
         if url in images:return [url]
         # A WordPress featured img can be a resized derivative of the exact
         # OpenGraph file. Match the same host/path, never filename alone.
-        base=lambda value:re.sub(r'-\d{2,5}x\d{2,5}(?=\.(?:jpe?g|png|webp)$)','',canonical(value),flags=re.I)
+        # Publishers may percent-encode the OpenGraph copy of the same address.
+        base=lambda value:re.sub(r'-\d{2,5}x\d{2,5}(?=\.(?:jpe?g|png|webp)$)','',canonical(unquote(value)),flags=re.I)
         variants=[image for image in images if base(image)==base(url)]
         if (approved_image_url(item['source_id'], item['url'], url)
                 and len(variants)==1):return [variants[0]]
@@ -227,6 +232,8 @@ class SourcePhotos:
         if instagram_checks is not None:self.stats['instagram']=instagram_checks
         self.reads=0
         self.results={}
+        self.items={}
+        self.story_checked=set()
 
     def failure(self,stage,*,unavailable=False):
         # Enumerated pipeline stages, never exception/provider text or URLs.
@@ -257,6 +264,70 @@ class SourcePhotos:
                     self.store.db.execute('DELETE FROM source_photos WHERE id=?',(row['id'],))
 
     def image(self,item):
+        return self.article_image(item) or self.story_image(item)
+
+    def news_urls(self,item,source):
+        html,final=self.fetcher.get(item['url'])
+        feed_html=None
+        if source.get('photo_identity_reader')=='rss-html-v1' and source.get('kind')=='rss':
+            feed_html,feed_url=self.fetcher.get(source['url'])
+            if canonical(feed_url)!=canonical(source['url']):
+                raise ValueError('Source feed redirected')
+        return candidate_urls(html,final,item,source,feed_html=feed_html)
+
+    def story_image(self,item):
+        """A real photograph from another source's report of this same story."""
+        if item['id'] in self.story_checked:return self.results.get(item['id'])
+        self.story_checked.add(item['id'])
+        if item.get('kind')!='news' or contains_secret(item) or not (expected:=photo_subject(item)):return None
+        from .same_story import reports
+        from .source_photo_retry import active
+        found=reports(item,self.items.values())
+        for donor in found[:MAX_STORY_REPORTS]:
+            source=self.sources.get(donor['source_id'])
+            if (not source or source['kind'] not in ('html','rss') or contains_secret(donor)
+                    or not public_url(donor['url']) or urlsplit(donor['url']).hostname!=urlsplit(source['url']).hostname
+                    or active(self.store,donor,self.at)):
+                continue
+            if self.reads>=MAX_READS or self.stats['source_checks']>=MAX_SOURCE_CHECKS:
+                self.stats['deferred']+=1;return None
+            self.stats['source_checks']+=1
+            try:
+                if self.fetcher is None:
+                    self.fetcher=Fetcher(list(self.sources.values())+delivery_sources(self.sources))
+                urls=self.news_urls(donor,source)
+            except (requests.RequestException,ValueError,TypeError,KeyError,OSError):
+                self.failure('source_binding');continue
+            for url in urls:
+                if self.reads>=MAX_READS:
+                    self.stats['deferred']+=1;return None
+                self.reads+=1
+                try:
+                    raw,final_image=self.fetcher.image(url)
+                    if final_image!=url:raise ValueError('Image redirected')
+                    image=cleaned_photo(raw)
+                    validate_news_photo(image,ARTICLE_PHOTO)
+                    evidence={'version':STORY_VERSION,'source_id':item['source_id'],'source_url':item['url'],
+                              'image_url':url,'title':item['title'],**identity_dates(item),
+                              'checked_at':self.at.isoformat(),'subject':expected,'sha256':fingerprint(image),
+                              'photo_source_id':donor['source_id'],'photo_source_name':donor['source_name'],
+                              'photo_url':donor['url']}
+                    if result:=self.save(item,evidence,image,shared={other['id'] for other in found}):
+                        return result
+                except (MatchUnavailable,IllustrationCheckUnavailable):
+                    self.failure('visual_subject',unavailable=True);return None
+                except (requests.RequestException,ValueError,TypeError,KeyError,OSError):
+                    self.failure('visual_subject')
+        return None
+
+    def credit(self,post):
+        """The publisher to name when this card's photograph came from another source."""
+        for photo in post.get('source_photo_keys',{}).values():
+            for row in self.store.rows('SELECT payload FROM source_photos WHERE id=?',(photo,)):
+                return json.loads(row['payload']).get('photo_source_name')
+        return None
+
+    def article_image(self,item):
         if item['id'] in self.results:return self.results[item['id']]
         self.results[item['id']]=None
         source=self.sources.get(item['source_id']);expected=photo_subject(item)
@@ -275,7 +346,10 @@ class SourcePhotos:
                 if (evidence['source_id']!=item['source_id'] or evidence['title']!=item['title']
                         or evidence['published_at']!=item['published_at'] or evidence['subject']!=expected):
                     raise ValueError('Instagram photo changed')
-                validate_news_photo(image,expected)
+                try:
+                    validate_news_photo(image,expected)
+                except MatchRejected:
+                    validate_news_photo(image,ARTICLE_PHOTO)
                 return self.save(item,evidence,image)
             except MatchUnavailable:self.stats['unavailable']+=1
             except (ValueError,TypeError,KeyError,OSError):self.stats['rejected']+=1
@@ -315,6 +389,7 @@ class SourcePhotos:
         except (requests.RequestException,ValueError,TypeError,KeyError,OSError):
             self.failure(stage);remember(self.store,item,self.at,stage);return None
         last_failure=None
+        held=[]
         for url in urls:
             # Every attempted image, including network/quality failures,
             # consumes one of the existing two image slots for this run.
@@ -345,35 +420,54 @@ class SourcePhotos:
                         try:
                             validate_headline_photo(image,expected,item['title'])
                         except (ValueError,IllustrationCheckUnavailable):
+                            if expected!=ARTICLE_PHOTO:held.append((url,image))
                             raise rejection
                 stage='cache_binding'
-                sha=fingerprint(image)
-                for previous in self.store.rows('SELECT item_id,payload FROM source_photos WHERE item_id!=?',(item['id'],)):
-                    old=json.loads(previous['payload'])
-                    if (old.get('image_url')==url or old['sha256']==sha) and not same_event_artwork(old,item):
-                        raise ValueError('Photograph reused by another article')
-                evidence={'version':EVENT_VERSION if item.get('kind')=='event' else VERSION,'source_id':item['source_id'],'source_url':item['url'],
-                          'image_url':url,'title':item['title'],**identity_dates(item),
-                          'checked_at':self.at.isoformat(),'subject':expected,'sha256':sha}
-                return self.save(item,evidence,image)
+                return self.bind(item,url,image,expected)
             except (MatchUnavailable,IllustrationCheckUnavailable):
                 # A missing checker cannot improve on another photograph.
                 self.failure(stage,unavailable=True);last_failure='checker_unavailable';break
             except (requests.RequestException,ValueError,TypeError,KeyError,OSError):
                 self.failure(stage)
                 last_failure='poster_delivery_v2' if stage=='image_read' and reviewed_ticket_source(source) else stage
+        # No picture matched its topic label. The publisher's own photograph of
+        # this exact article still comes first (owner's rule, 1 Nov): it needs
+        # only to be a real photograph, ahead of any other source or a scene.
+        for url,image in held:
+            try:
+                validate_news_photo(image,ARTICLE_PHOTO)
+                return self.bind(item,url,image,expected)
+            except (MatchUnavailable,IllustrationCheckUnavailable):
+                self.failure('visual_subject',unavailable=True);last_failure='checker_unavailable';break
+            except (ValueError,TypeError,KeyError,OSError):
+                continue
         if last_failure:remember(self.store,item,self.at,last_failure)
         return None
 
-    def save(self,item,evidence,image):
+    def bind(self,item,url,image,expected):
+        sha=fingerprint(image)
+        for previous in self.store.rows('SELECT item_id,payload FROM source_photos WHERE item_id!=?',(item['id'],)):
+            old=json.loads(previous['payload'])
+            if ((old.get('image_url')==url or old['sha256']==sha) and not same_event_artwork(old,item)
+                    and not own_photo(old,item)):
+                raise ValueError('Photograph reused by another article')
+        evidence={'version':EVENT_VERSION if item.get('kind')=='event' else VERSION,'source_id':item['source_id'],'source_url':item['url'],
+                  'image_url':url,'title':item['title'],**identity_dates(item),
+                  'checked_at':self.at.isoformat(),'subject':expected,'sha256':sha}
+        return self.save(item,evidence,image)
+
+    def save(self,item,evidence,image,*,shared=()):
         photo=key(item['id'],item['revision'],evidence)
         payload=json.dumps(evidence,ensure_ascii=False)
         validate_record(photo,item['id'],item['revision'],payload,image)
-        for previous in self.store.rows('SELECT item_id,payload FROM source_photos WHERE item_id!=?',(item['id'],)):
-            old=json.loads(previous['payload'])
-            if (old['sha256']==evidence['sha256'] or (evidence.get('media_id') and old.get('media_id')==evidence['media_id'])) and not same_event_artwork(old,item):
-                raise ValueError('Photograph reused by another item')
         frozen=self.frozen()
+        for previous in self.store.rows('SELECT id,item_id,payload FROM source_photos WHERE item_id!=?',(item['id'],)):
+            old=json.loads(previous['payload'])
+            if ((old['sha256']==evidence['sha256'] or (evidence.get('media_id') and old.get('media_id')==evidence['media_id']))
+                    and not same_event_artwork(old,item) and not own_photo(old,item)
+                    # One picture never appears on two published cards.
+                    and not (previous['item_id'] in shared and previous['id'] not in frozen)):
+                raise ValueError('Photograph reused by another item')
         with self.store.db:
             # Only unreferenced draft cache rows may be evicted. Frozen
             # pixels and evidence survive every later research/export.
@@ -402,6 +496,7 @@ class SourcePhotos:
             return assignments
         if not self.enabled or post['status']!='prepared' or not post.get('item_id'):return assignments
         bindings={}
+        self.items=items
         item=items.get(post.get('item_id'))
         if item and item['revision']==post.get('revision') and (result:=self.image(item)):
             photo,path=result

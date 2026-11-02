@@ -13,6 +13,7 @@ from seferihisar.visual_match import MatchRejected
 
 
 def test_persisted_rejections_leave_next_run_for_later_photograph(tmp_path, monkeypatch):
+    monkeypatch.setattr('seferihisar.source_photos.MAX_READS',2)
     path=tmp_path/'state.sqlite'
     with closing(Store(path)) as store:
         rows=[item(store,n) for n in range(3)]

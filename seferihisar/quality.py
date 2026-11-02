@@ -95,9 +95,11 @@ def publication_copy_reason(post: dict, items: dict) -> str | None:
     if item.get('kind') != 'news' or news_editorial_reason(item):
         return 'editorial_review_required'
     from .editor import headline, caption
+    from .media_caption import without_photo_credit
     from .schedule import slide_body
     title = headline(item,'news')
-    if (post.get('title') != title or post.get('caption') != caption(item,title)
+    if (post.get('title') != title
+            or without_photo_credit(post.get('caption', '')) != without_photo_credit(caption(item,title))
             or post.get('slides') != [{'title':title,'body':slide_body(item)}]):
         return 'editorial_copy_stale'
     return None

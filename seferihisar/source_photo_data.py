@@ -13,6 +13,10 @@ EVENT_VERSION='source-photo-event-v1'
 FIELDS={'version','source_id','source_url','image_url','title','published_at','checked_at','subject','sha256'}
 INSTAGRAM_FIELDS=(FIELDS-{'image_url'})|{'media_id'}
 EVENT_FIELDS=(FIELDS-{'published_at'})|{'start','end'}
+# Another source's photograph of this same story. The record stays bound to the
+# story that shows it and names the page and publisher the picture came from.
+STORY_VERSION='source-photo-story-v1'
+STORY_FIELDS=FIELDS|{'photo_source_id','photo_source_name','photo_url'}
 # Current news outside the reviewed topics: the publisher's own photo of this
 # exact article, checked as a photograph rather than against a topic label.
 ARTICLE_PHOTO='article_photo'
@@ -50,8 +54,9 @@ def validate_evidence(value):
     if not isinstance(value,dict):raise ValueError('Invalid source photo evidence')
     instagram=value.get('version')==INSTAGRAM_VERSION
     event=value.get('version')==EVENT_VERSION
-    if (set(value)!=(EVENT_FIELDS if event else INSTAGRAM_FIELDS if instagram else FIELDS)
-            or value['version'] not in (VERSION,INSTAGRAM_VERSION,EVENT_VERSION)
+    story=value.get('version')==STORY_VERSION
+    if (set(value)!=(EVENT_FIELDS if event else INSTAGRAM_FIELDS if instagram else STORY_FIELDS if story else FIELDS)
+            or value['version'] not in (VERSION,INSTAGRAM_VERSION,EVENT_VERSION,STORY_VERSION)
             or value['subject'] not in (EVENT_SUBJECTS if event else SUBJECTS)):
         raise ValueError('Invalid source photo evidence')
     assert_no_secrets(value)
@@ -62,6 +67,10 @@ def validate_evidence(value):
                        for k in (('checked_at','start','end') if event else ('checked_at','published_at')))
             or not isinstance(value['sha256'],str) or not re.fullmatch(r'(?:[a-f0-9]{2}:){31}[a-f0-9]{2}',value['sha256'])):
         raise ValueError('Invalid source photo evidence')
+    if story and (not public_url(value['photo_url']) or len(value['photo_url'])>2048
+                  or not isinstance(value['photo_source_id'],str) or not re.fullmatch(r'[a-z0-9-]{1,80}',value['photo_source_id'])
+                  or not isinstance(value['photo_source_name'],str) or not 2<=len(value['photo_source_name'])<=120):
+        raise ValueError('Invalid same-story photograph identity')
     if event and datetime.fromisoformat(value['end']) < datetime.fromisoformat(value['start']):
         raise ValueError('Invalid event photograph interval')
     if instagram:
@@ -71,7 +80,8 @@ def validate_evidence(value):
                 or not isinstance(value['media_id'],str) or not re.fullmatch(r'\d{8,32}',value['media_id'])):
             raise ValueError('Invalid Instagram photograph identity')
     elif (not public_url(value['image_url']) or len(value['image_url'])>2048
-          or not approved_image_url(value['source_id'],value['source_url'],value['image_url'])):
+          or not approved_image_url(*((value['photo_source_id'],value['photo_url']) if story
+                                      else (value['source_id'],value['source_url'])),value['image_url'])):
         raise ValueError('Invalid article photograph identity')
     return value
 
@@ -125,6 +135,11 @@ def same_event_artwork(evidence,item):
     return (a.hostname==b.hostname=='www.bubilet.com.tr' and not a.query and not b.query
             and re.fullmatch(pattern,a.path) and re.fullmatch(pattern,b.path)
             and a.path.rsplit('/seans/',1)[0]==b.path.rsplit('/seans/',1)[0])
+
+
+def own_photo(evidence,item):
+    # Another story's card borrowed this file; it stays the publisher's own.
+    return evidence.get('version')==STORY_VERSION and evidence.get('photo_url')==item.get('url')
 
 
 def photo_subject_for_reuse(item):

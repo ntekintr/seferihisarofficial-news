@@ -63,13 +63,17 @@ def test_other_verified_scene_keys_remain_exactly_v5(store, event, at, category)
 @pytest.mark.parametrize(('category', 'title'), [
     ('municipality', 'Seferihisar otopark projesi'),
     ('family', 'Engelli gençlere bağımsız yaşam ve istihdam desteği'),
-    ('news', 'Seferihisar festival hazırlıkları'),
 ])
 def test_custom_news_briefs_keep_v5_even_when_title_mentions_festival(store, event, at, category, title):
     event['title'] = title
     item = saved_scene(store, event, at, category, 'news')
     assert scene_version(item) == 'editorial-photo-v5'
     assert image_key(item) == old_key(item)
+
+
+def test_unclassified_news_takes_the_described_scene(store, event, at):
+    event['title'] = 'Seferihisar festival hazırlıkları'
+    assert scene_version(saved_scene(store, event, at, 'news', 'news')) == 'editorial-article-scene-v14'
 
 
 @pytest.mark.parametrize(('category', 'positive_cue'), [

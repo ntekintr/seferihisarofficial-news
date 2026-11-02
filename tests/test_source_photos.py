@@ -154,6 +154,7 @@ def test_preparation_retains_binding_and_publisher_checks_evidence_freshness_and
 
 
 def test_each_refresh_is_separate_evidence_and_network_budget_is_bounded(store,tmp_path,monkeypatch):
+    monkeypatch.setattr('seferihisar.source_photos.MAX_READS',2)
     item,post=seed(store);photos,fetcher=manager(store,tmp_path,monkeypatch)
     first=photos.for_post(post,{item['id']:item});old_key=post['source_photo_keys']['0']
     with store.db:store.db.execute('UPDATE posts SET payload=?',(json.dumps(post),))
