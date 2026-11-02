@@ -4,6 +4,22 @@ Son gözden geçirme: **26 Ekim 2026**. Bu dosya kod haritası ve kalıcı çal�
 notudur. Anlık sağlık/teslim kanıtı zaman damgalı çıktılardan alınır; burada bir
 kez başarılı olması sonraki ay kesintisiz çalışacağı anlamına gelmez.
 
+### 1 Kasım: önce gerçek fotoğraf, sonra aynı haberin diğer kaynakları
+
+Sıra artık şöyle: haberin kendi fotoğrafı; aynı haberi yazan başka kaynağın fotoğrafı;
+habere özel yapay zekâ sahnesi. Hiçbiri olmazsa gönderi görsel bekler.
+
+- Haberin kendi fotoğrafı önce konu etiketiyle denenir. Etiket tutmazsa yalnızca
+  gerçek fotoğraf olup olmadığına bakılır (`SourcePhotos.bind`).
+- `same_story.reports` aynı haberi kaynak listesindeki diğer kayıtlarda arar: en az 7
+  ortak ayırt edici kök ve başlıkta en az 3 eşleşme. Kayıt birleştirmez; alınan
+  fotoğraf `source-photo-story-v1` olarak saklanır, açıklamaya `Fotoğraf: <kaynak>`
+  yazılır. Bir fotoğraf iki yayımlanmış kartta kullanılmaz.
+- Masa ve boş pano sahnesi kaldırıldı. Belediye haberleri `article_scenes` ile
+  yazılan sahneye gider; yargıç puanı 7'nin altındaysa görsel üretilmez.
+- Kart metni bütün cümlelerden oluşur (`schedule.card_summary`), "Dr." gibi
+  kısaltmalar cümle sonu sayılmaz. Kısa metinde boşluğu görsel doldurur (`editorial-cream-v3`).
+
 ### 1 Kasım: takvimler feed'de yer buluyor
 
 `weekly`, `monthly`, `weekend` ve `free_week` en alttaki sıradaydı; haber olan her

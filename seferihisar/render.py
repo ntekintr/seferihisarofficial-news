@@ -10,7 +10,7 @@ from PIL import Image, ImageDraw, ImageFont, ImageOps
 from .domain import CATEGORIES
 from .editor import event_activity, event_type_label, news_type_label
 from .text_quality import TextRenderError, plain_display, ensure_glyphs
-from .card_layout import CAPTION_NOTE, fixed_scale, inline_note, editorial
+from .card_layout import CAPTION_NOTE, filled_hero, fixed_scale, inline_note, editorial
 from .brand import VERSION as BRAND_VERSION, logo_path, version_for
 from .publication_policy import story_only
 
@@ -172,7 +172,7 @@ def card(title: str, body: str, category: str, target: Path, story: bool = False
          event_details: bool = False, photo_centering: tuple[float, float] = (0.5, 0.5), compact: bool = False,
          legacy_outage: bool = False, story_details: bool = False, text_review: bool = False, source_photo: bool = False,
          caption_note: bool = False, brand_version: str = BRAND_VERSION, editorial_layout: bool = False,
-         one_scale: bool = True):
+         one_scale: bool = True, fill_hero: bool = False):
     """Fixed branding and a per-item illustration, never a shared news scene."""
     if editorial_layout:
         from .editorial_render import editorial_card
@@ -180,7 +180,7 @@ def card(title: str, body: str, category: str, target: Path, story: bool = False
                               illustration=illustration, preview=preview, event_details=event_details,
                               photo_centering=photo_centering, story_details=story_details,
                               source_photo=source_photo, caption_note=caption_note, brand_version=brand_version,
-                              fixed_scale=one_scale)
+                              fixed_scale=one_scale, fill_hero=fill_hero)
     width, height = 1080, 1920 if story else 1350
     block = partial(text_block, strict=text_review)
     top, bottom = (260, 1600) if story else (0, 1260)
@@ -316,7 +316,7 @@ def render_post(post: dict, public_dir: Path, illustrations: dict[int, Path] | N
                  # A story-only card has no feed post whose caption it could point to.
                  caption_note=note and i==0 and not (fmt == 'story' and mutable and story_only(post)),
                  brand_version=version_for(post), editorial_layout=editorial(post),
-                 one_scale=fixed_scale(post))
+                 one_scale=fixed_scale(post), fill_hero=filled_hero(post))
             assets[fmt].append(relative)
     return assets
 

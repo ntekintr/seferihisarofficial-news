@@ -183,6 +183,13 @@ def queue_item(store: Store, item: dict, kind: str, due: datetime, at: datetime)
                          (json.dumps(post, ensure_ascii=False), key, item["revision"]))
 
 
+# A title, an initial or an ordinal takes a full stop mid-sentence: "Başkan Dr.
+# Cemil Tugay" reached a card as "Başkan Dr." on 1 Nov.
+NOT_A_SENTENCE_END = re.compile(r'(?:\b(?:dr|prof|doç|op|av|uzm|öğr|gör|arş|yrd|alb|mah|cad|sok|bul|no|tel|vb|vs|bkz|sn|ltd|şti)'
+                                r'|\b\w|\d)\.$', re.I)
+CARD_SUMMARY = 280
+
+
 def card_location(item: dict) -> str | None:
     """Use the named venue; leave its explicit street address in the caption."""
     location = event_metadata.location(item)
@@ -196,11 +203,18 @@ def card_location(item: dict) -> str | None:
     return location
 
 
+def card_summary(body: str) -> str:
+    """Whole sentences up to the card's five lines; the caption keeps the rest."""
+    if len(body) <= CARD_SUMMARY and re.search(r'[.!?…]["”’)]?$', body):
+        return body
+    endings = [match.end() for match in re.finditer(r'[.!?…]["”’)]?(?=\s|$)', body[:CARD_SUMMARY])
+               if match.end() >= 80 and not NOT_A_SENTENCE_END.search(body[:match.end()])]
+    return body[:endings[-1]] if endings else excerpt(body, CARD_SUMMARY)
+
+
 def slide_body(item: dict) -> str:
     if item["kind"] == "news":
-        body = news_body(item)
-        endings = [match.end() for match in re.finditer(r'[.!?](?=\s|$)', body[:300]) if match.end() >= 80]
-        return body[:endings[min(1,len(endings)-1)]] if endings else excerpt(body, 300)
+        return card_summary(news_body(item))
     if item['category']=='outage':
         return event_date_label(item)+'\n\nEtkilenen bölge: '+(item.get('location') or 'Açıklanmadı')+'\n\nMahalle ve sokak ayrıntıları için resmî duyuruyu kontrol edin.'
     details = [event_date_label(item)]
