@@ -116,6 +116,7 @@ def test_issue_lists_silent_readers_and_updates_when_the_set_changes(at):
 
 def test_known_cloud_blocks_and_seasonal_reader_are_configured():
     assert SOURCES['bubilet']['quiet_acknowledged'] and SOURCES['bubilet-bademler']['quiet_acknowledged']
+    assert SOURCES['eshot']['quiet_acknowledged'] and SOURCES['eshot']['enabled']
     assert SOURCES['izmir-kultur']['quiet_after_hours'] == 720
     # Regional feed filtered to Seferihisar: 290 h between local items in October.
     assert SOURCES['izmir-belediye']['quiet_after_hours'] == 720
