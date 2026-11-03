@@ -64,7 +64,8 @@
     "article_selector": ".panel-body",
     "title_selector": ".panel-heading h3",
     "published_date_selector": ".panel-heading > span",
-    "body_text_fallback": true
+    "body_text_fallback": true,
+    "quiet_acknowledged": "1 Kasım 2026'dan beri bulut sunucularından her turda zaman aşımı; yerel okuma 200 ve okuyucu çalışıyor. Engel aşılmaz."
   },
   {
     "id": "izsu",
