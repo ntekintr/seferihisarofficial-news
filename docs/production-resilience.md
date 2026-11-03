@@ -39,7 +39,12 @@ yeniden bildirince de ilerler. `partial` kaynak okuma yapıyordur, sayılmaz.
 Süreli inceleme isteği (`requested_until`) dışarıda kalır. Seyrek kaynak
 `quiet_after_hours` ile kendi süresini alır (İzmir Kültür 720 saat). Aşılamayan
 bilinen engel `quiet_acknowledged` gerekçesiyle listede kalır ama uyarı vermez
-(Bubilet ve Bubilet Bademler bulut 403'ü).
+(Bubilet ve Bubilet Bademler bulut 403'ü). 3 Kasım denetiminde ESHOT da eklendi:
+1–3 Kasım'daki 100 turun hepsinde bulut okuması zaman aşımına düştü; aynı
+okuyucu yerelde 200 alıp iki listeyi ve ayrıntı sayfalarını okuyor. Aynı
+denetimde Seferihisar Yeni Haber sitesi Plesk giriş sayfasına yönleniyordu
+(3 Kasım 11:34'ten beri 404); bu yayıncı tarafı kesinti olduğu için kaynak
+açık ve onaysız bırakıldı, site dönerse kendiliğinden okunur.
 
 Denetçi onaylanmamış kayıt varsa `source_silent` kodunu ekler ve issue'da yalnız
 yapılandırma kimliğini, durumunu ve son yeni kayıt tarihini listeler; kaynak metni
