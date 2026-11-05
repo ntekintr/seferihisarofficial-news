@@ -75,6 +75,11 @@ def publication_copy_reason(post: dict, items: dict) -> str | None:
         if not current_copy(post, items):
             return 'event_metadata_stale'
     item = items.get(post.get('item_id'), {})
+    if item and post.get('session_ids'):
+        from .schedule import session_card
+        item = session_card(item, post, items)
+        if item is None:
+            return 'event_metadata_stale'
     if item.get('kind') == 'event' and item.get('category') != 'outage' and event_metadata.needs_review(item):
         if (post.get('caption') != caption(item, post.get('title', ''))
                 or post.get('slides') != [{'title': post.get('title'), 'body': slide_body(item)}]):

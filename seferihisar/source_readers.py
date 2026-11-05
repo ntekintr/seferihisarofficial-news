@@ -293,9 +293,34 @@ def collect_mgm(source, fetcher):
     return found,[],errors
 
 
+_MONTH_NAMES = [normalized(name) for name in MONTHS]
+_SESSION_ROW = re.compile(r'\b\d{1,2} (?:' + '|'.join(_MONTH_NAMES) + r') \w+ \d{2} \d{2} ')
+
+
+def shown_clock(page: str, start: datetime, venue: str) -> datetime | None:
+    """The clock of the session row buyers see: `21 Kasım Cumartesi · 20:00 Urla …`.
+
+    Biletinial's structured clock can run three hours ahead. On 5 Nov 2026 a
+    20:00 Urla play also appeared as 23:00 and a 14:00 one as 17:00, each a
+    session that did not exist. `page` is normalized page text.
+    """
+    place = normalized(venue)
+    if not place:
+        return None
+    for clock in (start, start - timedelta(hours=3)):
+        row = (rf'\b0?{clock.day} {_MONTH_NAMES[clock.month - 1]} \w+ '
+               rf'{clock:%H} {clock:%M} {re.escape(place)}\b')
+        if re.search(row, page):
+            return clock
+    return None
+
+
 def ticket_items(body, base, source):
     """Use actual session metadata, never a touring biography for geolocation."""
     soup = BeautifulSoup(body,'html.parser')
+    page = normalized(soup.get_text(' '))
+    # Only Biletinial prints a row per session; elsewhere the schema stands alone.
+    rows = urlsplit(base).hostname in ('biletinial.com', 'www.biletinial.com') and bool(_SESSION_ROW.search(page))
     records = []
     for script in soup.select('script[type="application/ld+json"]'):
         try:
@@ -336,6 +361,15 @@ def ticket_items(body, base, source):
         for item in items:
             if item['kind']!='event' or not public_url(item['url']) or urlsplit(item['url']).hostname!=urlsplit(source['url']).hostname:
                 continue
+            start = parse_date(item.get('start'))
+            if rows and item.get('time_known') and start:
+                shown = shown_clock(page, start, text(location.get('name')))
+                if shown and shown != start:
+                    # The visible row wins; the shifted record becomes that same session.
+                    shift = start - shown
+                    item['start'] = shown.isoformat()
+                    if parse_date(item.get('end')):
+                        item['end'] = (parse_date(item['end']) - shift).isoformat()
             # A real per-session ticket URL is a stable identity when available.
             session_url = offers.get('url','')
             if '/seans/' in session_url and public_url(session_url) and urlsplit(session_url).hostname==urlsplit(base).hostname:

@@ -73,7 +73,10 @@ def event_date_label(item: dict, include_time: bool = True) -> str:
     if multiple_days:
         value += ' – ' + end.strftime('%d.%m.%Y')
     if include_time:
-        if item.get('time_known'):
+        if item.get('time_known') and len(item.get('session_times') or ()) > 1:
+            times = item['session_times']
+            value += ' · Seanslar ' + ', '.join(times[:-1]) + ' ve ' + times[-1]
+        elif item.get('time_known'):
             value += (' · Başlangıç ' if multiple_days else ' · ') + start.strftime('%H:%M')
         else:
             value += ' · Saat açıklanmadı'
