@@ -1,3 +1,5 @@
+import json
+import subprocess
 from datetime import timedelta
 from types import SimpleNamespace
 from unittest.mock import Mock
@@ -5,7 +7,7 @@ from unittest.mock import Mock
 import pytest
 import requests
 
-from seferihisar.instagram import Instagram, prepare_story_jobs, publish_one
+from seferihisar.instagram import Instagram, prepare_story_jobs, publish_one, settle_expired
 from seferihisar.schedule import prepare
 from seferihisar.security import validate_state
 
@@ -108,6 +110,55 @@ def test_failure_after_container_creation_stays_unresolved(store,event,at):
     assert publish_one(store,at,'https://example.org/',assets_for(store),adapter=adapter(fail=True))['status']=='uncertain'
     result=summary(store,at)
     assert result['unresolved']['instagram']==1 and result['not_sent']['instagram']==0
+
+
+@pytest.mark.parametrize('failing_call', [1, 2])
+def test_failed_state_save_before_publish_is_known_unsent(store,event,at,failing_call):
+    # 4 Nov 2026: state pushes were refused for two hours; a save that fails
+    # before media_publish must not leave the claim 'publishing' for good.
+    from seferihisar.operations import summary
+    store.upsert(event,at.isoformat())
+    prepare(store,at)
+    api=adapter()
+    calls=[]
+    def checkpoint():
+        calls.append(1)
+        if len(calls)==failing_call:
+            raise subprocess.CalledProcessError(1,'git')
+    with pytest.raises(subprocess.CalledProcessError):
+        publish_one(store,at,'https://example.org/',assets_for(store),adapter=api,checkpoint=checkpoint)
+    api.call.assert_not_called()
+    post=next(p for p in store.posts() if p['status']=='uncertain')
+    assert post['delivery_error']=='state_unsaved'
+    result=summary(store,at)
+    assert result['unresolved']['instagram']==0 and result['not_sent']['instagram']==1
+    assert result['today']['instagram_feed']==1
+    validate_state(store.path)
+    publish_one(store,at+timedelta(hours=1),'https://example.org/',assets_for(store),adapter=api)
+    api.call.assert_not_called()
+
+
+@pytest.mark.parametrize('state,settled', [('EXPIRED', 1), ('PUBLISHED', 0), ('FINISHED', 0), (None, 0)])
+def test_expired_container_settles_an_open_claim_with_one_status_read(store,event,at,state,settled):
+    from seferihisar.operations import summary
+    store.upsert(event,at.isoformat())
+    prepare(store,at)
+    post=store.posts()[0]
+    with store.db:
+        store.db.execute("UPDATE posts SET status='publishing',container_id='1850',payload=? WHERE id=?",
+                         (json.dumps({**{k:v for k,v in post.items() if k not in ('status','container_id','media_id')},'published_at':at.isoformat()}),post['id']))
+    api=adapter()
+    api.call.side_effect=RuntimeError('Meta API request failed (HTTP 400)') if state is None else None
+    api.call.return_value={'status_code':state}
+    assert settle_expired(store,api,at+timedelta(hours=24))==0
+    api.call.assert_not_called()
+    assert settle_expired(store,api,at+timedelta(hours=26))==settled
+    api.call.assert_called_once_with('1850','GET',fields='status_code')
+    result=summary(store,at+timedelta(hours=26))
+    assert result['unresolved']['instagram']==1-settled and result['not_sent']['instagram']==settled
+    validate_state(store.path)
+    if settled:
+        assert settle_expired(store,api,at+timedelta(hours=30))==0 and api.call.call_count==1
 
 
 def test_media_not_yet_deployed_prevents_meta_call(store,event,at):
