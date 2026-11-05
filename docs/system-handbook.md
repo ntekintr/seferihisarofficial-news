@@ -236,6 +236,25 @@ o yanıt penceresinde uygun kayıt yok; `partial`: bazı ayrıntılar okunamadı
   girer ve panelde `not_published` olarak görünür. 30 Ekim 15:16'daki Urla
   elektrik kesintisi duyurusu böyle kaldı; herkese açık profilde de yoktu.
   Kapsayıcı oluştuktan sonraki hata `unresolved` kalır; yayım olmuş olabilir.
+- 4 Kasım 2026, 12:30–14:20 TR: GitHub iki şehir deposunda da
+  `automation-state` yazmalarını reddetti; kira başı değişmemişti, eşzamanlı
+  yazan yoktu. Beş yayın işi kırmızı bitti; kalıcı kayıp olmadı, ama yayımdan
+  sonraki son kayıt da yazılamasaydı yayım kaydı kaybolup aynı içerik ikinci
+  kez gönderilebilirdi. Isparta'da bir iddia konteynerden sonra, `media_publish`
+  öncesinde `publishing` olarak takıldı. Bu yüzden:
+  - `state_git.persist` yazmayı 3, 10 ve 30 saniye arayla en çok dört kez
+    dener. Her ret sonrası uzak baş okunur: bizim commit oradaysa önceki deneme
+    yazılmıştır, tekrar edilmez; baş değişmişse eşzamanlı yazan vardır ve iş
+    durur. `ls-remote` ve `fetch` okumaları da tekrarlanır.
+  - `media_publish` öncesindeki kayıt yazılamazsa iddia `uncertain` ve
+    `delivery_error: state_unsaved` olur; iş yine kırmızı biter, son `persist`
+    adımı bu durumu saklar.
+  - Otomatik yayın işi 25 saatten eski, `media_id` almamış konteynerli iddialar
+    için Meta'dan yalnız `status_code` okur. Meta kullanılmamış konteyneri 24
+    saatte `EXPIRED` yapar; bu, gönderinin çıkmadığını kanıtlar ve iddia
+    `delivery_error: container_expired` olur. Başka yanıtta bir şey değişmez.
+  - `state_unsaved` ve `container_expired` da `never_sent` sayılır: hakkını
+    korur, tekrar gönderilmez, `unresolved` yerine `not_sent` olur.
 
 ## Görsel ve metin kararları
 
