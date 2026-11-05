@@ -11,11 +11,15 @@ import os
 import sqlite3
 import subprocess
 import tempfile
+import time
 from pathlib import Path
 
 from .security import validate_state
 
 BRANCH = "automation-state"
+# 4 Nov 2026, 12:30-14:20: GitHub refused state pushes in both city repos
+# while the lease head was unchanged. Five publication runs failed.
+RETRY_DELAYS = (3, 10, 30)
 
 
 def git(*args: str, input: bytes | None = None) -> bytes:
@@ -31,11 +35,52 @@ def git(*args: str, input: bytes | None = None) -> bytes:
 
 
 def remote_head() -> str | None:
+    head = retried(listed_head)
+    if head:
+        retried(git, "fetch", "--no-tags", "origin", f"refs/heads/{BRANCH}")
+    return head
+
+
+def listed_head() -> str | None:
     result = git("ls-remote", "--heads", "origin", f"refs/heads/{BRANCH}").decode().strip()
-    if not result:
-        return None
-    git("fetch", "--no-tags", "origin", f"refs/heads/{BRANCH}")
-    return result.split()[0]
+    return result.split()[0] if result else None
+
+
+def retried(operation, *args):
+    """A read that touches GitHub; repeating it cannot change remote state."""
+    for delay in (*RETRY_DELAYS, None):
+        try:
+            return operation(*args)
+        except subprocess.CalledProcessError:
+            if delay is None:
+                raise
+            time.sleep(delay)
+
+
+def push(commit: str, head: str | None):
+    """Push under the lease, retrying only while nobody else has written.
+
+    A refused or lost push is checked against the remote branch: our commit
+    there means an earlier try landed, an unchanged head means it is safe to
+    try again, and any other head is a concurrent writer and stops the run.
+    """
+    lease = f"--force-with-lease=refs/heads/{BRANCH}:{head or ''}"
+    for delay in (*RETRY_DELAYS, None):
+        try:
+            git("push", lease, "origin", f"{commit}:refs/heads/{BRANCH}")
+            return
+        except subprocess.CalledProcessError:
+            if delay is None:
+                raise
+            time.sleep(delay)
+            try:
+                current = listed_head()
+            except subprocess.CalledProcessError:
+                continue
+            if current == commit:
+                return
+            if current != head:
+                raise
 
 
 def restore(path: Path):
@@ -81,7 +126,7 @@ def persist(path: Path):
         args += ["-p", head]
     commit = git(*args).decode().strip()
     # Explicit lease refuses concurrent writes instead of dropping somebody's updates.
-    git("push", f"--force-with-lease=refs/heads/{BRANCH}:{head or ''}", "origin", f"{commit}:refs/heads/{BRANCH}")
+    push(commit, head)
 
 
 def main():

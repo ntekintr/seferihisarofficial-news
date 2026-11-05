@@ -53,6 +53,11 @@ def main():
             if os.getenv("STATE_GIT_CHECKPOINT") == "true":
                 from .state_git import persist
                 checkpoint = lambda: persist(args.db)
+            if args.automatic:
+                from .instagram import Instagram, settle_expired
+                api = Instagram()
+                if api.enabled():
+                    settle_expired(store, api, at)
             from .owner_requests import publish as publish_owner_request, pending as pending_owner_request
             owner_request = pending_owner_request(store, at) if args.automatic and not args.post_id else None
             owner_result = publish_owner_request(store, at, args.site_url, assets, checkpoint) if args.automatic and not args.post_id else None
