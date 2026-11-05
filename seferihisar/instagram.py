@@ -164,31 +164,86 @@ def publish_one(store: Store, at: datetime, site_url: str, assets: dict[str, dic
         changed = store.db.execute("UPDATE posts SET status='publishing',payload=? WHERE id=? AND status='prepared'", (json.dumps(post, ensure_ascii=False), post["id"]))
     if changed.rowcount != 1:
         return {"status": "already_claimed"}
+    def uncertain(code):
+        post["delivery_error"] = code
+        with store.db:
+            store.db.execute("UPDATE posts SET status='uncertain',payload=? WHERE id=?", (json.dumps(post, ensure_ascii=False), post["id"]))
+
+    def saved_before_publish():
+        # A checkpoint that fails here stops the run before media_publish, so
+        # the claim is known unsent. It keeps its slot and is never resent.
+        if checkpoint:
+            try:
+                checkpoint()
+            except Exception:
+                uncertain(UNSAVED)
+                raise
+
     # Ephemeral runners must remotely persist the claim BEFORE contacting Meta.
     # If the runner then dies, the next run sees 'publishing' and cannot resend.
-    if checkpoint:
-        checkpoint()
+    saved_before_publish()
     try:
         container = api.container(urls, post["caption"], story)
         with store.db:
             store.db.execute("UPDATE posts SET container_id=? WHERE id=?", (container, post["id"]))
+    except (requests.RequestException, RuntimeError, KeyError, ValueError) as exc:
+        uncertain(delivery_error(exc))
         if checkpoint:
             checkpoint()
+        return {"status": "uncertain", "post_id": post["id"]}
+    saved_before_publish()
+    try:
         api.wait(container)
         # Crash/timeout after this POST might mean success. Never resend automatically.
         result = api.call(f"{api.account}/media_publish", creation_id=container)
         with store.db:
             store.db.execute("UPDATE posts SET status='published',media_id=? WHERE id=?", (result["id"], post["id"]))
-        if checkpoint:
-            checkpoint()
-        return {"status": "published", "post_id": post["id"]}
     except (requests.RequestException, RuntimeError, KeyError, ValueError) as exc:
-        post["delivery_error"] = delivery_error(exc)
-        with store.db:
-            store.db.execute("UPDATE posts SET status='uncertain',payload=? WHERE id=?", (json.dumps(post, ensure_ascii=False), post["id"]))
+        uncertain(delivery_error(exc))
         if checkpoint:
             checkpoint()
         return {"status": "uncertain", "post_id": post["id"]}
+    if checkpoint:
+        checkpoint()
+    return {"status": "published", "post_id": post["id"]}
+
+
+UNSAVED = 'state_unsaved'
+EXPIRED = 'container_expired'
+SETTLE_AFTER = timedelta(hours=25)
+
+
+def settle_expired(store: Store, api, at: datetime) -> int:
+    """Close claims whose Meta container expired without being published.
+
+    Meta expires a container 24 hours after creation unless media_publish
+    used it, so EXPIRED proves the post never went out. Only a status GET is
+    made; the claim keeps its slot and is never resent. 4 Nov 2026: state
+    pushes failed for two hours, once between container and media_publish.
+    """
+    import json
+    settled = 0
+    for post in store.posts():
+        if post['status'] not in ('publishing', 'uncertain') or not post.get('container_id') or post.get('media_id'):
+            continue
+        if post.get('delivery_error') in (UNSAVED, EXPIRED):
+            continue
+        stamp = parse_date(post.get('published_at'))
+        if not stamp or at - stamp < SETTLE_AFTER:
+            continue
+        try:
+            value = api.call(post['container_id'], 'GET', fields='status_code')
+        except (requests.RequestException, RuntimeError, ValueError):
+            continue
+        if not isinstance(value, dict) or value.get('status_code') != 'EXPIRED':
+            continue
+        payload = {k: v for k, v in post.items() if k not in ('status', 'container_id', 'media_id')}
+        payload['delivery_error'] = EXPIRED
+        with store.db:
+            changed = store.db.execute("UPDATE posts SET status='uncertain',payload=? WHERE id=? AND media_id IS NULL AND status IN ('publishing','uncertain')",
+                                       (json.dumps(payload, ensure_ascii=False), post['id']))
+        settled += changed.rowcount
+    return settled
 
 
 def edition_ready(store, post, site_url, assets, api, require_visual_review) -> bool:

@@ -66,13 +66,18 @@ def record_check(store, result, at, mode):
 
 
 def never_sent(post):
-    """An uncertain claim without a container never reached `media_publish`.
+    """An uncertain claim known never to have reached `media_publish`.
 
-    `instagram.deliver` stores the container id right after Meta returns it
-    and only then calls `media_publish`, so the exception came from container
-    creation. The claim still holds its slot and is never resent.
+    `publish_one` stores the container id right after Meta returns it and
+    only then calls `media_publish`, so no container means container
+    creation failed. `state_unsaved` means the run stopped on a failed state
+    save before publishing; `container_expired` means Meta reports the
+    container expired unused. The claim still holds its slot and is never
+    resent.
     """
-    return post.get('status') == 'uncertain' and not post.get('container_id')
+    from .instagram import EXPIRED, UNSAVED
+    return post.get('status') == 'uncertain' and (
+        not post.get('container_id') or post.get('delivery_error') in (UNSAVED, EXPIRED))
 
 
 def summary(store, at):
