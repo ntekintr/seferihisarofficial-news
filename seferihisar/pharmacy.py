@@ -245,7 +245,9 @@ def main():
             with Path(target).open('a',encoding='utf-8') as out:
                 out.write('### Günlük nöbetçi eczane story\n\n'+json.dumps(result)+'\n\n17:00 Türkiye saati hedefi; ayrı günlük story listesi. Hazırlık gerçek teslim değildir.\n')
         print(json.dumps(result))
-        if not args.observe_only and result['status'] not in ('published','already_published','outside_window','disabled'):raise SystemExit(1)
+        # A list still deploying is retried by the next run in the 17:00 hour; a
+        # day that ends unpublished is reported once by ops_watch (pharmacy_missing).
+        if not args.observe_only and result['status'] not in ('published','already_published','outside_window','disabled','media_not_deployed'):raise SystemExit(1)
     finally:store.close()
 
 

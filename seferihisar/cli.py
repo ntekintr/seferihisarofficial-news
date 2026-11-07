@@ -73,14 +73,15 @@ def main():
                 from .facebook import publish_outage_story as mirror_outage_story
                 result['outage_story'] = publish_outage_story(store, at, args.site_url, assets, checkpoint=checkpoint, require_visual_review=True)['status']
                 result['outage_facebook'] = mirror_outage_story(store, at, args.site_url, checkpoint=checkpoint, require_visual_review=True)['status']
-            from .operations import record_check, write_job_summary, failed
+            from .operations import record_check, write_job_summary, alarming
             observation = record_check(store, result, at, 'automatic' if args.automatic else 'story' if args.story else 'feed')
+            alarm = alarming(store, observation, at)
             write_job_summary(observation)
         finally:
             store.close()
     # Never print captions, source bodies or authentication details in Actions logs.
     print(json.dumps({k: v for k, v in result.items() if k != "assets"}, ensure_ascii=False))
-    if args.command == 'publish' and failed(observation):
+    if args.command == 'publish' and alarm:
         raise SystemExit(1)  # The workflow still persists state in its always() step.
 
 
