@@ -269,6 +269,17 @@ o yanıt penceresinde uygun kayıt yok; `partial`: bazı ayrıntılar okunamadı
     gördü). Sayfadaki görünür seans satırı karar verir: şema saatinin 3 saat
     öncesi bir satırla eşleşiyorsa kayıt o seansa çekilir ve tekrar oluşmaz
     (`source_readers.shown_clock`). Satırı olmayan kayıt şema saatini korur.
+- 7 Kasım 2026: 09:43 ve 10:16 yayın turları kesinti hikâyesi için
+  `visual_review_stale`, 07:45 hava turu `media_not_deployed` ile kırmızı bitti
+  ve her biri sahibine e-posta attı. Kart yeni üretilmiş, Pages henüz
+  sunmuyordu; sonraki tur yayımladı. Bu yüzden:
+  - Yayın işi yalnız `media_not_deployed`, `visual_review_missing` veya
+    `visual_review_stale` bekliyorsa yeşil biter (`operations.alarming`).
+    Aynı bekleme, arada temiz kontrol olmadan 2 saat sürerse yine kırmızıdır.
+    Diğer başarısız durumlar ilk turda kırmızıdır.
+  - Hava ve eczane işleri `media_not_deployed` için kırmızı bitmez; pencere
+    içindeki sonraki tur dener. Gün kaçarsa `ops_watch` `weather_missing`
+    veya (yeni) `pharmacy_missing` uyarısını bir kez açar.
 
 ## Görsel ve metin kararları
 
