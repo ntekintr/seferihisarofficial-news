@@ -177,7 +177,21 @@ def healthy(at):
     return {'demo': False, 'runs': [{'finished_at': at.isoformat()}],
             'source_health': [{'status': 'ok'}] * 10, 'publishing_enabled': True,
             'weather_story': {'day': at.date().isoformat(), 'status': 'published'},
+            'pharmacy_story': {'day': at.date().isoformat(), 'status': 'published'},
             'operations': {'unresolved': {'instagram': 0, 'facebook': 0}}}
+
+
+def test_missed_pharmacy_day_is_reported_from_a_panel_built_after_the_hour(at):
+    # The pharmacy job no longer fails while its list deploys; the miss itself must still alert.
+    early = at.replace(hour=17, minute=40)
+    v = healthy(early)
+    v['pharmacy_story'] = {'day': early.date().isoformat(), 'status': 'prepared'}
+    assert 'pharmacy_missing' not in evaluate(v, early.replace(hour=19))
+    late = at.replace(hour=18, minute=25)
+    v['runs'][0]['finished_at'] = late.isoformat()
+    assert 'pharmacy_missing' in evaluate(v, late)
+    v['pharmacy_story']['status'] = 'published'
+    assert 'pharmacy_missing' not in evaluate(v, late)
 
 
 def test_monitor_distinguishes_empty_sources_from_failure_and_waiting_from_missing_weather(at):
