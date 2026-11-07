@@ -255,6 +255,20 @@ o yanıt penceresinde uygun kayıt yok; `partial`: bazı ayrıntılar okunamadı
     `delivery_error: container_expired` olur. Başka yanıtta bir şey değişmez.
   - `state_unsaved` ve `container_expired` da `never_sent` sayılır: hakkını
     korur, tekrar gönderilmez, `unresolved` yerine `not_sent` olur.
+- 5 Kasım 2026: "Mavişehir Baba Kelebek Avcısı"nın 12 Kasım 15:30 ve 19:00
+  seansları 08:49 ve 12:32'de iki ayrı, aynı görünen gönderi olarak çıktı.
+  Aynı gün Böcek Oteli'nin ikinci seansı ve sitede olmayan bir Neşe-i Muhabbet
+  23:00 seansı da sıradaydı. Bu yüzden:
+  - Aynı sayfa, aynı mekân ve aynı gündeki seanslar tek gösteri sayılır
+    (`schedule.show_key`). Duyuru, 3 gün ve gün hatırlatması gösteri başına
+    bir kez çıkar; kartı en erken güncel seans taşır ve son okumada görülen
+    bütün saatleri yazar ("Seanslar 15:30 ve 19:00", `session_ids`). Diğer
+    seansların yayımlanmamış kartları `superseded` olur. Başka gün veya başka
+    mekândaki seanslar ayrı kalır.
+  - Biletinial şema saati bazen 3 saat ileri gidiyor (Isparta 31 Ekim'de de
+    gördü). Sayfadaki görünür seans satırı karar verir: şema saatinin 3 saat
+    öncesi bir satırla eşleşiyorsa kayıt o seansa çekilir ve tekrar oluşmaz
+    (`source_readers.shown_clock`). Satırı olmayan kayıt şema saatini korur.
 
 ## Görsel ve metin kararları
 

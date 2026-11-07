@@ -5,7 +5,7 @@ import re
 from copy import deepcopy
 from datetime import datetime, time, timedelta
 
-from .domain import TZ, digest, parse_date
+from .domain import TZ, canonical, digest, normalized, parse_date
 from .editor import caption, caption_with_hashtags, digest_hashtags, event_date_label, event_title, excerpt, headline, news_body, plain_source_text
 from .media_caption import generated_image_caption
 from .store import Store
@@ -31,13 +31,71 @@ def source_current(item: dict, at: datetime, failed: set[str]) -> bool:
 
 def post_references(post: dict, items: dict[str, dict]) -> list:
     """Items a post depends on. A digest names its events, because recurring
-    sessions share one URL and a stale sibling must not block the current one."""
+    sessions share one URL and a stale sibling must not block the current one.
+    A card naming several sessions of one show depends on each of them."""
+    if post.get("session_ids"):
+        return [items.get(key) for key in post["session_ids"]]
     if post.get("item_id"):
         return [items.get(post["item_id"])]
     if post.get("event_ids"):
         return [items.get(key) for key in post["event_ids"]]
     by_url = {url: i for i in items.values() for url in i.get("sources", []) + [i["url"]]}
     return [by_url.get(url) for url in post["source_urls"]]
+
+
+# One show, one venue, one day: followers get one announcement and one of each
+# reminder, naming every session. 5 Nov 2026: the 15:30 and 19:00 sessions of
+# one play went out as two identical feed posts three hours apart.
+SHOW_KINDS = ("announcement", "reminder_3d", "reminder_day")
+
+
+def show_key(item: dict) -> tuple | None:
+    if item.get("kind") != "event" or item.get("category") == "outage":
+        return None
+    start = parse_date(item.get("start"))
+    if not start or not item.get("url"):
+        return None
+    return canonical(item["url"]), normalized(item.get("location") or ""), start.date()
+
+
+def show_sessions(items, at: datetime, failed: set[str]) -> dict[tuple, list[dict]]:
+    """Current scheduled sessions per show day, earliest first."""
+    shows: dict[tuple, list[dict]] = {}
+    for item in items:
+        key = show_key(item)
+        if key and item["status"] in ("scheduled", "rescheduled") and source_current(item, at, failed):
+            shows.setdefault(key, []).append(item)
+    for sessions in shows.values():
+        sessions.sort(key=lambda i: (i["start"], i["id"]))
+    return shows
+
+
+def with_session_times(item: dict, sessions: list[dict]) -> dict:
+    """The lead session's card lists each verified start time of that day.
+
+    Only sessions the latest reading still showed are named: a record the
+    source has just dropped stays current for an hour, and on 5 Nov 2026 such
+    a record was a session that never existed.
+    """
+    latest = max((s.get("last_seen") or "" for s in sessions), default="")
+    sessions = [s for s in sessions if (s.get("last_seen") or "") == latest]
+    if item["id"] not in {s["id"] for s in sessions}:
+        return item
+    times = sorted({parse_date(s["start"]).strftime("%H:%M") for s in sessions})
+    if len(sessions) < 2 or len(times) < 2 or not all(s.get("time_known") for s in sessions):
+        return item
+    return {**item, "session_times": times, "session_ids": [s["id"] for s in sessions]}
+
+
+def session_card(item: dict, post: dict, items: dict[str, dict]) -> dict | None:
+    """The item as its card was written; None when a named session is gone."""
+    if not post.get("session_ids"):
+        return item
+    sessions = [items.get(key) for key in post["session_ids"]]
+    if not all(sessions):
+        return None
+    card = with_session_times(item, sessions)
+    return card if card.get("session_ids") == post["session_ids"] else None
 
 
 def next_slot(at: datetime, event: bool = False) -> datetime:
@@ -63,6 +121,13 @@ def prepare(store: Store, at: datetime, *, refresh_digests: bool = True):
             store.db.execute("UPDATE posts SET status=? WHERE id=?", ("prepared" if valid else "blocked_source", post["id"]))
     from .publication_policy import CLAIMED
     announced = {p.get("item_id") for p in store.posts() if p["status"] in CLAIMED}
+    every = {i["id"]: i for i in store.items()}
+    shows = show_sessions(every.values(), at, failed)
+    show_claims: dict[tuple, set[str]] = {}
+    for p in store.posts():
+        if (p["status"] in CLAIMED and p.get("item_id") in every and p["kind"] in SHOW_KINDS
+                and not p.get("publish_format")):
+            show_claims.setdefault((show_key(every[p["item_id"]]), p["kind"]), set()).add(p["item_id"])
     for item in store.items():
         from .quality import news_editorial_reason
         if reason := news_editorial_reason(item):
@@ -92,16 +157,32 @@ def prepare(store: Store, at: datetime, *, refresh_digests: bool = True):
         if item["revision"] > 1 and item["id"] not in announced:
             with store.db:
                 store.db.execute("UPDATE posts SET status='superseded' WHERE item_id=? AND kind='update' AND status IN ('prepared','blocked_source')", (item["id"],))
+        key = show_key(item)
+        sessions = shows.get(key, [item])
+        lead = sessions[0]["id"] == item["id"]
+        card = with_session_times(item, sessions) if lead else item
+
+        def show_post(kind, due):
+            claimed_by = show_claims.get((key, kind), set())
+            if item["id"] in claimed_by:
+                # Its own card is out; its paired story must still follow.
+                queue_item(store, card, kind, due, at)
+            elif not lead or claimed_by:
+                # A later session never repeats what another one already said.
+                retire_session_post(store, item, kind)
+            else:
+                queue_item(store, card, kind, due, at)
+
         if item["revision"] > 1 and item["id"] in announced:
             queue_item(store, item, "update", at, at)
         elif start <= at + timedelta(days=30):
-            queue_item(store, item, "announcement", min(next_slot(at, event=True), start) if item.get("time_known") else at, at)
+            show_post("announcement", min(next_slot(at, event=True), start) if item.get("time_known") else at)
         days = (start.date() - at.date()).days
         # A delayed run catches the 3-day reminder on days 2/1; never posts it after the event.
         if 0 < days <= 3:
-            queue_item(store, item, "reminder_3d", at, at)
+            show_post("reminder_3d", at)
         if days == 0 and (not item.get("time_known") or start >= at):
-            queue_item(store, item, "reminder_day", at, at)
+            show_post("reminder_day", at)
     # Expire stale prepared posts, including reminders whose event has passed.
     current = {i["id"]: i for i in store.items()}
     with store.db:
@@ -143,6 +224,16 @@ def prepare(store: Store, at: datetime, *, refresh_digests: bool = True):
             store.withhold(post['id'], reason, at.isoformat())
 
 
+def retire_session_post(store: Store, item: dict, kind: str):
+    """Supersede an unclaimed card another session of the same show covers."""
+    key = digest(f"{item['id']}:{item['revision']}:{kind}")
+    with store.db:
+        store.db.execute("UPDATE posts SET status='superseded' WHERE id=? AND status IN ('prepared','blocked_source')", (key,))
+        # Its story frames follow the parent card.
+        store.db.execute("UPDATE posts SET status='superseded' WHERE json_extract(payload,'$.parent_post_id')=? "
+                         "AND status IN ('prepared','blocked_source')", (key,))
+
+
 def queue_item(store: Store, item: dict, kind: str, due: datetime, at: datetime):
     from .editor import editorial_category
     days = (parse_date(item["start"]).date() - at.date()).days if item["kind"] == "event" else None
@@ -155,6 +246,8 @@ def queue_item(store: Store, item: dict, kind: str, due: datetime, at: datetime)
                  "category": editorial_category(item), "source_urls": item["sources"],
                  "slides": [{"title": title, "body": slide_body(item)}],
                  "created_at": at.isoformat(), "formats": ["carousel", "story"] if item["kind"] == "event" and item['category']!='outage' else ["feed", "story"]}
+    if item.get("session_ids"):
+        post["session_ids"] = list(item["session_ids"])
     if store.queue(post):
         return
     rows = store.rows("SELECT payload,status,revision FROM posts WHERE id=?", (key,))

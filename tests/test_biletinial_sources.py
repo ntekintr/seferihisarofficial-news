@@ -53,6 +53,39 @@ def test_bademler_biletinial_reader_keeps_only_verified_bademler_sessions():
     assert not ticket_items(body.replace('Urla/İzmir', 'Konak/İzmir'), items[0]['url'], source)
 
 
+def play_page(starts, rows):
+    url = 'https://biletinial.com/tr-tr/tiyatro/nese-i-muhabbet'
+    events = [{'@context': 'https://schema.org', '@type': 'TheaterEvent', 'name': 'Neşe-i Muhabbet', 'url': url,
+               'startDate': start, 'endDate': start[:11] + '23:59:00+03:00', 'description': 'Komedi oyunu.',
+               'location': {'@type': 'Place', 'name': 'Urla Hakan Çeken Kültür Merkezi',
+                            'address': {'@type': 'PostalAddress', 'streetAddress': 'Urla',
+                                        'addressLocality': 'Urla', 'addressRegion': 'İzmir'}}}
+              for start in starts]
+    scripts = ''.join('<script type="application/ld+json">' + json.dumps(e) + '</script>' for e in events)
+    listing = ''.join(f'<li><span>{row}</span> <span>Urla Hakan Çeken Kültür Merkezi</span></li>' for row in rows)
+    return f'<html><body><h1>Neşe-i Muhabbet</h1>{scripts}<ul>{listing}</ul></body></html>', url
+
+
+def test_schema_session_three_hours_ahead_of_its_visible_row_is_that_session():
+    # 5 Nov 2026: the page showed only 21 Kasım 20:00 in Urla; the schema also said 23:00.
+    body, url = play_page(['2026-11-21T20:00:00+03:00', '2026-11-21T23:00:00+03:00'],
+                          ['21 Kasım Cumartesi · 20:00'])
+    items = ticket_items(body, url, SOURCES['biletinial'])
+    assert [i['start'] for i in items] == ['2026-11-21T20:00:00+03:00']
+
+
+def test_real_late_session_with_its_own_row_is_kept():
+    body, url = play_page(['2026-11-21T20:00:00+03:00', '2026-11-21T23:00:00+03:00'],
+                          ['21 Kasım Cumartesi · 20:00', '21 Kasım Cumartesi · 23:00'])
+    items = ticket_items(body, url, SOURCES['biletinial'])
+    assert sorted(i['start'] for i in items) == ['2026-11-21T20:00:00+03:00', '2026-11-21T23:00:00+03:00']
+
+
+def test_session_without_any_visible_row_keeps_its_schema_clock():
+    body, url = play_page(['2026-11-21T20:00:00+03:00'], ['22 Kasım Pazar · 18:00'])
+    assert [i['start'] for i in ticket_items(body, url, SOURCES['biletinial'])] == ['2026-11-21T20:00:00+03:00']
+
+
 def test_theatre_listing_reads_every_izmir_page_where_local_halls_appear():
     source = SOURCES['biletinial']
     assert [urlsplit(u).query.rsplit('page=', 1)[1] for u in source['listing_urls']] == ['1', '2', '3', '4']
