@@ -307,7 +307,9 @@ def main():
             with Path(target).open('a',encoding='utf-8') as out:
                 out.write('### Günlük hava durumu story\n\n'+json.dumps(result)+'\n\nHazır kartla 07:35–07:59 erken bekleme; 08:00 Türkiye saati hedeflenir. Gecikme yedeği yalnız 08:00–08:59; günde bir story.\n')
         print(json.dumps(result))
-        if result['status'] not in ('published','already_published','outside_window'):
+        # A card still deploying is retried by the next run in the window; a day
+        # that ends unpublished is reported once by ops_watch (weather_missing).
+        if result['status'] not in ('published','already_published','outside_window','media_not_deployed'):
             raise SystemExit(1)
     finally:
         store.close()
