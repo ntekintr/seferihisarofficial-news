@@ -19,6 +19,7 @@ LABELS = {
     'research_stale': 'Son tamamlanmış araştırma 90 dakikadan eski.',
     'source_coverage_drop': 'Kaynakların en az yüzde 40’ı okunamıyor veya kısmi okunuyor.',
     'weather_missing': 'Sabah hava yayını penceresi kapandı; başarılı günlük teslim kaydı yok.',
+    'pharmacy_missing': 'Nöbetçi eczane yayını penceresi kapandı; başarılı günlük teslim kaydı yok.',
     'unresolved_delivery': 'Sonucu belirsiz Instagram veya Facebook teslimi var; yeniden gönderilmedi.',
     'delivery_audit_failed': 'Son 24 saatte yayın sonrası okuma kontrolü başarısız veya uyumsuz.',
     'research_failed': 'Son iki ana dal araştırması başarısız.',
@@ -59,6 +60,14 @@ def evaluate(snapshot, at):
         if (local.hour >= 9 and (local.hour > 9 or local.minute >= 20)
                 and (weather.get('day') != local.date().isoformat() or weather.get('status') != 'published')):
             problems.append('weather_missing')
+        # The pharmacy job no longer fails while its list is still deploying,
+        # so a day that ends unpublished is reported here instead. Judged from
+        # a panel built after the 17:00 hour closed, as in Isparta.
+        panel = finished.astimezone(TZ)
+        pharmacy = snapshot.get('pharmacy_story') or {}
+        if (panel.hour > 18 or (panel.hour == 18 and panel.minute >= 20)) and (
+                pharmacy.get('day') != panel.date().isoformat() or pharmacy.get('status') != 'published'):
+            problems.append('pharmacy_missing')
         unresolved = snapshot.get('operations', {}).get('unresolved', {})
         if any(isinstance(v, int) and v > 0 for v in unresolved.values()):
             problems.append('unresolved_delivery')

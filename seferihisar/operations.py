@@ -54,6 +54,47 @@ def failed(result):
             or any(result.get('facebook', {}).get(k) in FAILURES for k in ('status', 'feed', 'story')))
 
 
+# A card the latest research run rebuilt is published by a later run once Pages
+# serves it. On 6–7 Nov 2026 every such wait cleared within two runs, yet each
+# one failed the job and mailed the owner.
+WAITING = frozenset(('media_not_deployed', 'visual_review_missing', 'visual_review_stale'))
+WAIT_ALARM = timedelta(hours=2)
+
+
+def failures(result):
+    facebook = result.get('facebook') if isinstance(result.get('facebook'), dict) else {}
+    values = [result.get(k) for k in ('status', 'feed', 'story', 'outage_story', 'outage_facebook')]
+    values += [facebook.get(k) for k in ('status', 'feed', 'story')]
+    return {v for v in values if v in FAILURES}
+
+
+def waiting_only(result):
+    found = failures(result)
+    return result.get('status') != 'disabled' and bool(found) and found <= WAITING
+
+
+def alarming(store, result, at):
+    """Whether a recorded check should fail the job and so notify the owner.
+
+    Real failures always do. A wait for the next deployed card does only once
+    every check since the wait began has been waiting for at least WAIT_ALARM.
+    """
+    if not failed(result):
+        return False
+    if not waiting_only(result):
+        return True
+    since = None
+    for row in store.rows('SELECT checked_at,result FROM publication_checks ORDER BY id DESC'):
+        try:
+            stamp, previous = parse_date(row['checked_at']), json.loads(row['result'])
+        except (TypeError, ValueError):
+            break
+        if not stamp or not isinstance(previous, dict) or not waiting_only(previous):
+            break
+        since = stamp
+    return since is not None and at - since >= WAIT_ALARM
+
+
 def record_check(store, result, at, mode):
     if mode not in ('automatic', 'feed', 'story') or at.tzinfo is None:
         raise ValueError('Invalid publication check')

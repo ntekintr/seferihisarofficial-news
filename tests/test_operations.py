@@ -108,3 +108,56 @@ def test_cli_records_outcome_and_marks_failure_without_republishing(store, at, t
     assert json.loads(store.rows('SELECT result FROM publication_checks')[0]['result'])['status'] == status
     assert status in report.read_text(encoding='utf-8')
     validate_state(store.path)
+
+
+WAIT = {'status': 'outside_window', 'outage_story': 'visual_review_stale', 'outage_facebook': 'empty'}
+
+
+def test_short_wait_for_a_deploying_card_does_not_fail_the_job(store, at):
+    # 7 Nov 2026: two runs waited for the rebuilt outage card; the third published it.
+    from seferihisar.operations import alarming
+    for minutes in (0, 30):
+        observation = record_check(store, WAIT, at + timedelta(minutes=minutes), 'automatic')
+        assert failed(observation) and not alarming(store, observation, at + timedelta(minutes=minutes))
+
+
+def test_wait_alarms_after_two_hours_without_any_clear_check(store, at):
+    from seferihisar.operations import alarming
+    for minutes in range(0, 121, 30):
+        observation = record_check(store, WAIT, at + timedelta(minutes=minutes), 'automatic')
+    assert alarming(store, observation, at + timedelta(minutes=120))
+    record_check(store, {'status': 'published'}, at + timedelta(minutes=150), 'automatic')
+    observation = record_check(store, WAIT, at + timedelta(minutes=180), 'automatic')
+    assert not alarming(store, observation, at + timedelta(minutes=180))
+
+
+@pytest.mark.parametrize('result', [{'status': 'uncertain'}, {'status': 'disabled'},
+    {'status': 'complete', 'facebook': {'status': 'media_missing'}},
+    {'status': 'visual_review_stale', 'outage_story': 'awaiting_resolution'}])
+def test_real_failure_still_fails_the_first_job(store, at, result):
+    from seferihisar.operations import alarming
+    assert alarming(store, record_check(store, result, at, 'automatic'), at)
+
+
+@pytest.mark.parametrize('module,status,code', [('weather', 'media_not_deployed', None), ('weather', 'uncertain', 1),
+                                                ('pharmacy', 'media_not_deployed', None), ('pharmacy', 'source_stale', 1)])
+def test_daily_story_jobs_wait_quietly_for_deployment(monkeypatch, tmp_path, module, status, code):
+    import importlib
+    target = importlib.import_module('seferihisar.' + module)
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / 'state').mkdir()
+    monkeypatch.delenv('GITHUB_STEP_SUMMARY', raising=False)
+    monkeypatch.setattr(sys, 'argv', [module])
+    if module == 'weather':
+        monkeypatch.setattr(target, 'run_weather', lambda *a, **kw: {'status': status})
+    else:
+        profile = target.profile()
+        monkeypatch.setenv('GITHUB_REPOSITORY', profile['repository'])
+        monkeypatch.setenv('GITHUB_REF', 'refs/heads/main')
+        monkeypatch.setattr(target, 'run', lambda *a, **kw: {'status': status})
+    if code:
+        with pytest.raises(SystemExit) as exc:
+            target.main()
+        assert exc.value.code == code
+    else:
+        target.main()
