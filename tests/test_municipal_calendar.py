@@ -41,6 +41,16 @@ def test_invalid_dates_nonlocal_news_and_external_links_are_rejected(changes):
     assert not municipal_calendar_items(json.dumps([{**ROW, **changes}]), SOURCE['url'], SOURCE)
 
 
+def test_upper_case_turkish_title_is_still_an_event():
+    # 9 Nov 2026 live row: casefold() made İ into i + U+0307 and the festival was dropped as news.
+    row = {**ROW, 'title': '26. SEFERİHİSAR MANDALİNA ŞENLİĞİ', 'description': '26. SEFERİHİSAR MANDALİNA ŞENLİĞİ',
+           'start': '2026-12-06', 'end': '2026-12-07', 'url': '/26-seferihisar-mandalina-senligi'}
+    items = municipal_calendar_items(json.dumps([row]), SOURCE['url'], SOURCE)
+    assert len(items) == 1 and items[0]['title'] == row['title'] and items[0]['category'] != 'news'
+    assert not municipal_calendar_items(json.dumps([{**row, 'title': 'ANKARA KONSERİ'}]), SOURCE['url'], SOURCE)
+    assert not municipal_calendar_items(json.dumps([{**row, 'title': 'SEFERİHİSAR BELEDİYE HİZMETİ'}]), SOURCE['url'], SOURCE)
+
+
 @pytest.mark.parametrize('body', ['{}', '[null]'])
 def test_wrong_collection_shape_is_a_source_failure(body):
     with pytest.raises(ValueError):

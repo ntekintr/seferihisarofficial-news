@@ -24,6 +24,9 @@ def test_manifest_keeps_oldest_due_media_after_large_history(
     event = {k: event[k] for k in ('title', 'description', 'url', 'sources', 'source_id', 'source_name')}
     event.update(kind='news', category='public', published_at=at.isoformat())
     item_id, _ = store.upsert(event, at.isoformat())
+    # The earlier published fact is its own article: one article is delivered once.
+    older_id, _ = store.upsert({**event, 'url': event['url'] + '-onceki', 'title': 'Önceki yerel duyuru',
+                                'published_at': (at - timedelta(days=1)).isoformat()}, at.isoformat())
     source_config = json.loads(Path('config/sources.json').read_text())
     monkeypatch.delenv('ILLUSTRATIONS_ENABLED', raising=False)
 
@@ -39,6 +42,7 @@ def test_manifest_keeps_oldest_due_media_after_large_history(
             # A different historical fact, not an identical card that the
             # cross-revision publication guard must now hold.
             post['slides'] = [{'title': 'Önceki yerel duyuru', 'body': 'Önceki güne ait farklı bir kamu haberi.'}]
+            post['item_id'] = older_id
         store.queue(post)
         with store.db:
             store.db.execute('UPDATE posts SET status=? WHERE id=?', (status, post['id']))

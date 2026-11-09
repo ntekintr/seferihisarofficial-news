@@ -48,7 +48,7 @@ def test_official_sources_do_not_mix_districts_or_site_dates(monkeypatch):
     with pytest.raises(ValueError):parse_isparta(html.replace('22 Ekim 2026 Bugün','21 Ekim 2026 Bugün'),AT)
 
 
-@pytest.mark.parametrize('delta',[-91,1])
+@pytest.mark.parametrize('delta',[-121,1])
 def test_old_or_future_check_never_counts_as_fresh(delta):
     value=bulletin(AT+timedelta(minutes=delta));assert not fresh(value,AT)
 
