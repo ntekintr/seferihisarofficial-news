@@ -23,6 +23,9 @@ STATES = {'prepared','blocked','publishing','published','uncertain'}
 RESULTS = {'prepared','published','uncertain','source_unavailable','source_invalid',
            'source_stale','media_not_deployed','account_mismatch','disabled','outside_window'}
 MAX_ENTRIES = 12
+# Lists are read only from 16:00 and published only before 18:00, so one
+# successful same-day read covers the whole 17:00 window (Isparta, 7 Nov 2026).
+FRESH_MINUTES = 120
 
 
 def profile():
@@ -93,7 +96,7 @@ def fresh(value, at):
         validate_bulletin(value)
         checked = datetime.fromisoformat(value['checked_at'])
         return (at.tzinfo is not None and value['date'] == at.astimezone(TZ).date().isoformat()
-                and at-timedelta(minutes=90) <= checked <= at)
+                and at-timedelta(minutes=FRESH_MINUTES) <= checked <= at)
     except (ValueError,TypeError,KeyError):
         return False
 

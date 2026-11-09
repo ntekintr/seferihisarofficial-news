@@ -29,7 +29,18 @@ def refresh(store,at,fetcher=None):
         from .pharmacy_render import layouts
         layouts(value)  # Actual glyph/line budget, before marking the list prepared.
         payload=json.dumps(value,ensure_ascii=False,sort_keys=True);status=result='prepared'
-    except (requests.RequestException,ValueError,TypeError,KeyError,OSError):
+    except (requests.RequestException,OSError):
+        # Isparta, 7 Nov 2026: the list verified at 16:17 was withdrawn when the
+        # 17:02 read could not reach the source, and the day was missed. An
+        # unreachable source says nothing about the list, so today's still-fresh
+        # verified list stays; only the attempt is recorded.
+        if old and old['status']=='prepared' and old['bulletin'] and fresh(json.loads(old['bulletin']),at):
+            with store.db:
+                store.db.execute("UPDATE pharmacy_stories SET last_result='source_unavailable' WHERE day=? AND status='prepared'",(day,))
+            return
+        payload=None;status='blocked';result='source_unavailable'
+    except (ValueError,TypeError,KeyError):
+        # A source that answers with another date or an unreadable list withdraws the preview.
         payload=None;status='blocked';result='source_unavailable'
     with store.db:
         store.db.execute("INSERT INTO pharmacy_stories(day,bulletin,status,checked_at,last_result) VALUES(?,?,?,?,?) "
