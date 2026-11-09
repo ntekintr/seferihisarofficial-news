@@ -280,6 +280,25 @@ o yanıt penceresinde uygun kayıt yok; `partial`: bazı ayrıntılar okunamadı
   - Hava ve eczane işleri `media_not_deployed` için kırmızı bitmez; pencere
     içindeki sonraki tur dener. Gün kaçarsa `ops_watch` `weather_missing`
     veya (yeni) `pharmacy_missing` uyarısını bir kez açar.
+- 9 Kasım 2026: seferihisarlife, 8 Kasım 15:00'te paylaşılan taekwondo
+  haberinin başlığını değiştirdi. Revizyon 2 yeni kart metni aldı ve ertesi
+  sabah 08:32'de aynı haber ikinci kez akışa ve hikâyeye çıktı (geçmişteki tek
+  örnek). Haberin "güncelleme" gönderisi yoktur: bir revizyonu yayımlanan haber
+  (`kind=news`) artık sonraki revizyonlarla yeniden paylaşılmaz
+  (`duplicate_reason`). Henüz yayımlanmamış kart yeni revizyonla yenilenmeye
+  devam eder; elektrik kesintisi hikâyelerinin gerçek değişiklik kuralı aynıdır.
+- 9 Kasım 2026: `ops_watch`, `seferihisar-calendar` kaynağını 6 Kasım'dan beri
+  sessiz bildirdi. Takvim okunuyordu ve "26. SEFERİHİSAR MANDALİNA ŞENLİĞİ"
+  (6–7 Aralık) içeriyordu, ama `str.casefold()` İ harfini i + U+0307 yaptığı
+  için hiçbir terim eşleşmedi ve satır haber sayılıp atlandı. Takvim okuyucusu
+  kategoriyi artık Türkçe küçük harfle bulur. Genel `category()` değiştirilmedi:
+  kategori kayıtta saklandığından, değişiklik eski büyük harfli kayıtlara yeni
+  revizyon (ve "güncellendi" gönderisi) verirdi. Başlığında yer adı olmayan
+  takvim satırları ("ORİJİNAL GAZETELER SERGİSİ") yerellik kuralı gereği hâlâ
+  alınmaz.
+- 9 Kasım 2026 (Isparta, 7 Kasım): kaynağa hiç ulaşılamaması o günün taze,
+  hazırlanmış eczane listesini artık geri çekmez; tazelik 120 dakikadır
+  (`docs/daily-pharmacy-story.md`).
 
 ## Görsel ve metin kararları
 
