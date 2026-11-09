@@ -480,7 +480,11 @@ def municipal_calendar_items(body: str, base: str, source: dict) -> list[dict]:
     results = []
     for row in rows:
         title, href = text(row.get('title')), row.get('url')
-        event_category = category(title)
+        # 9 Nov 2026: "26. SEFERİHİSAR MANDALİNA ŞENLİĞİ" was dropped as news,
+        # because str.casefold() turns İ into i + U+0307 and no term matched.
+        # Turkish lower case only for this reader's category; stored items of
+        # other readers keep their category (and so their revision).
+        event_category = category(title.replace('İ', 'i').replace('I', 'ı'))
         if not title or not local(title) or event_category not in (
             'concert', 'festival', 'theatre', 'cinema', 'family', 'sport',
             'market', 'culture', 'event', 'food', 'education'):

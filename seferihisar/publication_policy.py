@@ -214,10 +214,17 @@ def duplicate_reason(store, post):
         return 'duplicate_story'
     story = post.get('publish_format') == 'story'
     current_card, pixels = card_key(post), story_pixels(post) if story else None
+    # 9 Nov 2026: seferihisarlife retitled an article published at 15:00 the day
+    # before; revision 2 got a new card text and went out again at 08:32. A news
+    # article has no "update" post, so once one revision is out it stays one
+    # delivery. Power-cut stories keep their own real-change rule above.
+    repeat_news = post.get('kind') == 'news' and post.get('item_id') and not story_only(post)
     for old in store.posts():
         if (old['id'] == post['id'] or old['status'] not in CLAIMED
                 or (old.get('publish_format') == 'story') != story):
             continue
+        if repeat_news and old.get('kind') == 'news' and old.get('item_id') == post['item_id']:
+            return 'duplicate_story'
         if (story and post.get('parent_post_id')
                 and post['parent_post_id'] == old.get('parent_post_id')):
             return 'duplicate_story'
