@@ -149,6 +149,53 @@ def test_municipal_detail_labels_do_not_require_a_labelled_date(monkeypatch):
     assert item['free'] is True and not item['time_known']
 
 
+MANDALINA = {**ROW, 'title': '26. SEFERİHİSAR MANDALİNA ŞENLİĞİ', 'description': '26. SEFERİHİSAR MANDALİNA ŞENLİĞİ',
+             'start': '2026-12-06', 'end': '2026-12-07', 'url': '/26-seferihisar-mandalina-senligi'}
+MANDALINA_BODY = ('<p>26.SEFERİHİSAR MANDALİNA ŞENLİĞİ</p><p>İkramlar-Yarışmalar-Etkinlikler</p>'
+                  '<p>📅 6 Aralık Pazar<br/>\n📍 Seferihisar Kapalı Pazar yeri<br/>\n🕒 14:00</p>')
+
+
+def collect_detail(monkeypatch, row, body):
+    monkeypatch.setattr('seferihisar.collect.now', lambda: AT)
+    page = ('<div class="col-md-9"><div class="inner pd0"><div class="right-title">' + row['title']
+            + '</div></div><div class="inner">' + body + '</div></div>')
+    fetcher = Mock()
+    fetcher.get.side_effect = [(json.dumps([row]), SOURCE['url']),
+                              (page, 'https://seferihisar.bel.tr' + row['url'])]
+    items, _, errors = collect_source(SOURCE, fetcher, [])
+    assert not errors and len(items) == 1
+    return items[0]
+
+
+def test_clock_emoji_line_is_the_start_time(monkeypatch):
+    # 10 Nov 2026 live page: "🕒 14:00" was ignored and the card said "Saat açıklanmadı".
+    item = collect_detail(monkeypatch, MANDALINA, MANDALINA_BODY)
+    assert item['time_known'] and item['start'] == '2026-12-06T14:00:00+03:00'
+    assert item['end'] == item['start'] and item['location'] == 'Seferihisar Kapalı Pazar yeri'
+    assert verify(item, SOURCE, AT) is None
+    rendered = caption(item, 'Bölge takviminde')
+    assert '06.12.2026 · 14:00' in rendered and 'Saat açıklanmadı' not in rendered
+
+
+def test_labelled_time_of_a_multi_day_event_is_its_first_start(monkeypatch):
+    item = collect_detail(monkeypatch, ROW, '<p>Saat: 19.30 - 23.00</p>')
+    assert item['time_known'] and item['start'] == '2026-10-15T19:30:00+03:00'
+    assert item['end'].startswith('2026-10-17')
+    assert 'Başlangıç 19:30' in caption(item, 'Bölge takviminde')
+
+
+@pytest.mark.parametrize('body', [
+    '<p>🕒 14:00</p><p>Saat: 16:00</p>',                  # contradictory labels
+    '<p>Kortej 13.00\'te Kapalı Pazar Yeri\'nden çıkacak.</p>',  # time inside a sentence
+    '<p>🕒 14:00 ve 20:00</p>',                            # more than one time on the line
+    '<p>🕒 25:00</p>',
+])
+def test_unclear_times_stay_unannounced(monkeypatch, body):
+    item = collect_detail(monkeypatch, MANDALINA, body)
+    assert not item['time_known'] and item['start'] == '2026-12-06T00:00:00+03:00'
+    assert 'Saat açıklanmadı' in caption(item, 'Bölge takviminde')
+
+
 def test_conflicting_venue_labels_reject_detail(monkeypatch):
     monkeypatch.setattr('seferihisar.collect.now', lambda: AT)
     fetcher = Mock()
