@@ -512,16 +512,38 @@ def municipal_calendar_items(body: str, base: str, source: dict) -> list[dict]:
     return results
 
 
-def municipal_detail_fields(article) -> dict:
-    """Read explicit labels from the event body, independently of date syntax."""
+def municipal_detail_lines(article) -> list[str]:
+    """Event body lines of the reviewed template; <br> separates labelled facts."""
     content = BeautifulSoup(str(article), 'html.parser')
     for removable in content.select('script, style, nav, footer'):
         removable.decompose()
     for br in content.select('br'):
         br.replace_with('\n')
-    lines = [re.sub(r'\s+', ' ', line).strip()
-             for node in content.select('p, li')
-             for line in node.get_text(' ', strip=False).splitlines()]
+    return [re.sub(r'\s+', ' ', line).strip()
+            for node in content.select('p, li')
+            for line in node.get_text(' ', strip=False).splitlines()]
+
+
+# A whole line that is only a clock emoji or a "Saat:" label and one start time
+# (optionally a range): "🕒 14:00", "Saat: 20.30", "⏰ 19:00 - 22:00".
+# 10 Nov 2026: the Mandalina Şenliği page said "🕒 14:00" and its card said
+# "Saat açıklanmadı". Times inside sentences (e.g. a parade note) never count.
+MUNICIPAL_TIME_LINE = re.compile(
+    r'(?:[\U0001F550-\U0001F567⏰⌚\U0001F570]️?\s*(?:saat\s*[:：]?\s*)?'
+    r'|(?:saat|başlangıç saati|başlama saati)\s*[:：]\s*)'
+    r'([01]?\d|2[0-3])[:.]([0-5]\d)(?:\s*[-–]\s*(?:[01]?\d|2[0-3])[:.][0-5]\d)?', re.I)
+
+
+def municipal_detail_time(article) -> tuple[int, int] | None:
+    """One explicitly labelled start time, or None when absent or contradictory."""
+    times = {(int(m[1]), int(m[2])) for line in municipal_detail_lines(article)
+             if (m := MUNICIPAL_TIME_LINE.fullmatch(line))}
+    return next(iter(times)) if len(times) == 1 else None
+
+
+def municipal_detail_fields(article) -> dict:
+    """Read explicit labels from the event body, independently of date syntax."""
+    lines = municipal_detail_lines(article)
 
     def field(pattern):
         values = {match[1].strip() for line in lines
@@ -599,6 +621,12 @@ def collect_municipal_calendar(source: dict, fetcher: Fetcher):
                     item[field] = richer[field]
             item.update({field: value for field, value in municipal_detail_fields(article).items()
                          if value is not None})
+            clock = municipal_detail_time(article)
+            if clock and not item['time_known']:
+                start = parse_date(item['start']).replace(hour=clock[0], minute=clock[1])
+                # A single-day row's date-only end would now precede its start.
+                end = max(parse_date(item['end']), start)
+                item.update(start=start.isoformat(), end=end.isoformat(), time_known=True)
             if re.search(r'(?:etkinlik|konser|gösteri|festival)\s+iptal\s+edil(?:di|miştir)', body_text, re.I):
                 item['status'] = 'cancelled'
             elif re.search(r'(?:etkinlik|konser|gösteri|festival)\s+ertelen(?:di|miştir)', body_text, re.I):
