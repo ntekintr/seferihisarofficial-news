@@ -296,6 +296,14 @@ o yanıt penceresinde uygun kayıt yok; `partial`: bazı ayrıntılar okunamadı
   revizyon (ve "güncellendi" gönderisi) verirdi. Başlığında yer adı olmayan
   takvim satırları ("ORİJİNAL GAZETELER SERGİSİ") yerellik kuralı gereği hâlâ
   alınmaz.
+- 10 Kasım 2026: Mandalina Şenliği sayfası saati "🕒 14:00" satırında
+  veriyordu, ama takvim okuyucusu yalnız yer/düzenleyen/ücret etiketlerini
+  okuduğu için hazırlanan kart "Saat açıklanmadı" diyordu. Detay sayfasında
+  tek başına duran saat emojisi veya "Saat:" etiketli satır artık başlangıç
+  saatidir (`municipal_detail_time`); cümle içindeki saatler, aynı satırda
+  birden çok saat ve çelişen etiketler saati bilinmez bırakır. Saat eklenince
+  kayıt yeni revizyon alır: duyurusu çıkmamış kart yenilenir, yayımlanmış
+  etkinlikte "güncellendi" gönderisi gerçek bir bilgi değişikliğidir.
 - 9 Kasım 2026 (Isparta, 7 Kasım): kaynağa hiç ulaşılamaması o günün taze,
   hazırlanmış eczane listesini artık geri çekmez; tazelik 120 dakikadır
   (`docs/daily-pharmacy-story.md`).
