@@ -16,7 +16,7 @@ from seferihisar.same_story import reports
 from seferihisar.schedule import CARD_SUMMARY, card_summary
 from seferihisar.source_photos import SourcePhotos, binding_reason, candidate_urls
 from seferihisar.store import Store
-from seferihisar.visual_match import MatchRejected
+from seferihisar.visual_match import MatchRejected, MatchUnavailable
 from seferihisar.visual_topics import news_subjects, unclassified_news
 
 AT = parse_date('2026-11-01T15:00:00+03:00')
@@ -154,7 +154,7 @@ def test_a_percent_encoded_opengraph_address_still_names_the_hero(store):
     assert candidate_urls(html, row['url'], row, LOCAL) == [hero]
 
 
-def test_own_photo_passes_as_a_photograph_when_its_topic_label_does_not(store, tmp_path, monkeypatch):
+def test_own_photo_is_used_when_its_topic_label_does_not_match(store, tmp_path, monkeypatch):
     # The live SeferihisarLife opening photo failed the `traffic` label.
     row = add(store, LOCAL, 'yol', 'Seferihisar çevre yolu hizmete açıldı')
     assert news_subjects(row)[0] == 'traffic'
@@ -164,24 +164,44 @@ def test_own_photo_passes_as_a_photograph_when_its_topic_label_does_not(store, t
 
     def check(data, expected):
         checks.append(expected)
-        if expected != 'article_photo':
-            raise MatchRejected('Wrong topic')
+        raise MatchRejected('Wrong topic')
     monkeypatch.setattr('seferihisar.source_photos.validate_news_photo', check)
     monkeypatch.setattr('seferihisar.visual_match.validate_headline_photo', lambda *args: (_ for _ in ()).throw(MatchRejected('No banner')))
-    assert photos.image(row) and checks == ['traffic', 'article_photo']
+    assert photos.image(row) and checks == ['traffic']
     assert json.loads(store.rows('SELECT payload FROM source_photos')[0]['payload'])['subject'] == 'traffic'
 
 
-def test_a_graphic_still_fails_as_a_photograph(store, tmp_path, monkeypatch):
+@pytest.mark.parametrize('error', [MatchRejected('Headline graphic'), MatchUnavailable('No model')])
+def test_the_articles_own_headline_graphic_is_its_real_image(store, tmp_path, monkeypatch, error):
+    # Owner's rule, 12 Nov: live banner graphics and portraits were replaced by scenes.
     row = add(store, LOCAL, 'yol', 'Seferihisar çevre yolu hizmete açıldı')
     photos, _ = manager(store, tmp_path, monkeypatch, {row['url']: page(row, f'<img src="https://paper.example/u/a.jpg" alt="Açılış">')}, (LOCAL,))
     photos.fetcher.image.return_value = (jpeg(), 'https://paper.example/u/a.jpg')
 
     def reject(*args):
-        raise MatchRejected('Headline graphic')
+        raise error
     monkeypatch.setattr('seferihisar.source_photos.validate_news_photo', reject)
     monkeypatch.setattr('seferihisar.visual_match.validate_headline_photo', reject)
-    assert photos.image(row) is None and store.rows('SELECT * FROM source_photos') == []
+    assert photos.image(row) and len(store.rows('SELECT * FROM source_photos')) == 1
+    assert photos.stats['rejected'] == photos.stats['unavailable'] == 0
+
+
+def test_a_picture_that_passes_the_check_is_preferred_to_one_that_does_not(store, tmp_path, monkeypatch):
+    row = add(store, LOCAL, 'yol', 'Seferihisar çevre yolu hizmete açıldı')
+    first, second = 'https://paper.example/u/a.jpg', 'https://paper.example/u/b.jpg'
+    photos, _ = manager(store, tmp_path, monkeypatch, {row['url']: page(row, f'<img src="{first}" alt="Manşet"><img src="{second}" alt="Açılış">')}, (LOCAL,))
+    pictures = {first: jpeg('#444444'), second: jpeg('#888888')}
+    photos.fetcher.image.side_effect = lambda url: (pictures[url], url)
+    seen = []
+
+    def check(data, expected):
+        seen.append(data)
+        if len(seen) == 1:
+            raise MatchRejected('Headline graphic')
+    monkeypatch.setattr('seferihisar.source_photos.validate_news_photo', check)
+    monkeypatch.setattr('seferihisar.visual_match.validate_headline_photo', lambda *args: (_ for _ in ()).throw(MatchRejected('No banner')))
+    assert photos.image(row)
+    assert json.loads(store.rows('SELECT payload FROM source_photos')[0]['payload'])['image_url'] == second
 
 
 def test_a_photo_credit_sits_under_the_source_and_never_reads_as_a_copy_change():

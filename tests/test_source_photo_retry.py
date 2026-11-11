@@ -5,11 +5,10 @@ import json
 
 import pytest
 
-from test_source_photo_queue import item, manager, page, AT
+from test_source_photo_queue import item, manager, page, thumbnail, AT, PHOTO
 from seferihisar.security import validate_state
 from seferihisar.source_photo_retry import active, remember, prune, MAX_ROWS
 from seferihisar.store import Store
-from seferihisar.visual_match import MatchRejected
 
 
 def test_persisted_rejections_leave_next_run_for_later_photograph(tmp_path, monkeypatch):
@@ -19,13 +18,12 @@ def test_persisted_rejections_leave_next_run_for_later_photograph(tmp_path, monk
         rows=[item(store,n) for n in range(3)]
         photos,fetcher=manager(store,tmp_path,monkeypatch)
         fetcher.get.side_effect=[(page(row,photo=True),row['url']) for row in rows]
-        def reject(*args):raise MatchRejected('Private diagnostic must not persist')
-        monkeypatch.setattr('seferihisar.source_photos.validate_news_photo',reject)
-        monkeypatch.setattr('seferihisar.visual_match.validate_headline_photo',reject)
+        fetcher.image.return_value=(thumbnail(),PHOTO)
         assert all(photos.image(row) is None for row in rows)
         assert photos.reads==2
         checks=store.rows('SELECT * FROM source_photo_retries')
-        assert len(checks)==2 and 'Private' not in json.dumps(checks)
+        assert len(checks)==2 and {row['stage'] for row in checks}=={'image_format'}
+        assert 'Unsupported' not in json.dumps(checks)
         validate_state(path)
     with closing(Store(path)) as store:
         photos,fetcher=manager(store,tmp_path,monkeypatch)
@@ -39,7 +37,7 @@ def test_persisted_rejections_leave_next_run_for_later_photograph(tmp_path, monk
         validate_state(path)
 
 
-@pytest.mark.parametrize('stage,minutes', [('visual_subject',360),('source_binding',360),
+@pytest.mark.parametrize('stage,minutes', [('visual_subject',360),('source_binding',360),('no_image',360),
     ('source_read',60),('image_read',60),('checker_unavailable',15)])
 def test_cooldowns_expire_and_new_revision_is_not_suppressed(tmp_path,stage,minutes):
     with closing(Store(tmp_path/'state.sqlite')) as store:

@@ -11,9 +11,8 @@ from seferihisar.operations import failed, record_check, safe_result
 from seferihisar.security import validate_state
 from seferihisar.source_photos import SourcePhotos, MAX_SOURCE_CHECKS
 from seferihisar.store import Store
-from seferihisar.visual_match import MatchRejected
 
-AT = parse_date('2026-10-26T08:40:00+03:00')
+AT =parse_date('2026-10-26T08:40:00+03:00')
 SOURCE = {'id': 'local-paper', 'name': 'Yerel gazete', 'url': 'https://news.example/haberler',
           'kind': 'html', 'enabled': True, 'trusted': True, 'access': 'robots'}
 PHOTO = 'https://news.example/uploads/meeting.jpg'
@@ -44,6 +43,12 @@ def manager(store, tmp_path, monkeypatch):
     raw = io.BytesIO(); Image.new('RGB', (1024, 768), '#345678').save(raw, 'JPEG')
     fetcher.image.return_value = (raw.getvalue(), PHOTO)
     return SourcePhotos(store, AT, tmp_path/'photos', [SOURCE], fetcher=fetcher), fetcher
+
+
+def thumbnail():
+    # Too small for a card: the one reason a publisher's own picture is refused.
+    raw = io.BytesIO(); Image.new('RGB', (120, 90), '#345678').save(raw, 'JPEG')
+    return raw.getvalue()
 
 
 def test_no_image_pages_leave_image_slots_for_later_original(tmp_path, monkeypatch):
@@ -78,10 +83,7 @@ def test_rejected_image_downloads_still_consume_the_read_budget(tmp_path, monkey
         rows = [item(store, n) for n in range(3)]
         photos, fetcher = manager(store, tmp_path, monkeypatch)
         fetcher.get.side_effect = [(page(row, photo=True), row['url']) for row in rows]
-        def reject(*args):
-            raise MatchRejected('Wrong subject')
-        monkeypatch.setattr('seferihisar.source_photos.validate_news_photo', reject)
-        monkeypatch.setattr('seferihisar.visual_match.validate_headline_photo', reject)
+        fetcher.image.return_value = (thumbnail(), PHOTO)
         assert all(photos.image(row) is None for row in rows)
         assert photos.reads == fetcher.image.call_count == fetcher.get.call_count == 2
         assert photos.stats['deferred'] == 1

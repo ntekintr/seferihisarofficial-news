@@ -24,6 +24,9 @@ def generated_scene(monkeypatch):
     monkeypatch.setenv('CLOUDFLARE_API_TOKEN', 'SYNTHETIC_CLOUDFLARE_CREDENTIAL_0123456789')
     monkeypatch.setenv('CLOUDFLARE_ACCOUNT_ID', 'a' * 32)
     monkeypatch.setenv('ILLUSTRATIONS_ENABLED', 'true')
+    # A scene is generated only once the article is known to show no picture;
+    # this fixture has no source pages, so the photograph path stays closed.
+    monkeypatch.setenv('SOURCE_PHOTOS_ENABLED', 'false')
     monkeypatch.setattr('seferihisar.illustrations.ocr_available', lambda: True)
     monkeypatch.setattr('seferihisar.illustrations.validate_match', lambda data, expected: {})
     monkeypatch.setattr('seferihisar.illustrations.validate_text_free_illustration', validate_jpeg)

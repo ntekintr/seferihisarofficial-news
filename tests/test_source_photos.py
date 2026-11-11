@@ -14,7 +14,7 @@ from seferihisar.pipeline import _export
 from seferihisar.schedule import queue_item
 from seferihisar.security import validate_state
 from seferihisar.source_photo_data import key,validate_record
-from seferihisar.source_photos import SourcePhotos,binding_reason,candidate,cleaned_photo,news_subject
+from seferihisar.source_photos import SourcePhotos,binding_reason,candidate,candidate_urls,cleaned_photo,news_subject
 from seferihisar.visual_gate import content_key,review,valid_review
 from seferihisar.visual_match import MatchRejected,MatchUnavailable
 
@@ -64,7 +64,7 @@ def test_actual_article_identity_and_primary_image_excludes_related_thumbnails()
 
 
 @pytest.mark.parametrize('change',[
-    'title','date','canonical','final','archive','generated','foreign','logo','related','ambiguous','secret',
+    'title','date','canonical','final','archive','generated','foreign','logo','related','secret',
 ])
 def test_unproven_default_archival_related_or_private_images_are_rejected(change):
     body=html();final=NEWS['url']
@@ -77,9 +77,13 @@ def test_unproven_default_archival_related_or_private_images_are_rejected(change
     elif change=='foreign':body=body.replace(PHOTO,'https://other.example/meeting.jpg')
     elif change=='logo':body=body.replace(PHOTO,'https://news.example/logo.jpg')
     elif change=='related':body=body.replace('<img src="'+PHOTO,'<a href="https://news.example/other"><img src="'+PHOTO).replace('alt="Muhtarlar toplantısı">','alt="Muhtarlar toplantısı"></a>')
-    elif change=='ambiguous':body=body.replace('property="og:image"','property="unrelated"').replace('</article>','<img src="https://news.example/second.jpg"></article>')
     else:body=body.replace(PHOTO,PHOTO+'?access_token=PRIVATE_QUERY_VALUE')
     with pytest.raises(ValueError):candidate(body,final,NEWS,SOURCE)
+
+
+def test_several_pictures_without_an_opengraph_choice_are_tried_in_page_order():
+    body=html().replace('property="og:image"','property="unrelated"').replace('</article>','<img src="https://news.example/second.jpg"></article>')
+    assert candidate_urls(body,NEWS['url'],NEWS,SOURCE)==[PHOTO,'https://news.example/second.jpg']
 
 
 @pytest.mark.parametrize('size',[(100,100),(500,280),(400,1200),(2100,2000)])
@@ -110,14 +114,20 @@ def test_cleaned_pixels_have_no_original_metadata_and_state_writer_needs_no_pill
     assert fetcher.get.call_count==1 and fetcher.image.call_count==1
 
 
-@pytest.mark.parametrize('error',[MatchRejected(),MatchUnavailable(),requests.Timeout('PRIVATE_PROVIDER_TEXT')])
-def test_mismatch_model_missing_and_source_failure_assign_no_image_or_claim(store,tmp_path,monkeypatch,error):
+def test_source_failure_assigns_no_image_or_claim(store,tmp_path,monkeypatch):
     item,post=seed(store);photos,fetcher=manager(store,tmp_path,monkeypatch)
-    monkeypatch.setattr('seferihisar.source_photos.validate_news_photo',Mock(side_effect=error))
-    if isinstance(error,requests.RequestException):fetcher.get.side_effect=error
+    fetcher.get.side_effect=requests.Timeout('PRIVATE_PROVIDER_TEXT')
     before=store.rows('SELECT * FROM posts')
     assert photos.for_post(post,{item['id']:item})=={}
     assert store.rows('SELECT * FROM posts')==before and not store.rows('SELECT * FROM source_photos')
+    assert b'PRIVATE_PROVIDER_TEXT' not in store.path.read_bytes()
+
+
+@pytest.mark.parametrize('error',[MatchRejected('PRIVATE_PROVIDER_TEXT'),MatchUnavailable('PRIVATE_PROVIDER_TEXT')])
+def test_a_mismatch_or_missing_model_still_binds_the_articles_own_picture(store,tmp_path,monkeypatch,error):
+    item,post=seed(store);photos,fetcher=manager(store,tmp_path,monkeypatch)
+    monkeypatch.setattr('seferihisar.source_photos.validate_news_photo',Mock(side_effect=error))
+    assert list(photos.for_post(post,{item['id']:item}))==[0] and post['source_photo_keys']
     assert b'PRIVATE_PROVIDER_TEXT' not in store.path.read_bytes()
 
 
