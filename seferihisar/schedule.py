@@ -194,7 +194,7 @@ def prepare(store: Store, at: datetime, *, refresh_digests: bool = True):
                 if post["kind"] in ("weekly", "monthly") and parse_date(post["due_at"]) < at - timedelta(days=2):
                     store.db.execute("UPDATE posts SET status='expired' WHERE id=?", (post["id"],))
                 continue
-            expired = publication_reason(item, at) in ('expired_news', 'expired_event', 'expired_service_notice')
+            expired = publication_reason(item, at) in ('expired_news', 'expired_dated_news', 'expired_event', 'expired_service_notice')
             expired |= post["kind"] in ("reminder_3d", "reminder_day") and parse_date(post["created_at"]).date() != at.date()
             if expired:
                 store.db.execute("UPDATE posts SET status='expired' WHERE id=?", (post["id"],))

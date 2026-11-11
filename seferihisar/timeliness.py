@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import re
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 
 from .domain import TZ, normalized, parse_date
 from .quality import news_quality_reason
@@ -94,6 +94,38 @@ def service_validity_reason(item: dict, at: datetime) -> str | None:
     return None
 
 
+TITLE_MONTHS = ('ocak', 'şubat', 'mart', 'nisan', 'mayis', 'haziran', 'temmuz',
+                'ağustos', 'eylül', 'ekim', 'kasim', 'aralik')
+TITLE_DAY = re.compile(r'\b([0-3]?\d) (' + '|'.join(TITLE_MONTHS) + r')\w*\b')
+# Future tense ("sirenler çalacak") or a greeting for the day ("10 Kasım mesajı").
+TIED_TO_DAY = re.compile(r'\b\w{2,}(?:acak|ecek)\w*\b|\bmesaj\w*\b')
+
+
+def title_day_passed(item: dict, at: datetime) -> bool:
+    """A title announcing or saluting one named day is stale once that day is over.
+
+    "10 Kasım'da sirenler çalacak" or "10 Kasım anma mesajı" must not go out on
+    11 November, although the 48-hour news window is still open. Past-tense
+    reports of the day and titles naming several days are left alone.
+    """
+    title = normalized(item.get('title') or '')
+    days = {(int(day), TITLE_MONTHS.index(month) + 1) for day, month in TITLE_DAY.findall(title)}
+    published = parse_date(item.get('published_at'))
+    if len(days) != 1 or not published or not TIED_TO_DAY.search(title):
+        return False
+    day, month = next(iter(days))
+    named = []
+    for year in (published.year - 1, published.year, published.year + 1):
+        try:
+            named.append(date(year, month, day))
+        except ValueError:
+            pass
+    if not named:
+        return False
+    nearest = min(named, key=lambda value: abs((value - published.astimezone(TZ).date()).days))
+    return nearest < at.astimezone(TZ).date()
+
+
 def publication_reason(item: dict, at: datetime) -> str | None:
     """Recheck stored items for every destination, including legacy queues."""
     from .publication_policy import owner_exclusion
@@ -111,6 +143,8 @@ def publication_reason(item: dict, at: datetime) -> str | None:
             return 'outdated_or_missing_date'
         if at - published > timedelta(hours=48):
             return 'expired_news'
+        if title_day_passed(item, at):
+            return 'expired_dated_news'
         from .quality import news_editorial_reason
         if reason := news_editorial_reason(item):
             return reason
