@@ -149,7 +149,7 @@
     "name": "Seferihisar Yeni Haber",
     "url": "https://www.seferihisar.com/",
     "kind": "html",
-    "enabled": true,
+    "enabled": false,
     "trusted": true,
     "access": "robots",
     "max_pages": 12,
