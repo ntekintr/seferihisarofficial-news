@@ -4,6 +4,26 @@ Son gözden geçirme: **26 Ekim 2026**. Bu dosya kod haritası ve kalıcı çal�
 notudur. Anlık sağlık/teslim kanıtı zaman damgalı çıktılardan alınır; burada bir
 kez başarılı olması sonraki ay kesintisiz çalışacağı anlamına gelmez.
 
+### 12 Kasım: haberin kendi görseli varken yapay zekâ sahnesi üretilmez
+
+Kullanıcı kararı: yapay zekâ sahnesi yalnızca haberin kaynağında hiç görsel yoksa
+kullanılır. İki haftada Seferihisar'da 5, Isparta'da 14 haber, kaynağında okunabilir
+bir görsel olduğu hâlde sahneyle çıkmıştı; çoğu başlık bantlı haber görseli ya da
+tek kişilik portreydi ve "fotoğraf mı" kontrolünde eleniyordu.
+
+- Haberin tam kimliği doğrulanmış sayfasındaki kendi görseli, biçimi uygunsa her
+  zaman kullanılır. CLIP/OCR kontrolü artık yalnızca birden çok aday arasında
+  sıralama yapar, hiçbirini reddetmez (`SourcePhotos.article_image`). Başka
+  kaynaktan alınan fotoğraf ve etkinlik afişleri eski kontrollerine bağlıdır.
+- Sahne yalnızca sayfa okunup görsel bulunmadığında üretilir
+  (`NoArticleImage`, bekleme aşaması `no_image`). Sayfa ya da görsel okunamadıysa,
+  görsel küçükse ya da incelenmemiş bir sunucudaysa gönderi sahnesiz bekler
+  (`SourcePhotos.awaits_original`, `awaiting_content_visual`) ve sonraki turlarda
+  yeniden denenir.
+- Gövdesi bulunmayan video/galeri düzeninde sayfanın kendi OpenGraph görseli alınır.
+  Birden çok görsel varsa sayfa sırasıyla ilk ikisi denenir.
+- Haberler.com'un fotoğraf sunucusu `foto.haberler.com` incelendi ve eklendi.
+
 ### 1 Kasım: önce gerçek fotoğraf, sonra aynı haberin diğer kaynakları
 
 Sıra artık şöyle: haberin kendi fotoğrafı; aynı haberi yazan başka kaynağın fotoğrafı;
