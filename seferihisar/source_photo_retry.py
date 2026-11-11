@@ -4,7 +4,9 @@ import re
 
 MAX_ROWS = 400
 STAGES = frozenset(('source_read', 'source_binding', 'image_read', 'poster_delivery_v2', 'image_format',
-                    'event_text', 'visual_subject', 'cache_binding', 'checker_unavailable'))
+                    'event_text', 'visual_subject', 'cache_binding', 'checker_unavailable',
+                    # The article was read and shows no picture: a scene may be generated.
+                    'no_image'))
 COLUMNS = ['item_id', 'revision', 'checked_at', 'retry_at', 'stage']
 
 
@@ -37,6 +39,12 @@ def active(store, item, at, *, obsolete=()):
         return False
     checked, retry = datetime.fromisoformat(row['checked_at']), datetime.fromisoformat(row['retry_at'])
     return checked - timedelta(minutes=5) <= at < retry
+
+
+def stage(store, item):
+    rows = store.rows('SELECT stage FROM source_photo_retries WHERE item_id=? AND revision=?',
+                      (item['id'], item['revision']))
+    return rows[0]['stage'] if rows else None
 
 
 def remember(store, item, at, stage):
