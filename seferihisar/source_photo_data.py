@@ -26,6 +26,9 @@ EVENT_SUBJECTS=('theatre','concert','cinema','festival','culture','family','spor
 IMAGE_ORIGINS = {
     'bubilet': ('www.bubilet.com.tr', 'cdn.bubilet.com.tr', r'/cdn-cgi/image/width=\d{2,4},quality=\d{2,3}/files/Etkinlik/[A-Za-z0-9_.-]+\.(?:jpe?g|png|webp)'),
     'bubilet-bademler': ('www.bubilet.com.tr', 'cdn.bubilet.com.tr', r'/cdn-cgi/image/width=\d{2,4},quality=\d{2,3}/files/Etkinlik/[A-Za-z0-9_.-]+\.(?:jpe?g|png|webp)'),
+    # Reviewed 12 Nov 2026: article heroes live on the publisher's own photo host,
+    # whose robots.txt allows every path.
+    'haberler': ('www.haberler.com', 'foto.haberler.com', r'/haber/\d{4}/\d{2}/\d{2}/[a-z0-9_-]+\.(?:jpe?g|png|webp)'),
 }
 
 

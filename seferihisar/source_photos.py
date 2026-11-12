@@ -28,6 +28,14 @@ MAX_ARTICLE_IMAGES=2
 ARCHIVE=re.compile(r'\b(?:ar[şs]iv\w*|temsili\w*|illustration\w*|ill[uü]strasyon\w*|stok|stock|yapay zek[aâ]\w*|ai generated)\b')
 
 
+CHROME=re.compile(r'logo|avatar|banner|reklam|placeholder|no-image',re.I)
+RASTER=re.compile(r'\.(?:jpe?g|png|webp)$',re.I)
+
+
+class NoArticleImage(ValueError):
+    """The exact article was read and shows no picture of its own."""
+
+
 def news_subject(item):
     if item.get('kind') != 'news':
         return None
@@ -104,7 +112,15 @@ def candidate_urls(html,final_url,item,source,*,feed_html=None):
         if len(set(candidates))!=1:raise ValueError('No exact session artwork')
         return [candidates[0]]
     article=soup.select_one(source.get('photo_article_selector') or source.get('article_selector','article .entry-content, article .article-content, article, .news-detail, .haber-detay'))
-    if not article:raise ValueError('No article image scope')
+    if not article:
+        # A video or gallery layout has no reviewed body. The identity above is
+        # already exact, so the page's own OpenGraph picture is this article's.
+        declared=soup.select_one('meta[property="og:image"][content]')
+        if not declared:raise NoArticleImage('No article photograph')
+        url=urljoin(final_url,declared['content'])
+        if not approved_image_url(item['source_id'],item['url'],url) or CHROME.search(urlsplit(url).path):
+            raise ValueError('No article image scope')
+        return [url]
     # WordPress featured photos often sit beside entry-content inside article.
     article=article.find_parent('article') or article
     heading=soup.select_one(source['title_selector']) if source.get('title_selector') else article.find('h1')
@@ -113,7 +129,7 @@ def candidate_urls(html,final_url,item,source,*,feed_html=None):
     image_alt=soup.select_one('meta[property="og:image:alt"][content]')
     if image_alt and ARCHIVE.search(normalized(image_alt['content'])):
         raise ValueError('Archival article photograph')
-    images={}
+    images={};foreign=False
     # The reviewed body can be a sibling of the hero wrapper. Bind its direct
     # paragraphs to the exact body already parsed for this article; do not
     # expand to sidebars, comments or a second infinite-scroll article.
@@ -140,19 +156,21 @@ def candidate_urls(html,final_url,item,source,*,feed_html=None):
         for raw in raw_urls:
             if not isinstance(raw,str):continue
             url=urljoin(final_url,raw)
-            if (not approved_image_url(item['source_id'], item['url'], url)
-                    or ARCHIVE.search(label) or re.search(r'logo|avatar|banner|reklam|placeholder|no-image',urlsplit(url).path,re.I)):
+            if ARCHIVE.search(label) or CHROME.search(urlsplit(url).path):
                 continue
             link=node.find_parent('a',href=True)
             if link:
                 href=urljoin(final_url,link['href'])
                 if canonical(href) not in (canonical(url),canonical(item['url'])):continue
+            if not approved_image_url(item['source_id'], item['url'], url):
+                # A picture on a host nobody reviewed is still the article's own.
+                foreign=foreign or bool(urlsplit(url).scheme in ('http','https') and RASTER.search(urlsplit(url).path))
+                continue
             images[url]=label
             if id(node) in inline_nodes and url not in inline_images:
                 inline_images.append(url)
     # Natural, directly embedded source photographs are evaluated before an
-    # editorial collage. The same strict subject check still accepts/rejects
-    # each actual file; choosing a URL never grants visual approval.
+    # editorial collage. Each actual file is still read and format-checked.
     if inline_images:
         return inline_images[:MAX_ARTICLE_IMAGES]
     primary=soup.select_one('meta[property="og:image"][content]')
@@ -166,8 +184,11 @@ def candidate_urls(html,final_url,item,source,*,feed_html=None):
         variants=[image for image in images if base(image)==base(url)]
         if (approved_image_url(item['source_id'], item['url'], url)
                 and len(variants)==1):return [variants[0]]
-    if len(images)!=1:raise ValueError('Ambiguous article photograph')
-    return [next(iter(images))]
+    if not images and foreign:raise ValueError('Article photograph on an unreviewed host')
+    if not images:raise NoArticleImage('No article photograph')
+    # Several pictures of this one article and no OpenGraph choice: the first
+    # in page order are tried, each still format-checked as an actual file.
+    return list(images)[:MAX_ARTICLE_IMAGES]
 
 
 def candidate(html,final_url,item,source):
@@ -234,6 +255,14 @@ class SourcePhotos:
         self.results={}
         self.items={}
         self.story_checked=set()
+        # News whose own article may still show a picture this run did not bind.
+        self.unsettled=set()
+
+    def awaits_original(self,post,items):
+        """Owner's rule, 12 Nov: a generated cover only when the article shows no picture."""
+        item=items.get(post.get('item_id'))
+        return bool(self.enabled and post['status']=='prepared' and item
+                    and item['id'] in self.unsettled and not post.get('source_photo_keys'))
 
     def failure(self,stage,*,unavailable=False):
         # Enumerated pipeline stages, never exception/provider text or URLs.
@@ -364,9 +393,13 @@ class SourcePhotos:
                 self.stats['reused']+=1
                 self.results[item['id']]=(row['id'],self.materialize(row))
                 return self.results[item['id']]
-        from .source_photo_retry import active,remember
-        obsolete = ('image_read',) if reviewed_ticket_source(source) else ()
+        from .source_photo_retry import active,remember,stage as waiting_stage
+        news=item.get('kind')=='news'
+        # The model check no longer refuses a publisher's own news picture.
+        obsolete = ('image_read',) if reviewed_ticket_source(source) else ('visual_subject',) if news else ()
+        if news:self.unsettled.add(item['id'])
         if active(self.store,item,self.at,obsolete=obsolete):
+            if waiting_stage(self.store,item)=='no_image':self.unsettled.discard(item['id'])
             self.stats['cooldown']+=1;return None
         if self.reads>=MAX_READS or self.stats['source_checks']>=MAX_SOURCE_CHECKS:
             self.stats['deferred']+=1;return None
@@ -386,6 +419,10 @@ class SourcePhotos:
                 if canonical(feed_url) != canonical(source['url']):
                     raise ValueError('Source feed redirected')
             urls=candidate_urls(html,final,item,source,feed_html=feed_html)
+        except NoArticleImage:
+            # Only now may a scene be generated for this story.
+            self.unsettled.discard(item['id'])
+            self.failure(stage);remember(self.store,item,self.at,'no_image');return None
         except (requests.RequestException,ValueError,TypeError,KeyError,OSError):
             self.failure(stage);remember(self.store,item,self.at,stage);return None
         last_failure=None
@@ -412,16 +449,15 @@ class SourcePhotos:
                     if not promotional:
                         validate_event_photo(image,expected)
                 else:
-                    stage='visual_subject'
                     try:
-                        validate_news_photo(image,expected)
-                    except MatchRejected as rejection:
-                        from .visual_match import validate_headline_photo
                         try:
+                            validate_news_photo(image,expected)
+                        except MatchRejected:
+                            from .visual_match import validate_headline_photo
                             validate_headline_photo(image,expected,item['title'])
-                        except (ValueError,IllustrationCheckUnavailable):
-                            if expected!=ARTICLE_PHOTO:held.append((url,image))
-                            raise rejection
+                    except (ValueError,IllustrationCheckUnavailable):
+                        # The check ranks this article's pictures; it refuses none.
+                        held.append((url,image));continue
                 stage='cache_binding'
                 return self.bind(item,url,image,expected)
             except (MatchUnavailable,IllustrationCheckUnavailable):
@@ -430,17 +466,14 @@ class SourcePhotos:
             except (requests.RequestException,ValueError,TypeError,KeyError,OSError):
                 self.failure(stage)
                 last_failure='poster_delivery_v2' if stage=='image_read' and reviewed_ticket_source(source) else stage
-        # No picture matched its topic label. The publisher's own photograph of
-        # this exact article still comes first (owner's rule, 1 Nov): it needs
-        # only to be a real photograph, ahead of any other source or a scene.
+        # No picture passed the model check. The publisher's own picture of this
+        # exact article is used all the same (owner's rule, 12 Nov): a headline
+        # banner or a portrait is the story's real image, a scene is not.
         for url,image in held:
             try:
-                validate_news_photo(image,ARTICLE_PHOTO)
                 return self.bind(item,url,image,expected)
-            except (MatchUnavailable,IllustrationCheckUnavailable):
-                self.failure('visual_subject',unavailable=True);last_failure='checker_unavailable';break
             except (ValueError,TypeError,KeyError,OSError):
-                continue
+                self.failure('cache_binding');last_failure='cache_binding'
         if last_failure:remember(self.store,item,self.at,last_failure)
         return None
 
