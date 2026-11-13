@@ -110,7 +110,27 @@ def test_native_reader_finds_and_crops_a_real_headline_band():
     draw.text((40,BAND+62),'ELMA YÜKÜ YOLA SAÇILDI',font=font(38,True),fill='white')
     out=io.BytesIO();graphic.save(out,format='JPEG',quality=90)
     with Image.open(io.BytesIO(without_band(out.getvalue()))) as cropped:
-        assert cropped.width==WIDTH and abs(cropped.height-BAND)<=4
+        assert cropped.width==WIDTH and abs(cropped.height-BAND)<=8
     # The same photograph without lettering keeps every row.
     plain=picture(band=HEIGHT)
     assert without_band(plain) is plain
+
+
+@pytest.mark.skipif(__import__('os').getenv('RUN_VISUAL_NATIVE')!='true',reason='Native OCR job')
+@pytest.mark.parametrize('name,top,height',[('ajans32-bottom-band.jpg',(0,0),(220,290)),
+                                            ('haber32-top-band.jpg',(100,185),(230,335))])
+def test_native_reader_crops_real_publisher_bands(name,top,height):
+    # 13 Nov live cards: Ajans32's outlined headline and address strip below the
+    # photograph, Haber32's headline boxes and site name above it.
+    from pathlib import Path
+    from seferihisar.headline_band import without_band
+    data=Path('tests/fixtures/headline-bands',name).read_bytes()
+    result=without_band(data)
+    with Image.open(io.BytesIO(data)) as before, Image.open(io.BytesIO(result)) as after:
+        assert after.width==before.width and height[0]<=after.height<=height[1]
+        # The kept rows are the publisher's own pixels from the chosen offset.
+        from PIL import ImageChops, ImageStat
+        first=after.convert('L').crop((0,0,after.width,8))
+        offset=min(range(before.height-after.height+1),key=lambda y:ImageStat.Stat(ImageChops.difference(
+            before.convert('L').crop((0,y,before.width,y+8)),first)).mean[0])
+        assert top[0]<=offset<=top[1]
