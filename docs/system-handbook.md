@@ -44,11 +44,14 @@ tek kişilik portreydi ve "fotoğraf mı" kontrolünde eleniyordu.
 - Gövdesi bulunmayan video/galeri düzeninde sayfanın kendi OpenGraph görseli alınır.
   Birden çok görsel varsa sayfa sırasıyla ilk ikisi denenir.
 - Haberler.com'un fotoğraf sunucusu `foto.haberler.com` incelendi ve eklendi.
-- Yayıncının fotoğrafın altına bastığı başlık bandı kırpılır (`headline_band.py`):
-  OCR alt kısımda çerçeveyi kapatan büyük yazı bulursa görsel bandın başladığı
-  satırdan kesilir. Yalnızca kırpmadır, hiçbir piksel yeniden çizilmez; üstte ya da
-  ortada yazısı olan kolaj, köşe logosu ve kırpınca karta küçük kalacak görsel olduğu
-  gibi kullanılır. OCR yoksa görsel bekletilmez, kırpılmadan kullanılır.
+- Yayıncının fotoğrafın üstüne ve altına bastığı manşet bantları kırpılır
+  (`headline_band.py`). OCR (renkli ve siyah-beyaz görünüm) üstte ya da altta
+  çerçeveyi kapatan büyük yazı bulursa görsel bandın bittiği satırdan kesilir; üst
+  bandın hemen altındaki site adı da gider. OCR'nin okuyamadığı kenarlıklı renkli
+  başlıklar (Ajans32) piksellerinden tanınır: altta siyah adres şeridi, hemen üstünde
+  hem doygun renkli hem beyaz kenarlıklı satırlar. Yalnızca kırpmadır, hiçbir piksel
+  yeniden çizilmez; fotoğrafın ortasındaki yazılar ve kırpınca karta küçük kalacak
+  görsel olduğu gibi kullanılır. OCR yoksa görsel bekletilmez.
 
 ### 1 Kasım: önce gerçek fotoğraf, sonra aynı haberin diğer kaynakları
 
