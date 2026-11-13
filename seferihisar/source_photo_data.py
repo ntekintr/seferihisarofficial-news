@@ -24,12 +24,17 @@ SUBJECTS=(ARTICLE_PHOTO,'meeting','flood','traffic','citrus_harvest','roadworks'
 EVENT_SUBJECTS=('theatre','concert','cinema','festival','culture','family','sport','market','food','education','yoga','tile_art','workshop','event_poster','electrical','water_utility')
 
 IMAGE_ORIGINS = {
-    'bubilet': ('www.bubilet.com.tr', 'cdn.bubilet.com.tr', r'/cdn-cgi/image/width=\d{2,4},quality=\d{2,3}/files/Etkinlik/[A-Za-z0-9_.-]+\.(?:jpe?g|png|webp)'),
-    'bubilet-bademler': ('www.bubilet.com.tr', 'cdn.bubilet.com.tr', r'/cdn-cgi/image/width=\d{2,4},quality=\d{2,3}/files/Etkinlik/[A-Za-z0-9_.-]+\.(?:jpe?g|png|webp)'),
+    # 12 Nov 2026: Bubilet added `format=auto` to its transform options.
+    'bubilet': ('www.bubilet.com.tr', 'cdn.bubilet.com.tr', r'/cdn-cgi/image/width=\d{2,4},quality=\d{2,3}(?:,format=auto)?/files/Etkinlik/[A-Za-z0-9_.-]+\.(?:jpe?g|png|webp)'),
+    'bubilet-bademler': ('www.bubilet.com.tr', 'cdn.bubilet.com.tr', r'/cdn-cgi/image/width=\d{2,4},quality=\d{2,3}(?:,format=auto)?/files/Etkinlik/[A-Za-z0-9_.-]+\.(?:jpe?g|png|webp)'),
     # Reviewed 12 Nov 2026: article heroes live on the publisher's own photo host,
     # whose robots.txt allows every path.
     'haberler': ('www.haberler.com', 'foto.haberler.com', r'/haber/\d{4}/\d{2}/\d{2}/[a-z0-9_-]+\.(?:jpe?g|png|webp)'),
 }
+# Biletinial names each session's poster on its own image host (13 Nov 2026 check).
+BILETINIAL = ('biletinial', 'biletinial-bademler', 'biletinial-sahne')
+IMAGE_ORIGINS.update({sid: ('biletinial.com', 'b6s54eznn8xq.merlincdn.net',
+                            r'/Uploads/Films/[A-Za-z0-9_.-]+\.(?:jpe?g|png|webp)') for sid in BILETINIAL})
 
 
 def approved_image_url(source_id, source_url, image_url):
@@ -65,7 +70,8 @@ def validate_evidence(value):
     assert_no_secrets(value)
     if (not public_url(value['source_url']) or len(value['source_url'])>2048
             or not isinstance(value['source_id'],str) or not re.fullmatch(r'[a-z0-9-]{1,80}',value['source_id'])
-            or not isinstance(value['title'],str) or not 8<=len(value['title'])<=240
+            # A show can have a one-word name ("Perde", "Kadın"); a headline cannot.
+            or not isinstance(value['title'],str) or not (2 if event else 8)<=len(value['title'])<=240
             or not all(isinstance(value[k],str) and datetime.fromisoformat(value[k]).tzinfo is not None
                        for k in (('checked_at','start','end') if event else ('checked_at','published_at')))
             or not isinstance(value['sha256'],str) or not re.fullmatch(r'(?:[a-f0-9]{2}:){31}[a-f0-9]{2}',value['sha256'])):
@@ -113,12 +119,22 @@ def reviewed_ticket_source(source):
             and (source.get('kind') == 'ticketing' or source.get('reader') == 'ticketing'))
 
 
+def ticket_artwork_source(source):
+    """A ticket platform whose session records name their own poster."""
+    return reviewed_ticket_source(source) or (
+        source.get('id') in BILETINIAL and source.get('kind') == 'ticketing'
+        and urlsplit(source.get('url','')).hostname == 'biletinial.com')
+
+
 def delivery_sources(sources):
     # A reviewed CDN with HTTP 404/410 robots has no published robot rules.
     # Existing disallow rules, 403/429/5xx, redirects, TLS and MIME checks stay
     # closed. This opt-in does not apply to any other publisher/CDN.
+    # Biletinial's poster host (owner decision, 12 Nov 2026) is an object store:
+    # it serves every poster publicly and answers 403 for the robots.txt it lacks.
     return [{'enabled':True,'url':'https://'+origin[1]+'/',
-             'allow_missing_robots': origin[1]=='cdn.bubilet.com.tr' and reviewed_ticket_source(sources[sid])}
+             'allow_missing_robots': origin[1]=='cdn.bubilet.com.tr' and reviewed_ticket_source(sources[sid]),
+             'robots_absent_as_403': origin[1]=='b6s54eznn8xq.merlincdn.net' and sid in BILETINIAL}
             for sid,origin in IMAGE_ORIGINS.items() if sid in sources
             and urlsplit(sources[sid]['url']).hostname==origin[0]]
 
@@ -129,11 +145,14 @@ def same_event_artwork(evidence,item):
     from .domain import normalized
     if (evidence.get('version')!=EVENT_VERSION or item.get('kind')!='event'
             or evidence.get('source_id')!=item.get('source_id')
-            or item.get('source_id') not in ('bubilet','bubilet-bademler','bubilet-isparta')
+            or item.get('source_id') not in ('bubilet','bubilet-bademler','bubilet-isparta',*BILETINIAL)
             or evidence.get('subject')!=photo_subject_for_reuse(item)
             or normalized(evidence.get('title',''))!=normalized(item.get('title',''))):
         return False
     a,b=urlsplit(evidence.get('source_url','')),urlsplit(item.get('url',''))
+    if item['source_id'] in BILETINIAL:
+        # Every session of one show lives on that show's single page.
+        return a.hostname==b.hostname=='biletinial.com' and not a.query and not b.query and a.path==b.path
     pattern=r'/[^/]+/etkinlik/[a-z0-9-]+/seans/\d+'
     return (a.hostname==b.hostname=='www.bubilet.com.tr' and not a.query and not b.query
             and re.fullmatch(pattern,a.path) and re.fullmatch(pattern,b.path)

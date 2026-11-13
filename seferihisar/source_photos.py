@@ -14,7 +14,7 @@ from .collect import Fetcher,structured
 from .domain import canonical,normalized,parse_date
 from .illustrations import clean_image
 from .security import public_url,contains_secret
-from .source_photo_data import VERSION,EVENT_VERSION,key,validate_record,valid_bindings,MAX_CACHE_BYTES,MAX_CACHED_IMAGES,approved_image_url,IMAGE_ORIGINS,delivery_sources,reviewed_ticket_source,same_event_artwork,own_photo,ARTICLE_PHOTO,STORY_VERSION
+from .source_photo_data import VERSION,EVENT_VERSION,key,validate_record,valid_bindings,MAX_CACHE_BYTES,MAX_CACHED_IMAGES,approved_image_url,IMAGE_ORIGINS,delivery_sources,reviewed_ticket_source,ticket_artwork_source,same_event_artwork,own_photo,ARTICLE_PHOTO,STORY_VERSION
 from .visual_gate import fingerprint
 from .visual_match import validate_news_photo,MatchRejected,MatchUnavailable
 from .image_safety import IllustrationCheckUnavailable
@@ -23,6 +23,9 @@ from .image_safety import IllustrationCheckUnavailable
 # generated scene, and the same-story search needs its own reads.
 MAX_READS=6
 MAX_SOURCE_CHECKS=12
+# Session posters on a ticket platform: stable files, read apart from news.
+MAX_ARTWORK_READS=4
+MAX_ARTWORK_CHECKS=6
 MAX_STORY_REPORTS=3
 MAX_ARTICLE_IMAGES=2
 ARCHIVE=re.compile(r'\b(?:ar[şs]iv\w*|temsili\w*|illustration\w*|ill[uü]strasyon\w*|stok|stock|yapay zek[aâ]\w*|ai generated)\b')
@@ -64,7 +67,7 @@ def candidate_urls(html,final_url,item,source,*,feed_html=None):
     session_parent = (reviewed_ticket_source(source)
                       and re.fullmatch(re.escape(final_url.rstrip('/')) + r'/seans/\d+', item['url']))
     if canonical(final_url)!=canonical(item['url']) and not session_parent:raise ValueError('Article redirected')
-    if reviewed_ticket_source(source):
+    if ticket_artwork_source(source):
         from .source_readers import ticket_items
         rows = ticket_items(html,final_url,source)
     else:
@@ -91,9 +94,9 @@ def candidate_urls(html,final_url,item,source,*,feed_html=None):
     canonical_node=soup.select_one('link[rel="canonical"][href]')
     if canonical_node and canonical(urljoin(final_url,canonical_node['href']))!=canonical(final_url if session_parent else item['url']):
         raise ValueError('Article canonical mismatch')
-    if reviewed_ticket_source(source):
+    if ticket_artwork_source(source):
         from .collect import objects
-        candidates=[]
+        candidates,named=[],False
         for script in soup.select('script[type="application/ld+json"]'):
             try:
                 for obj in objects(json.loads(script.get_text())):
@@ -105,10 +108,14 @@ def candidate_urls(html,final_url,item,source,*,feed_html=None):
                     image=obj.get('image')
                     image=image[0] if isinstance(image,list) and len(image)==1 else image
                     image=image.get('url') if isinstance(image,dict) else image
+                    named=named or isinstance(image,str)
                     if isinstance(image,str) and approved_image_url(item['source_id'],item['url'],image):
                         candidates.append(image)
             except (ValueError,TypeError,KeyError):
                 continue
+        # A show whose sessions name no poster at all may get a scene; a poster
+        # on a host nobody reviewed is still the show's own, so the card waits.
+        if not named:raise NoArticleImage('No session artwork')
         if len(set(candidates))!=1:raise ValueError('No exact session artwork')
         return [candidates[0]]
     article=soup.select_one(source.get('photo_article_selector') or source.get('article_selector','article .entry-content, article .article-content, article, .news-detail, .haber-detay'))
@@ -244,7 +251,7 @@ class SourcePhotos:
         # An explicit false also keeps this path closed if generation is enabled.
         self.enabled=not demo and os.getenv('SOURCE_PHOTOS_ENABLED', os.getenv('ILLUSTRATIONS_ENABLED', 'false'))=='true'
         self.sources={s['id']:s for s in sources if s.get('enabled') and s.get('trusted')
-                      and (((s.get('kind') in ('html','rss') or reviewed_ticket_source(s)) and s.get('access')=='robots')
+                      and (((s.get('kind') in ('html','rss') or ticket_artwork_source(s)) and s.get('access')=='robots')
                            or (s.get('kind')=='instagram_api' and s.get('access')=='api'))}
         self.instagram_photos=instagram_photos or {}
         self.fetcher=fetcher
@@ -257,6 +264,20 @@ class SourcePhotos:
         self.story_checked=set()
         # News whose own article may still show a picture this run did not bind.
         self.unsettled=set()
+        # Ticket posters have their own small budget: news photographs re-read
+        # every run used all six reads, and no show got its poster (13 Nov).
+        self.artwork_reads=0
+        self.artwork_checks=0
+
+    def room(self,artwork,*,image=False):
+        if artwork:
+            return (self.artwork_reads<MAX_ARTWORK_READS if image else
+                    self.artwork_reads<MAX_ARTWORK_READS and self.artwork_checks<MAX_ARTWORK_CHECKS)
+        return self.reads<MAX_READS
+
+    def spend(self,artwork):
+        if artwork:self.artwork_reads+=1
+        else:self.reads+=1
 
     def awaits_original(self,post,items):
         """Owner's rule, 12 Nov: a generated cover only when the article shows no picture."""
@@ -394,17 +415,20 @@ class SourcePhotos:
                 self.results[item['id']]=(row['id'],self.materialize(row))
                 return self.results[item['id']]
         from .source_photo_retry import active,remember,stage as waiting_stage
-        news=item.get('kind')=='news'
-        # The model check no longer refuses a publisher's own news picture.
-        obsolete = ('image_read',) if reviewed_ticket_source(source) else ('visual_subject',) if news else ()
-        if news:self.unsettled.add(item['id'])
+        # A news article's own picture and a ticket session's own poster are the
+        # original image: the checks below rank them and no longer refuse one.
+        artwork=item.get('kind')=='event' and ticket_artwork_source(source)
+        own=item.get('kind')=='news' or artwork
+        obsolete = (('image_read',) if reviewed_ticket_source(source) else ()) + (('visual_subject','event_text') if own else ())
+        if own:self.unsettled.add(item['id'])
         if active(self.store,item,self.at,obsolete=obsolete):
             if waiting_stage(self.store,item)=='no_image':self.unsettled.discard(item['id'])
             self.stats['cooldown']+=1;return None
-        if self.reads>=MAX_READS or self.stats['source_checks']>=MAX_SOURCE_CHECKS:
+        if not self.room(artwork) or (self.stats['source_checks']>=MAX_SOURCE_CHECKS and not artwork):
             self.stats['deferred']+=1;return None
         # Missing images consume bounded page checks, not binary-image slots.
         self.stats['source_checks']+=1
+        if artwork:self.artwork_checks+=1
         stage='source_read'
         try:
             if self.fetcher is None:
@@ -429,10 +453,10 @@ class SourcePhotos:
         held=[]
         for url in urls:
             # Every attempted image, including network/quality failures,
-            # consumes one of the existing two image slots for this run.
-            if self.reads>=MAX_READS:
+            # consumes one of this run's image slots.
+            if not self.room(artwork,image=True):
                 self.stats['deferred']+=1;last_failure=None;break
-            self.reads+=1
+            self.spend(artwork)
             stage='image_read'
             try:
                 raw,final_image=self.fetcher.image(url)
@@ -440,14 +464,18 @@ class SourcePhotos:
                 stage='image_format'
                 image=cleaned_photo(raw,poster=item.get('kind')=='event')
                 if item.get('kind')=='event':
-                    stage='event_text'
-                    from .event_image_text import validate as validate_event_text
-                    with Image.open(io.BytesIO(image)) as pixels:portrait=pixels.width<pixels.height
-                    promotional = validate_event_text(image,item,poster=portrait)
-                    stage='visual_subject'
-                    from .visual_match import validate_event_photo
-                    if not promotional:
-                        validate_event_photo(image,expected)
+                    try:
+                        stage='event_text'
+                        from .event_image_text import validate as validate_event_text
+                        with Image.open(io.BytesIO(image)) as pixels:portrait=pixels.width<pixels.height
+                        promotional = validate_event_text(image,item,poster=portrait)
+                        stage='visual_subject'
+                        from .visual_match import validate_event_photo
+                        if not promotional:
+                            validate_event_photo(image,expected)
+                    except (ValueError,IllustrationCheckUnavailable):
+                        if not artwork:raise
+                        held.append((url,image));continue
                 else:
                     # The publisher's headline band under the photograph is cut
                     # away; the picture itself is never redrawn.
