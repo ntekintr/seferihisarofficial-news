@@ -4,6 +4,27 @@ Son gözden geçirme: **26 Ekim 2026**. Bu dosya kod haritası ve kalıcı çal�
 notudur. Anlık sağlık/teslim kanıtı zaman damgalı çıktılardan alınır; burada bir
 kez başarılı olması sonraki ay kesintisiz çalışacağı anlamına gelmez.
 
+### 13 Kasım: Biletinial etkinlikleri kendi afişiyle
+
+13 Kasım 08:51'de Bademler'deki "Ayşin Koruk ile Çini Atölyeleri" akışa ve story'ye
+yapay zekâ sahnesiyle çıktı; Biletinial'da etkinliğin kendi afişi vardı. Afiş bağlama
+yalnızca Bubilet'i tanıyordu.
+
+- Biletinial kaynakları (`biletinial`, `biletinial-bademler`, `biletinial-sahne`)
+  `ticket_artwork_source` ile afiş kaynağıdır: kimlik `ticket_items` ile doğrulanır,
+  afiş seansın kendi `Event` kaydından alınır. Bir etkinliğin bütün seansları aynı
+  afişi kullanabilir (`same_event_artwork`).
+- Afiş Biletinial'ın görsel sunucusundadır (`b6s54eznn8xq.merlincdn.net`). Sunucu her
+  afişi herkese açık verir ama sahip olmadığı `robots.txt` için 403 döner. Kullanıcı
+  kararıyla (12 Kasım) yalnızca bu sunucu için 403 "robots dosyası yok" sayılır
+  (`robots_absent_as_403`). Başka her sunucu ve 401/429/5xx yanıtları kapalı kalır.
+- OCR ve konu kontrolü afişi reddetmez, yalnızca sıralar. Seans kaydında hiç afiş
+  yoksa sahne üretilebilir; afiş varsa ama okunamıyorsa kart bekler.
+- Afişlerin her turda haberlerden ayrı okuma hakkı vardır (`MAX_ARTWORK_READS` 4):
+  Isparta'da altı okuma hakkının hepsi haber görsellerine gidiyor, hiçbir gösteri afiş
+  alamıyordu.
+- Bubilet'in görsel adreslerine eklenen `format=auto` seçeneği tanındı.
+
 ### 12 Kasım: haberin kendi görseli varken yapay zekâ sahnesi üretilmez
 
 Kullanıcı kararı: yapay zekâ sahnesi yalnızca haberin kaynağında hiç görsel yoksa
