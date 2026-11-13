@@ -95,3 +95,22 @@ def test_actual_exif_zero_source_photo_format_is_valid_but_model_rejection_stays
         validate_news_photo(data,'meeting')
     with pytest.raises(MatchRejected):
         validate_headline_photo(data,'meeting','HÜDA PAR Isparta İl Başkanı Salih Demir’den Yeni Müftüye Ziyaret')
+
+
+def test_native_reader_finds_and_crops_a_real_headline_band():
+    from PIL import ImageDraw
+    from seferihisar.headline_band import without_band
+    from seferihisar.image_safety import ocr_available
+    from seferihisar.render import font
+    from test_headline_band import BAND, HEIGHT, WIDTH, picture
+    if not ocr_available():pytest.skip('Native OCR/language runtime unavailable')
+    with Image.open(io.BytesIO(picture())) as source:graphic=source.convert('RGB')
+    draw=ImageDraw.Draw(graphic)
+    draw.text((40,BAND+14),'SÜRÜCÜLER ŞAŞKINLIKLA İZLEDİ',font=font(38,True),fill='#ffd400')
+    draw.text((40,BAND+62),'ELMA YÜKÜ YOLA SAÇILDI',font=font(38,True),fill='white')
+    out=io.BytesIO();graphic.save(out,format='JPEG',quality=90)
+    with Image.open(io.BytesIO(without_band(out.getvalue()))) as cropped:
+        assert cropped.width==WIDTH and abs(cropped.height-BAND)<=4
+    # The same photograph without lettering keeps every row.
+    plain=picture(band=HEIGHT)
+    assert without_band(plain) is plain

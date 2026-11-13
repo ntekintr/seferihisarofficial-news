@@ -449,6 +449,10 @@ class SourcePhotos:
                     if not promotional:
                         validate_event_photo(image,expected)
                 else:
+                    # The publisher's headline band under the photograph is cut
+                    # away; the picture itself is never redrawn.
+                    from .headline_band import without_band
+                    image=without_band(image)
                     try:
                         try:
                             validate_news_photo(image,expected)
