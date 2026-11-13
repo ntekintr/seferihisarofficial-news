@@ -128,6 +128,11 @@ class Fetcher:
         self.hosts = {urlsplit(s["url"]).hostname for s in web_sources if s.get("enabled")}
         self.missing_robots_hosts = {urlsplit(s["url"]).hostname for s in web_sources
                                     if s.get("enabled") and s.get("allow_missing_robots") is True}
+        # Owner decision, 12 Nov 2026: an object store answers 403 for a file it
+        # does not have. Only a reviewed image host may read that as "no robots
+        # file"; a refused page or any other host stays refused.
+        self.unlisted_robots_hosts = {urlsplit(s["url"]).hostname for s in web_sources
+                                     if s.get("enabled") and s.get("robots_absent_as_403") is True}
         self.session = session or requests.Session()
         self.robots: dict[str, RobotFileParser] = {}
         self.last_request: dict[str, float] = {}
@@ -202,7 +207,9 @@ class Fetcher:
             try:
                 body, _ = self.request(f"https://{host}/robots.txt")
             except requests.HTTPError as exc:
-                if host not in self.missing_robots_hosts or exc.response is None or exc.response.status_code not in (404, 410):
+                status = exc.response.status_code if exc.response is not None else None
+                if not ((host in self.missing_robots_hosts and status in (404, 410))
+                        or (host in self.unlisted_robots_hosts and status == 403)):
                     raise
                 body = "User-agent: *\nDisallow:"
             robot.parse(body.splitlines())
