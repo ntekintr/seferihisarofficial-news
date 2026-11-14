@@ -14,7 +14,7 @@ from .collect import Fetcher,structured
 from .domain import canonical,normalized,parse_date
 from .illustrations import clean_image
 from .security import public_url,contains_secret
-from .source_photo_data import VERSION,EVENT_VERSION,key,validate_record,valid_bindings,MAX_CACHE_BYTES,MAX_CACHED_IMAGES,approved_image_url,IMAGE_ORIGINS,delivery_sources,reviewed_ticket_source,ticket_artwork_source,same_event_artwork,own_photo,ARTICLE_PHOTO,STORY_VERSION
+from .source_photo_data import VERSION,EVENT_VERSION,key,validate_record,valid_bindings,MAX_CACHE_BYTES,MAX_CACHED_IMAGES,approved_image_url,IMAGE_ORIGINS,delivery_sources,reviewed_ticket_source,ticket_artwork_source,event_page_source,same_event_artwork,own_photo,ARTICLE_PHOTO,STORY_VERSION
 from .visual_gate import fingerprint
 from .visual_match import validate_news_photo,MatchRejected,MatchUnavailable
 from .image_safety import IllustrationCheckUnavailable
@@ -67,6 +67,8 @@ def candidate_urls(html,final_url,item,source,*,feed_html=None):
     session_parent = (reviewed_ticket_source(source)
                       and re.fullmatch(re.escape(final_url.rstrip('/')) + r'/seans/\d+', item['url']))
     if canonical(final_url)!=canonical(item['url']) and not session_parent:raise ValueError('Article redirected')
+    if event_page_source(source):
+        return event_page_urls(html,final_url,item,source)
     if ticket_artwork_source(source):
         from .source_readers import ticket_items
         rows = ticket_items(html,final_url,source)
@@ -198,6 +200,47 @@ def candidate_urls(html,final_url,item,source,*,feed_html=None):
     return list(images)[:MAX_ARTICLE_IMAGES]
 
 
+# The reviewed templates' own upload folders (checked 14 Nov 2026).
+EVENT_PAGE_IMAGES={
+    'municipal_calendar':r'/assets/img/sayfalar/[A-Za-z0-9_.-]+(?:/[A-Za-z0-9_.-]+)?\.(?:jpe?g|png|webp)',
+    'izmir_art':r'/\d{2,4}/\d{2,4}/img/uploads/image-[0-9a-f]{40}\.(?:jpe?g|png|webp)',
+}
+
+
+def event_page_urls(html,final_url,item,source):
+    """The exact event page's own poster (municipal calendar, İzmir Art).
+
+    The visible event title must equal the item's. The page's main picture and
+    OpenGraph picture are the only candidates, and only from the template's own
+    upload folder on the page's host. Anything else (the site's default share
+    logo) is not the event's picture, so a page without one may get a scene.
+    """
+    soup=BeautifulSoup(html,'html.parser')
+    if source['kind']=='municipal_calendar':
+        heading=soup.select_one('.col-md-9 > .inner .right-title')
+        main=soup.select_one('#MainContent_img[src]')
+    else:
+        heading=soup.find('h1');main=None
+    if heading is None or normalized(heading.get_text(' ',strip=True))!=normalized(item['title']):
+        raise ValueError('Article identity mismatch')
+    declared=soup.select_one('meta[property="og:image"][content]')
+    raw=[node.get(field) for node,field in ((declared,'content'),(main,'src')) if node is not None]
+    urls=[]
+    for value in raw:
+        if not isinstance(value,str) or not value.strip():continue
+        parts=urlsplit(urljoin(final_url,value.strip()))
+        # The municipality's OpenGraph copy writes "//assets"; same file.
+        url=parts._replace(path=re.sub(r'/{2,}','/',parts.path)).geturl()
+        parts=urlsplit(url)
+        if (parts.scheme=='https' and parts.hostname==urlsplit(item['url']).hostname
+                and not parts.query and not parts.fragment
+                and re.fullmatch(EVENT_PAGE_IMAGES[source['kind']],parts.path)
+                and approved_image_url(item['source_id'],item['url'],url) and url not in urls):
+            urls.append(url)
+    if not urls:raise NoArticleImage('No event poster')
+    return urls[:MAX_ARTICLE_IMAGES]
+
+
 def candidate(html,final_url,item,source):
     """Compatibility accessor; all identity checks precede image selection."""
     return candidate_urls(html,final_url,item,source)[0]
@@ -251,7 +294,8 @@ class SourcePhotos:
         # An explicit false also keeps this path closed if generation is enabled.
         self.enabled=not demo and os.getenv('SOURCE_PHOTOS_ENABLED', os.getenv('ILLUSTRATIONS_ENABLED', 'false'))=='true'
         self.sources={s['id']:s for s in sources if s.get('enabled') and s.get('trusted')
-                      and (((s.get('kind') in ('html','rss') or ticket_artwork_source(s)) and s.get('access')=='robots')
+                      and (((s.get('kind') in ('html','rss') or ticket_artwork_source(s) or event_page_source(s))
+                            and s.get('access')=='robots')
                            or (s.get('kind')=='instagram_api' and s.get('access')=='api'))}
         self.instagram_photos=instagram_photos or {}
         self.fetcher=fetcher
@@ -417,7 +461,8 @@ class SourcePhotos:
         from .source_photo_retry import active,remember,stage as waiting_stage
         # A news article's own picture and a ticket session's own poster are the
         # original image: the checks below rank them and no longer refuse one.
-        artwork=item.get('kind')=='event' and ticket_artwork_source(source)
+        # An event page's own poster counts the same (14 Nov: Mandalina Şenliği).
+        artwork=item.get('kind')=='event' and (ticket_artwork_source(source) or event_page_source(source))
         own=item.get('kind')=='news' or artwork
         obsolete = (('image_read',) if reviewed_ticket_source(source) else ()) + (('visual_subject','event_text') if own else ())
         if own:self.unsettled.add(item['id'])
