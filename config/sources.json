@@ -355,6 +355,7 @@
     "access": "robots",
     "max_pages": 4,
     "follow_feed_details": false,
+    "untyped_images": true,
     "display_url": "https://www.izmir.art/tr/etkinlikler"
   },
   {
