@@ -133,6 +133,12 @@ class Fetcher:
         # file"; a refused page or any other host stays refused.
         self.unlisted_robots_hosts = {urlsplit(s["url"]).hostname for s in web_sources
                                      if s.get("enabled") and s.get("robots_absent_as_403") is True}
+        # 14 Nov 2026: İzmir Art's poster server sends WebP files with no
+        # Content-Type at all. Only a reviewed host may have a *missing* type
+        # read from the file's own signature; a wrong declared type stays refused
+        # and every picture is still decoded and checked afterwards.
+        self.untyped_image_hosts = {urlsplit(s["url"]).hostname for s in web_sources
+                                    if s.get("enabled") and s.get("untyped_images") is True}
         self.session = session or requests.Session()
         self.robots: dict[str, RobotFileParser] = {}
         self.last_request: dict[str, float] = {}
@@ -163,7 +169,11 @@ class Fetcher:
                     if len(body) > MAX_BYTES:
                         raise ValueError("Response too large")
                 if binary:
-                    if response.headers.get('Content-Type','').split(';')[0].strip().lower() not in ('image/jpeg','image/png','image/webp'):
+                    declared = response.headers.get('Content-Type')
+                    signed = (body[:3] == b'\xff\xd8\xff' or body[:8] == b'\x89PNG\r\n\x1a\n'
+                              or (body[:4] == b'RIFF' and body[8:12] == b'WEBP'))
+                    untyped = declared is None and host in self.untyped_image_hosts and signed
+                    if not untyped and (declared or '').split(';')[0].strip().lower() not in ('image/jpeg','image/png','image/webp'):
                         raise ValueError('Unsupported source image response')
                     return bytes(body),url
                 return decode_document(bytes(body), response.headers.get('Content-Type', '')), url

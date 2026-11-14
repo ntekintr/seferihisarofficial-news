@@ -126,6 +126,20 @@ def ticket_artwork_source(source):
         and urlsplit(source.get('url','')).hostname == 'biletinial.com')
 
 
+def event_page_source(source):
+    """An event source whose exact event page shows that event's own poster.
+
+    14 Nov 2026: the 26th Mandalina Şenliği went out with a generated food
+    table although the municipality's event page carried the official poster;
+    İzmir Art pages likewise name each show's poster. Neither source had a
+    poster reader, so their events went straight to a scene.
+    """
+    host = urlsplit(source.get('url', '')).hostname
+    return ((source.get('id') == 'seferihisar-calendar' and source.get('kind') == 'municipal_calendar'
+             and host == 'seferihisar.bel.tr')
+            or (source.get('id') == 'izmir-art' and source.get('kind') == 'izmir_art' and host == 'www.izmir.art'))
+
+
 def delivery_sources(sources):
     # A reviewed CDN with HTTP 404/410 robots has no published robot rules.
     # Existing disallow rules, 403/429/5xx, redirects, TLS and MIME checks stay
@@ -145,11 +159,16 @@ def same_event_artwork(evidence,item):
     from .domain import normalized
     if (evidence.get('version')!=EVENT_VERSION or item.get('kind')!='event'
             or evidence.get('source_id')!=item.get('source_id')
-            or item.get('source_id') not in ('bubilet','bubilet-bademler','bubilet-isparta',*BILETINIAL)
+            or item.get('source_id') not in ('bubilet','bubilet-bademler','bubilet-isparta','izmir-art',*BILETINIAL)
             or evidence.get('subject')!=photo_subject_for_reuse(item)
             or normalized(evidence.get('title',''))!=normalized(item.get('title',''))):
         return False
     a,b=urlsplit(evidence.get('source_url','')),urlsplit(item.get('url',''))
+    if item['source_id']=='izmir-art':
+        # Every session is the show's one page with its own ?seans= id.
+        session=lambda query:re.fullmatch(r'seans=[a-f0-9]{24}',query)
+        return (a.hostname==b.hostname=='www.izmir.art' and a.path==b.path
+                and bool(session(a.query)) and bool(session(b.query)))
     if item['source_id'] in BILETINIAL:
         # Every session of one show lives on that show's single page.
         return a.hostname==b.hostname=='biletinial.com' and not a.query and not b.query and a.path==b.path

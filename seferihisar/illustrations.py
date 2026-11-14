@@ -89,10 +89,12 @@ def event_scene(item: dict) -> str | None:
 def scene_brief(item: dict) -> str:
     from .visual_topics import SCENES
     selected = subject(item)
+    # 14 Nov 2026: the Mandalina Şenliği (category food) got a generic food
+    # table with no tangerines. A title that names the fruit gets the fruit.
+    if selected in ('market', 'food', 'festival') and re.search(r'\b(?:mandalina\w*|satsuma)\b',normalized(item.get('title',''))):
+        return SCENES['citrus_basket']
     if item.get('kind') == 'event' and selected in EVENT_SCENES and selected != item.get('category'):
         return EVENT_SCENES[selected]
-    if selected == 'market' and re.search(r'\b(?:mandalina\w*|satsuma)\b',normalized(item.get('title',''))):
-        return SCENES['citrus_basket']
     if selected == 'weather_sky' and re.search(r'yağmur|yağiş|sağanak',normalized(item.get('title',''))):
         return _legacy_scene_brief({**item,'category':'weather'})
     return SCENES[selected] if selected in SCENES else _legacy_scene_brief(item)

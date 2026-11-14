@@ -4,6 +4,30 @@ Son gözden geçirme: **26 Ekim 2026**. Bu dosya kod haritası ve kalıcı çal�
 notudur. Anlık sağlık/teslim kanıtı zaman damgalı çıktılardan alınır; burada bir
 kez başarılı olması sonraki ay kesintisiz çalışacağı anlamına gelmez.
 
+### 14 Kasım: belediye takvimi ve İzmir Art etkinlikleri kendi afişiyle
+
+13 Kasım 15:21'de "26. Seferihisar Mandalina Şenliği" duyurusu, içinde mandalina bile
+olmayan bir yapay zekâ yemek masasıyla çıktı. Belediyenin etkinlik sayfasında resmî
+afiş vardı. `seferihisar-calendar` ve `izmir-art` kaynaklarının afiş okuyucusu yoktu;
+etkinlikleri doğrudan sahneye gidiyordu (izmir.art'ta 2 gösteri de sahneyle bekliyordu).
+
+- İki kaynak `event_page_source` ile afiş kaynağıdır. Sayfadaki görünen etkinlik adı
+  kayıttakiyle aynı olmalıdır. Aday yalnızca sayfanın ana görseli ve OpenGraph görseli,
+  o da şablonun kendi yükleme klasöründen (`/assets/img/sayfalar/`,
+  `/<g>/<y>/img/uploads/image-<sha1>`) ve aynı sunucudan. Başka bir görsel (sitenin
+  varsayılan paylaşım logosu) etkinliğin görseli sayılmaz; o zaman sahne üretilebilir.
+- Biletinial gibi: kontroller afişi reddetmez, sıralar; afiş okunamıyorsa kart sahnesiz
+  bekler; afişlerin ayrı okuma hakkı vardır. Bir gösterinin İzmir Art seansları
+  (`?seans=`) aynı afişi kullanabilir.
+- İzmir Art'ın görsel sunucusu WebP dosyalarını hiç `Content-Type` göndermeden verir.
+  Yalnızca `untyped_images` işaretli kaynakta, tür başlığı *hiç yoksa* dosyanın imzası
+  (JPEG/PNG/WebP) okunur. Yanlış bildirilen tür ve diğer sunucular kapalı kalır; her
+  görsel ayrıca çözülüp denetlenir.
+- Başlığında mandalina/satsuma geçen gıda, pazar ve şenlik içeriklerinde sahne gerekirse
+  mandalina sepetidir (`citrus_basket`).
+- Durum kopyasında canlı sayfalarla deneme: Mandalina Şenliği ve 3 İzmir Art gösterisi
+  (Kürk Mantolu Madonna, Sefiller, Ölü'n Bizi Ayırana Dek) kendi afişlerine bağlandı.
+
 ### 13 Kasım: Biletinial etkinlikleri kendi afişiyle
 
 13 Kasım 08:51'de Bademler'deki "Ayşin Koruk ile Çini Atölyeleri" akışa ve story'ye
