@@ -19,8 +19,6 @@ from datetime import date, datetime, time, timedelta
 from io import BytesIO
 from pathlib import Path
 
-import requests
-
 from .domain import TZ, digest
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -135,6 +133,7 @@ def export(store, public_dir: Path, at: datetime, bank: dict | None = None) -> d
 
 
 def _deployed(api, site: str, expected: dict, size: tuple[int, int]) -> str | None:
+    import requests  # Not at import time: state validation runs on the standard library only.
     try:
         response = api.session.get(site + '/data.json', timeout=(8, 20), allow_redirects=False)
         if response.status_code != 200 or len(response.content) > 8_000_000:
@@ -169,6 +168,7 @@ def _profile_enabled() -> bool:
 
 
 def publish(store, at: datetime, site_url: str, adapter=None, checkpoint=None, bank: dict | None = None) -> dict:
+    import requests  # Not at import time: state validation runs on the standard library only.
     at = at.astimezone(TZ)
     day = at.date()
     fmt = scheduled_format(day)
