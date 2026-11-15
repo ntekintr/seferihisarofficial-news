@@ -205,3 +205,18 @@ def test_api_carousel_and_story_parameters():
     api.call=Mock(return_value={'id':'story'})
     assert api.container(['https://example.org/a.jpg'],'caption',True)=='story'
     assert api.call.call_args.kwargs['media_type']=='STORIES'
+
+
+def test_unrenderable_card_hold_counts_only_the_last_48_hours(store,event,at):
+    # 15 Nov 2026: the panel still counted drafts held weeks ago, long past their slot.
+    from seferihisar.domain import digest
+    from seferihisar.operations import summary
+    store.upsert(event,at.isoformat())
+    prepare(store,at)
+    post=store.posts()[0]
+    with store.db:
+        store.db.execute("UPDATE posts SET status='blocked_source' WHERE id=?",(post['id'],))
+    store.withhold(post['id'],'unrenderable_card_text',at.isoformat())
+    assert summary(store,at+timedelta(hours=47))['editorial_holds']['unrenderable_card_text']==1
+    assert summary(store,at+timedelta(hours=49))['editorial_holds']['unrenderable_card_text']==0
+    assert store.rows('SELECT id FROM withheld WHERE id=?',(digest(post['id']),))
