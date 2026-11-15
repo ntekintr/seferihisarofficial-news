@@ -77,6 +77,15 @@ def main():
             observation = record_check(store, result, at, 'automatic' if args.automatic else 'story' if args.story else 'feed')
             alarm = alarming(store, observation, at)
             write_job_summary(observation)
+            if args.automatic and not args.post_id:
+                # Reviewed city feature of the day; independent of the news result.
+                from .city_features import publish as publish_city
+                city = publish_city(store, at, args.site_url, checkpoint=checkpoint)
+                if target := os.getenv('GITHUB_STEP_SUMMARY'):
+                    with Path(target).open('a', encoding='utf-8') as out:
+                        out.write('### Şehir köşesi\n\n```json\n' + json.dumps(city, indent=2) + '\n```\n')
+                print(json.dumps({'city_feature': city}, ensure_ascii=False))
+                alarm = alarm or city['status'] == 'uncertain'
         finally:
             store.close()
     # Never print captions, source bodies or authentication details in Actions logs.
