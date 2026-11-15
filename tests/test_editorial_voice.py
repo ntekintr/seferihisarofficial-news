@@ -32,6 +32,8 @@ def test_real_party_source_uses_news_voice_without_changing_names_numbers_or_pro
     assert 'omuz omuza' not in body and 'devam edeceğiz' not in body
     content=caption(item,headline(item,'news'))
     assert body in content and 'Kaynak: SeferihisarLife Instagram\n'+item['url'] in content
+    # The body paragraph is the text itself, with no "Kaynak duyurusuna göre:" lead-in.
+    assert '\n\n'+body+'\n\n' in content and 'Kaynak duyurusu' not in content
     assert 'Başkanımız' not in content and 'Sayın' not in content
     assert 'AK Parti' in slide_body(item) and 'Başkanımız' not in slide_body(item)
     assert item==before

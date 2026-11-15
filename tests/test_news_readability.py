@@ -98,8 +98,9 @@ def test_course_caption_and_card_use_same_news_wording_with_source_attribution(c
     assert title == 'Kültür & Sanat: El sanatları kurslarına kayıtlar sürüyor'
     assert content.count('El sanatları kurslarına kayıtlar sürüyor') == 1
     assert news_body(course_notice) in body and news_body(course_notice) in content
-    assert 'Kaynak duyurusuna göre: ' in content
-    assert 'Kaynak duyurusundan: “' not in content
+    # The body starts with the text itself: no lead-in, no wrapping quotes.
+    assert '\n\n' + news_body(course_notice) + '\n\n' in content
+    assert 'Kaynak duyurusu' not in content
     assert course_notice['url'] in content
     assert 'Kaynak: ' not in body
     assert 'Kaynak: ' + course_notice['source_name'] in content
