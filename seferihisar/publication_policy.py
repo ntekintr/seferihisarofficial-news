@@ -14,6 +14,34 @@ OUTAGE_STORY_LIMIT = 2
 OUTAGE_STORY_HOURS = (time(8, 30), time(21))
 EVENING_EFFECTIVE_FROM = date.min
 CLAIMED = frozenset(('publishing', 'published', 'uncertain'))
+# Owner decision, 14 Nov 2026 (both factories, from 15 Nov): there is no daily
+# publication cap. A current news article goes out in the run that finds it,
+# however many arrive that day; it does not wait for a timetable slot. The
+# timetable, the 45-minute gap and the limits above stay for history only.
+CAPS_LIFTED_FROM = date(2026, 11, 15)
+IMMEDIATE_HOURS = (time(7), time(23, 30))
+# "Current": the source dated it within a day, and this factory first saw it
+# recently, so a deploy or an overnight pause never dumps an old backlog.
+IMMEDIATE_SOURCE_AGE = timedelta(hours=24)
+IMMEDIATE_FIRST_SEEN = timedelta(hours=8)
+# Bounds one run; the rest follow in the next run, minutes later.
+IMMEDIATE_PER_RUN = 4
+IMMEDIATE_GAP_SECONDS = 90
+
+
+def caps_lifted(at):
+    return at.astimezone(TZ).date() >= CAPS_LIFTED_FROM
+
+
+def immediate_news_item(item, at):
+    """A current news article this factory has just found."""
+    local = at.astimezone(TZ)
+    if (not caps_lifted(local) or item.get('kind') != 'news'
+            or not IMMEDIATE_HOURS[0] <= local.time().replace(tzinfo=None) < IMMEDIATE_HOURS[1]):
+        return False
+    published, first = parse_date(item.get('published_at')), parse_date(item.get('first_seen'))
+    return bool(published and first and at - IMMEDIATE_SOURCE_AGE <= published <= at
+                and at - IMMEDIATE_FIRST_SEEN <= first <= at)
 
 
 def story_only(value):
@@ -139,6 +167,8 @@ def owner_exclusion(value):
 
 
 def daily_limit_reason(store, at, post=None, *, story=False):
+    if caps_lifted(at):
+        return None
     if story and post and story_only(post):
         return 'daily_limit' if len(outage_story_claims(store, at)) >= OUTAGE_STORY_LIMIT else None
     count = len(day_claims(store, at, story=story))
