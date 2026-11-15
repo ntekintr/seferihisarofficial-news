@@ -149,8 +149,11 @@ def summary(store, at):
             if reason in editorial:
                 editorial[reason] += 1
     blocked = {digest(p['id']) for p in parents if p['status']=='blocked_source'}
-    editorial['unrenderable_card_text'] = sum(r['id'] in blocked for r in store.rows(
-        "SELECT id FROM withheld WHERE reason='unrenderable_card_text'"))
+    # Same 48-hour window as the editorial reasons: a draft from weeks ago is
+    # past its slot and no longer a hold anyone can act on.
+    recent = lambda stamp: bool(stamp) and at-timedelta(hours=48) <= stamp
+    editorial['unrenderable_card_text'] = sum(r['id'] in blocked and recent(parse_date(r['seen_at']))
+        for r in store.rows("SELECT id,seen_at FROM withheld WHERE reason='unrenderable_card_text'"))
     return {'as_of': at.isoformat(), 'checks': checks,
         'editorial_holds': editorial,
         'window_start': window.isoformat(), 'window_end': window_end.isoformat(),

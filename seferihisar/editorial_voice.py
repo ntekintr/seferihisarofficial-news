@@ -36,6 +36,11 @@ _FIRST_PERSON = re.compile(
     r'\b\w*(?:yoruz|acağız|eceğiz|dığımız|diğimiz|duğumuz|düğümüz)\b|'
     r'\b\w*(?:ımız|imiz|umuz|ümüz)(?:ın|in|un|ün|a|e|ı|i|u|ü|da|de|dan|den|la|le)?\b|'
     r'\b(?:düzenledik|gerçekleştirdik|buluştuk|katıldık|açtık|yaptık|sunduk|karşıladık|başlattık)\b', re.I)
+# "Günümüz" means "the present day" in ordinary news prose, not the source
+# speaking for itself (held in Isparta's cloud: "geçmişten günümüze", 15 Nov 2026).
+_IDIOM = re.compile(r'\bgünümüz(?:ün|e|de|den)?\b', re.I)
+# "12. sırada", "21. Göller Bölgesi Fuarı": a Turkish ordinal, not a sentence end.
+_ORDINAL = re.compile(r'(?<![\w.,])\d{1,4}\.$')
 
 
 def _outside_quotes(text, transform):
@@ -48,7 +53,7 @@ def _outside_quotes(text, transform):
 
 
 def source_voice(text):
-    return bool(_FIRST_PERSON.search(_QUOTE.sub('', text)))
+    return bool(_FIRST_PERSON.search(_IDIOM.sub('', _QUOTE.sub('', text))))
 
 
 def neutral_terms(text):
@@ -83,7 +88,7 @@ def neutral_body(text):
     quotes = [(m.start(),m.end()) for m in _QUOTE.finditer(text)]
     sentences, start = [], 0
     for boundary in re.finditer(r'(?<=[.!?])\s+',text):
-        if any(begin <= boundary.start() < end for begin,end in quotes):
+        if any(begin <= boundary.start() < end for begin,end in quotes) or _ORDINAL.search(text[start:boundary.start()]):
             continue
         sentences.append(text[start:boundary.start()])
         start = boundary.end()

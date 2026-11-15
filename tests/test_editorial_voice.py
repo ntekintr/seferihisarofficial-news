@@ -64,6 +64,28 @@ def test_existing_direct_quotes_and_multi_sentence_quotes_stay_verbatim():
     assert news_title(event)==event['title']
 
 
+def test_present_day_idiom_is_news_prose_not_source_voice():
+    # Held in Isparta's cloud on 15 Nov 2026 as editorial_copy_required.
+    for original in ('Çarşı, ziyaretçilerine geçmişten günümüze uzanan bir yolculuk sunuyor.',
+                     'Boşanma, günümüzde daha olağan karşılanıyor.',
+                     'Siyah-beyaz fotoğraflar günümüzün renkli görüntüleriyle karşılaştırıldı.',
+                     'Günümüzden 50 yıl önce meydan çok farklıydı.'):
+        assert neutral_body(original)==original
+        assert neutral_title(original)==original
+    # The idiom does not hide a real first-person claim in the same sentence.
+    claim='Günümüzde de belediyemizle çalışmaya devam edeceğiz.'
+    assert neutral_body(claim).startswith('Kaynak açıklamasında “')
+
+
+def test_ordinal_numbers_do_not_split_a_sentence():
+    original='Puan tablosunda 11 puanla 12. sırada bulunan takım, 21. Seferihisar Festivali’nde tanıtıldı.'
+    assert neutral_body(original)==original
+    # A first-person sentence with an ordinal is attributed once, whole.
+    claim='Takım 12. sırada yer alan temsilcimizle oynayacak. Maç 19.00’da başlayacak.'
+    assert neutral_body(claim)==('Kaynak açıklamasında “Takım 12. sırada yer alan temsilcimizle oynayacak.” denildi. '
+                                 'Maç 19.00’da başlayacak.')
+
+
 def test_campaign_filter_does_not_remove_a_specific_commitment():
     original='Omuz omuza çalışmaya devam edeceğiz ve 21 Ekim’de yeni hizmet sunacağız.'
     assert original in neutral_body(original)
