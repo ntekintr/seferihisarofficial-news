@@ -200,3 +200,11 @@ def test_state_validation_accepts_the_record(store, tmp_path):
 
 def test_series_enabled_by_owner_decision():
     assert cf.ENABLED is True
+
+
+def test_state_validation_needs_only_the_standard_library():
+    # The persist job validates state without installing dependencies.
+    import subprocess, sys
+    code = ("import sys; sys.modules['requests'] = None; sys.modules['PIL'] = None; "
+            "import seferihisar.security, seferihisar.city_features")
+    subprocess.run([sys.executable, '-c', code], check=True, cwd=cf.ROOT)
