@@ -4,6 +4,26 @@ Son gözden geçirme: **26 Ekim 2026**. Bu dosya kod haritası ve kalıcı çal�
 notudur. Anlık sağlık/teslim kanıtı zaman damgalı çıktılardan alınır; burada bir
 kez başarılı olması sonraki ay kesintisiz çalışacağı anlamına gelmez.
 
+### 15 Kasım: günlük sınır yok, güncel haber bulunduğu turda paylaşılır
+
+Kullanıcı 14 Kasım'da iki fabrika için de kuralı değiştirdi: günlük paylaşım sınırı
+yoktur. Güncel bir haber bulunduğu turda, sıraya girmeden ve saat dilimi beklemeden
+kendi story'siyle paylaşılır. Aynı turda Facebook'a da aktarılır.
+
+- **Güncel haber:** Kaynağın tarihi son 24 saat içinde olmalı ve fabrika haberi son
+  8 saatte ilk kez görmüş olmalı (`immediate_news_item`). Eski birikmiş haberler
+  topluca paylaşılmaz.
+- **Saat ve sayı:** Yayın 07:00–23:30 arasında yapılır. Tur başına en fazla 4 haber
+  çifti paylaşılır, çiftler arasında 90 saniye bırakılır; kalanlar sonraki turda çıkar.
+- **Kontroller ve belirsiz teslim:** Kaynak, görsel, tekrar ve medya kontrolleri
+  aynen geçerlidir. Sonucu belirsiz bir teslim turu durdurur ve o haber asla yeniden
+  gönderilmez.
+- **Diğer içerikler:** Etkinlik, özet ve eski haberler saat dilimlerinde kalır.
+  Hemen paylaşılan haber (`immediate`) bir saat dilimini doldurmaz.
+- **Kalkan sınırlar:** Günlük haber ve elektrik kesintisi story sınırları kalktı.
+  Facebook aynası da günlük sınır uygulamaz.
+- **Süre:** Yayın işinin süre sınırı 20 dakikaya çıktı.
+
 ### 14 Kasım: belediye takvimi ve İzmir Art etkinlikleri kendi afişiyle
 
 13 Kasım 15:21'de "26. Seferihisar Mandalina Şenliği" duyurusu, içinde mandalina bile
