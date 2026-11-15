@@ -1,0 +1,362 @@
+{
+ "version": "city-features-v1",
+ "city": "seferihisar",
+ "photos": {
+  "anakreon-heykeli": {
+   "file": "anakreon-heykeli.jpg",
+   "sha256": "ce8bf9640af70fd2cf5af63ec350f03e7a852466158e0514ca5a254466dc59ed",
+   "author": "Eric Gaba (User:Sting)",
+   "license": "CC BY-SA 2.5",
+   "license_url": "https://creativecommons.org/licenses/by-sa/2.5/",
+   "source": "https://commons.wikimedia.org/wiki/File:Anacreon_Louvre.jpg",
+   "centering": [
+    0.5,
+    0.3
+   ]
+  },
+  "seferihisar-gunbatimi": {
+   "file": "seferihisar-gunbatimi.jpg",
+   "sha256": "cbdd61413a5d54f693404cbcc9fb8075de6a7262ada3b9c54921bf3041822c25",
+   "author": "Sabiha Su POLATLI",
+   "license": "CC BY-SA 4.0",
+   "license_url": "https://creativecommons.org/licenses/by-sa/4.0/",
+   "source": "https://commons.wikimedia.org/wiki/File:Seferihisar_Turkey.jpg"
+  },
+  "sigacik-kale-liman-03": {
+   "file": "sigacik-kale-liman-03.jpg",
+   "sha256": "ba80c2e1904c8804c6cef87cea6f821a952baa0c60fbfda4e5638c574d6aecec",
+   "author": "BSRF",
+   "license": "CC BY-SA 4.0",
+   "license_url": "https://creativecommons.org/licenses/by-sa/4.0/",
+   "source": "https://commons.wikimedia.org/wiki/File:S%C4%B1%C4%9Fac%C4%B1k_Castle_and_Harbour_03.jpg"
+  },
+  "sigacik-kale-liman-05": {
+   "file": "sigacik-kale-liman-05.jpg",
+   "sha256": "38d356521ebfd560fc21e5d2896b83c8146960a3f0216288c8e5eba715e6a968",
+   "author": "BSRF",
+   "license": "CC BY-SA 4.0",
+   "license_url": "https://creativecommons.org/licenses/by-sa/4.0/",
+   "source": "https://commons.wikimedia.org/wiki/File:S%C4%B1%C4%9Fac%C4%B1k_Castle_and_Harbour_05.jpg"
+  },
+  "sigacik-kale-liman-08": {
+   "file": "sigacik-kale-liman-08.jpg",
+   "sha256": "5a357c35233aaeeccd965fe4abe6d54db2159cb50f55d785444591a00012743a",
+   "author": "BSRF",
+   "license": "CC BY-SA 4.0",
+   "license_url": "https://creativecommons.org/licenses/by-sa/4.0/",
+   "source": "https://commons.wikimedia.org/wiki/File:S%C4%B1%C4%9Fac%C4%B1k_Castle_and_Harbour_08.jpg"
+  },
+  "sigacik-kalesi-havadan": {
+   "file": "sigacik-kalesi-havadan.jpg",
+   "sha256": "7dafe9b535ad45d6b0bc495ff5cf66870c7ad394a4181aa6113a9170c98dfab5",
+   "author": "BSRF",
+   "license": "CC BY-SA 4.0",
+   "license_url": "https://creativecommons.org/licenses/by-sa/4.0/",
+   "source": "https://commons.wikimedia.org/wiki/File:S%C4%B1%C4%9Fac%C4%B1k_Castle_01.jpg"
+  },
+  "sigacik-liman-02": {
+   "file": "sigacik-liman-02.jpg",
+   "sha256": "d29382b8a2e473cdbb73e5a77ee9ec2aa98075bed559cce522154cde74f15284",
+   "author": "BSRF",
+   "license": "CC BY-SA 4.0",
+   "license_url": "https://creativecommons.org/licenses/by-sa/4.0/",
+   "source": "https://commons.wikimedia.org/wiki/File:S%C4%B1%C4%9Fac%C4%B1k_Harbour_02.jpg"
+  },
+  "sigacik-teos-marina": {
+   "file": "sigacik-teos-marina.jpg",
+   "sha256": "89c068f06a20925aa6e097cd3edd5982a358db998773b2d5e652934fc9667070",
+   "author": "BSRF",
+   "license": "CC BY-SA 4.0",
+   "license_url": "https://creativecommons.org/licenses/by-sa/4.0/",
+   "source": "https://commons.wikimedia.org/wiki/File:S%C4%B1%C4%9Fac%C4%B1k_Harbour_and_Teos_Marina_01.jpg"
+  },
+  "teos-dionysos": {
+   "file": "teos-dionysos.jpg",
+   "sha256": "2bdf207ffd27a3a37bbb7c83f16bd0ea436f4696e2945ad118f9bf283e3e0107",
+   "author": "Mark Landon",
+   "license": "CC BY 4.0",
+   "license_url": "https://creativecommons.org/licenses/by/4.0/",
+   "source": "https://commons.wikimedia.org/wiki/File:Teos_Temple_of_Dionysos_from_W_(1991).jpg"
+  },
+  "teos-dionysos-kutsal-alan": {
+   "file": "teos-dionysos-kutsal-alan.jpg",
+   "sha256": "c8092f0d67c468045f2d5ab64b5dcac5c901e0cf141bfdd675d7f5e98e4da0d8",
+   "author": "Mark Landon",
+   "license": "CC BY 4.0",
+   "license_url": "https://creativecommons.org/licenses/by/4.0/",
+   "source": "https://commons.wikimedia.org/wiki/File:Teos_Sanctuary_of_Dionysos_from_W_02_(1991).jpg"
+  },
+  "teos-tiyatro": {
+   "file": "teos-tiyatro.jpg",
+   "sha256": "f9278b7ccf7c75291dcb9b0f846eec6c38a87c7a347700f59142b7d77bea0ae4",
+   "author": "Isabeau",
+   "license": "CC BY-SA 4.0",
+   "license_url": "https://creativecommons.org/licenses/by-sa/4.0/",
+   "source": "https://commons.wikimedia.org/wiki/File:Teos_theatre.jpg"
+  }
+ },
+ "entries": [
+  {
+   "id": "sef-teos",
+   "format": "feed",
+   "label": "ŞEHİR HAFIZASI",
+   "title": "Teos: İyonya'nın on iki kentinden biri",
+   "body": "Teos antik kenti, İyon Birliği'ni oluşturan on iki kentten biriydi. Kalıntıları bugün Seferihisar'da, Sığacık'ın hemen güneyinde yer alıyor.",
+   "question": "Teos'u hiç gezdiniz mi? En sevdiğiniz köşeyi yorumlarda yazın.",
+   "photo": "teos-tiyatro",
+   "hashtags": [
+    "#Seferihisar",
+    "#seferihisarofficial",
+    "#Teos",
+    "#Sığacık"
+   ],
+   "sources": [
+    {
+     "name": "Vikipedi: Teos",
+     "url": "https://tr.wikipedia.org/wiki/Teos"
+    }
+   ]
+  },
+  {
+   "id": "sef-dionysos",
+   "format": "feed",
+   "label": "ŞEHİR HAFIZASI",
+   "title": "Anadolu'nun en büyük Dionysos tapınağı",
+   "body": "Teos'un koruyucu tanrısı Dionysos adına yapılan tapınak, Helenistik dönemin ünlü mimarı Hermogenes'in eseri. Tapınak, Anadolu'nun en büyük Dionysos tapınağı olarak biliniyor.",
+   "question": "Tapınağın kalıntıları arasında hiç yürüdünüz mü? Yorumlarda paylaşın.",
+   "photo": "teos-dionysos",
+   "hashtags": [
+    "#Seferihisar",
+    "#seferihisarofficial",
+    "#Teos",
+    "#DionysosTapınağı"
+   ],
+   "sources": [
+    {
+     "name": "Vikipedi: Teos",
+     "url": "https://tr.wikipedia.org/wiki/Teos"
+    }
+   ]
+  },
+  {
+   "id": "sef-sigacik-kalesi",
+   "format": "feed",
+   "label": "ŞEHİR HAFIZASI",
+   "title": "Sığacık Kalesi'nin büyük onarımı",
+   "body": "Sığacık Kalesi'nin en kapsamlı onarımı 1521–1522'de yapıldı. Kanuni Sultan Süleyman'ın Rodos Seferi hazırlığında, Piri Reis'in önerisiyle Teos kalıntıları taş ocağı olarak kullanıldı.",
+   "question": "Kale içinde en sevdiğiniz sokak hangisi? Yorumlarda yazın.",
+   "photo": "sigacik-kalesi-havadan",
+   "hashtags": [
+    "#Seferihisar",
+    "#seferihisarofficial",
+    "#Sığacık",
+    "#SığacıkKalesi"
+   ],
+   "sources": [
+    {
+     "name": "Vikipedi: Sığacık Kalesi",
+     "url": "https://tr.wikipedia.org/wiki/S%C4%B1%C4%9Fac%C4%B1k_Kalesi"
+    }
+   ]
+  },
+  {
+   "id": "sef-sakin-sehir",
+   "format": "feed",
+   "label": "ŞEHİR HAFIZASI",
+   "title": "Türkiye'nin ilk sakin şehri",
+   "body": "Seferihisar, 2009'da 'yerel üreticilerin desteklenmesi' temasıyla Cittaslow ağına başvurdu ve tüm kriterleri karşılayarak Türkiye'nin ilk sakin şehri (yavaş şehir) seçildi.",
+   "question": "Sakin şehir olmak Seferihisar'a ne kattı sizce? Yorumlarda paylaşın.",
+   "photo": "sigacik-liman-02",
+   "hashtags": [
+    "#Seferihisar",
+    "#seferihisarofficial",
+    "#SakinŞehir",
+    "#Cittaslow"
+   ],
+   "sources": [
+    {
+     "name": "Vikipedi: Seferihisar",
+     "url": "https://tr.wikipedia.org/wiki/Seferihisar"
+    }
+   ]
+  },
+  {
+   "id": "sef-anakreon",
+   "format": "feed",
+   "label": "ŞEHİR HAFIZASI",
+   "title": "Teoslu şair Anakreon",
+   "body": "Antik çağın ünlü lirik şairlerinden Anakreon Teoslu'ydu; bu bilgi Herodot'a kadar uzanan antik kaynaklarda geçiyor. Şiirleri aşk, şölen ve gündelik yaşam üzerineydi.",
+   "question": "Teos'un ünlü şairini daha önce duymuş muydunuz? Yorumlarda yazın.",
+   "photo": "anakreon-heykeli",
+   "hashtags": [
+    "#Seferihisar",
+    "#seferihisarofficial",
+    "#Teos",
+    "#Anakreon"
+   ],
+   "sources": [
+    {
+     "name": "Wikipedia: Anacreon",
+     "url": "https://en.wikipedia.org/wiki/Anacreon"
+    }
+   ]
+  },
+  {
+   "id": "sef-ataturk-1934",
+   "format": "feed",
+   "label": "ŞEHİR HAFIZASI",
+   "title": "Atatürk Seferihisar'da: 11 Nisan 1934",
+   "body": "Atatürk 11 Nisan 1934'te Seferihisar'ı ziyaret etti. İlçeye geçmeden önce Sığacık'a uğradı ve sahilde incelemelerde bulundu; ardından ilçe merkezinde halkı selamladı.",
+   "question": "Büyüklerinizden bu ziyaretle ilgili bir anı dinlediniz mi? Yorumlarda paylaşın.",
+   "photo": "sigacik-kale-liman-08",
+   "hashtags": [
+    "#Seferihisar",
+    "#seferihisarofficial",
+    "#Atatürk",
+    "#Sığacık"
+   ],
+   "sources": [
+    {
+     "name": "Vikipedi: Seferihisar",
+     "url": "https://tr.wikipedia.org/wiki/Seferihisar"
+    }
+   ]
+  },
+  {
+   "id": "sef-ilce-1884",
+   "format": "feed",
+   "label": "ŞEHİR HAFIZASI",
+   "title": "Seferihisar 1884'ten beri ilçe",
+   "body": "Seferihisar 1884'te ilçe oldu. Bir görüşe göre adı, bölgenin eski adı Tysaferin'e 'hisar' ekinin eklenmesiyle oluştu ve zamanla bugünkü biçimini aldı.",
+   "question": "Seferihisar adının kökeniyle ilgili başka bir hikâye biliyor musunuz? Yorumlarda yazın.",
+   "photo": "sigacik-kale-liman-03",
+   "hashtags": [
+    "#Seferihisar",
+    "#seferihisarofficial",
+    "#SeferihisarTarihi"
+   ],
+   "sources": [
+    {
+     "name": "Vikipedi: Seferihisar",
+     "url": "https://tr.wikipedia.org/wiki/Seferihisar"
+    }
+   ]
+  },
+  {
+   "id": "sef-sigacik",
+   "format": "feed",
+   "label": "ŞEHİR HAFIZASI",
+   "title": "Sığacık: kuzeye bakan küçük yarımada",
+   "body": "Sığacık, kuzeye bakan küçük bir yarımada üzerinde. Limanı doğuda, plajları batıda; Seferihisar merkezine uzaklığı 5 km'den az. 2009'a kadar bir balıkçı köyüydü.",
+   "question": "Sığacık'ta gün batımını nereden izliyorsunuz? Yorumlarda paylaşın.",
+   "photo": "sigacik-teos-marina",
+   "hashtags": [
+    "#Seferihisar",
+    "#seferihisarofficial",
+    "#Sığacık"
+   ],
+   "sources": [
+    {
+     "name": "Vikipedi: Sığacık",
+     "url": "https://tr.wikipedia.org/wiki/S%C4%B1%C4%9Fac%C4%B1k"
+    }
+   ]
+  },
+  {
+   "id": "sef-soru-misafir",
+   "format": "story",
+   "label": "SİZE SORUYORUZ",
+   "title": "Seferihisar'a gelen misafirinizi ilk nereye götürürsünüz?",
+   "body": "Yanıtınızı bu story'ye yazın. Yanıtlar yalnızca bize ulaşır.",
+   "photo": "sigacik-liman-02"
+  },
+  {
+   "id": "sef-soru-pazar",
+   "format": "story",
+   "label": "SİZE SORUYORUZ",
+   "title": "Pazar sabahı: Sığacık'ta kahvaltı mı, sahilde yürüyüş mü?",
+   "body": "Yanıtınızı bu story'ye yazın. Yanıtlar yalnızca bize ulaşır.",
+   "photo": "seferihisar-gunbatimi"
+  },
+  {
+   "id": "sef-soru-uc-kelime",
+   "format": "story",
+   "label": "SİZE SORUYORUZ",
+   "title": "Seferihisar'ı üç kelimeyle anlatır mısınız?",
+   "body": "Yanıtınızı bu story'ye yazın. Yanıtlar yalnızca bize ulaşır.",
+   "photo": "sigacik-kale-liman-03"
+  },
+  {
+   "id": "sef-soru-teos",
+   "format": "story",
+   "label": "SİZE SORUYORUZ",
+   "title": "Teos'a en son ne zaman gittiniz?",
+   "body": "Yanıtınızı bu story'ye yazın. Yanıtlar yalnızca bize ulaşır.",
+   "photo": "teos-tiyatro"
+  },
+  {
+   "id": "sef-soru-koy",
+   "format": "story",
+   "label": "SİZE SORUYORUZ",
+   "title": "Seferihisar'da en sevdiğiniz koy hangisi?",
+   "body": "Yanıtınızı bu story'ye yazın. Yanıtlar yalnızca bize ulaşır.",
+   "photo": "sigacik-teos-marina"
+  },
+  {
+   "id": "sef-soru-koyler",
+   "format": "story",
+   "label": "SİZE SORUYORUZ",
+   "title": "Seferihisar'ın köylerinden hangisini daha çok seviyorsunuz?",
+   "body": "Yanıtınızı bu story'ye yazın. Yanıtlar yalnızca bize ulaşır.",
+   "photo": "sigacik-kale-liman-05"
+  },
+  {
+   "id": "sef-soru-yavas-an",
+   "format": "story",
+   "label": "SİZE SORUYORUZ",
+   "title": "Sakin şehirde en sevdiğiniz yavaş an hangisi?",
+   "body": "Yanıtınızı bu story'ye yazın. Yanıtlar yalnızca bize ulaşır.",
+   "photo": "sigacik-kale-liman-08"
+  },
+  {
+   "id": "sef-soru-kale",
+   "format": "story",
+   "label": "SİZE SORUYORUZ",
+   "title": "Sığacık Kalesi'ni ilk gördüğünüzde ne hissettiniz?",
+   "body": "Yanıtınızı bu story'ye yazın. Yanıtlar yalnızca bize ulaşır.",
+   "photo": "sigacik-kalesi-havadan"
+  },
+  {
+   "id": "sef-soru-cocukluk",
+   "format": "story",
+   "label": "SİZE SORUYORUZ",
+   "title": "Çocukluğunuzun Seferihisar'ından en çok neyi özlüyorsunuz?",
+   "body": "Yanıtınızı bu story'ye yazın. Yanıtlar yalnızca bize ulaşır.",
+   "photo": "sigacik-kale-liman-03"
+  },
+  {
+   "id": "sef-soru-hafta-sonu",
+   "format": "story",
+   "label": "SİZE SORUYORUZ",
+   "title": "Hafta sonu için bir öneri: Seferihisar'da nereye gidelim?",
+   "body": "Yanıtınızı bu story'ye yazın. Yanıtlar yalnızca bize ulaşır.",
+   "photo": "teos-dionysos-kutsal-alan"
+  },
+  {
+   "id": "sef-soru-mevsim",
+   "format": "story",
+   "label": "SİZE SORUYORUZ",
+   "title": "Sizce Seferihisar'ın en güzel mevsimi hangisi?",
+   "body": "Yanıtınızı bu story'ye yazın. Yanıtlar yalnızca bize ulaşır.",
+   "photo": "sigacik-liman-02"
+  },
+  {
+   "id": "sef-soru-lezzet",
+   "format": "story",
+   "label": "SİZE SORUYORUZ",
+   "title": "Misafirinize hangi Seferihisar lezzetini ikram edersiniz?",
+   "body": "Yanıtınızı bu story'ye yazın. Yanıtlar yalnızca bize ulaşır.",
+   "photo": "seferihisar-gunbatimi"
+  }
+ ]
+}
