@@ -403,10 +403,10 @@ def caption(item: dict, label: str) -> str:
     description = item.get('description', '')
     redundant = item['kind'] == 'event' and event_description_repeats_title(description, item['title'])
     if description and not redundant:
-        if item["kind"] == "news":
-            lines.append("Kaynak duyurusuna göre: " + excerpt(news_body(item), 1000))
-        else:
-            lines.append("Kaynak duyurusundan: “" + excerpt(description, 1000) + "”")
+        # The owner wants the text itself, with no "Kaynak duyurusuna göre:"
+        # lead-in or wrapping quotes (16 Nov 2026); the source stays credited
+        # in the footer.
+        lines.append(excerpt(news_body(item) if item["kind"] == "news" else description, 1000))
     source = "Kaynak: " + plain_source_text(item["source_name"]) + "\n" + item["url"]
     return caption_with_hashtags("\n\n".join(lines), hashtags(item), footer=source)
 

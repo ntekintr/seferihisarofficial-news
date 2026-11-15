@@ -17,7 +17,7 @@ def test_glued_or_punctuation_variant_title_only_copy_is_not_repeated_in_caption
     event.update(title='Ebeveyn & Çocuk Çini Etkinliği', description=description)
     before=deepcopy(event)
     result=caption(event,event['title'])
-    assert 'Kaynak duyurusundan:' not in result
+    assert result==caption({**event,'description':''},event['title'])
     assert event['url'] in result and 'Kaynak: '+event['source_name'] in result
     assert event==before
 
