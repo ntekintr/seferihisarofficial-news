@@ -4,6 +4,26 @@ Son gözden geçirme: **26 Ekim 2026**. Bu dosya kod haritası ve kalıcı çal�
 notudur. Anlık sağlık/teslim kanıtı zaman damgalı çıktılardan alınır; burada bir
 kez başarılı olması sonraki ay kesintisiz çalışacağı anlamına gelmez.
 
+### 16 Kasım: şehir köşesi (tarih gönderileri ve yanıt isteyen story'ler)
+
+Kullanıcı 14 Kasım'da kaynak haberlerinin yanında etkileşim alacak şehir içerikleri
+istedi. Metinler `config/city-features.json` içindeki gözden geçirilmiş girişlerden,
+fotoğraflar `seferihisar/assets/city-features/` içindeki lisanslı Wikimedia Commons
+dosyalarından gelir. Çalışma sırasında hiçbir metin veya görsel üretilmez.
+
+- **Gönderi (Salı ve Cumartesi, 19:30–22:30):** "Şehir hafızası" kartı. Kaynaklı bir
+  bilgi ve yorum isteyen bir soru içerir. Açıklamada kaynak, fotoğrafçı ve lisans yazar.
+- **Story (Pazartesi, Çarşamba, Cuma, 20:30–23:30):** "Size soruyoruz" kartı. API
+  anket veya soru çıkartması ekleyemez; story yanıt ister, yanıtlar mesaj olarak gelir.
+- **Fotoğraf:** Fotoğrafçı ve lisans kartın üzerinde ve açıklamada yazar. Her dosya
+  SHA-256 ile sabitlenir; değişen dosya reddedilir.
+- **Sıra ve güvenlik:** Her gün bankadaki sıradaki kullanılmamış giriş paylaşılır;
+  paylaşılan giriş tekrar edilmez. Kart Pages'te yayınlanıp hash'i doğrulanmadan
+  gönderilmez, talep Meta'dan önce kaydedilir, belirsiz teslim asla yeniden
+  gönderilmez ve seriyi durdurur. Banka biterse `bank_empty` görünür.
+- **Facebook:** Şehir köşesi şimdilik yalnız Instagram'da yayınlanır.
+- **Durdurma:** `seferihisar/city_features.py` içinde `ENABLED = False`.
+
 ### 15 Kasım: günlük sınır yok, güncel haber bulunduğu turda paylaşılır
 
 Kullanıcı 14 Kasım'da iki fabrika için de kuralı değiştirdi: günlük paylaşım sınırı
