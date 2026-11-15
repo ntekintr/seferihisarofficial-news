@@ -17,7 +17,8 @@ from .domain import digest, parse_date
 from .media_caption import generated_image_caption
 from .store import Store
 from .publication_policy import (NEWS_DAILY_LIMIT, OUTAGE_STORY_HOURS, daily_limit_reason, duplicate_reason, post_reason,
-                                 day_claims, dispatch_window, evening_post, evening_window, outage_story_parents, story_only)
+                                 day_claims, dispatch_window, evening_post, evening_window, outage_story_parents, story_only,
+                                 caps_lifted, immediate_news_item, IMMEDIATE_PER_RUN, IMMEDIATE_GAP_SECONDS)
 
 
 def delivery_error(exc: Exception) -> str:
@@ -81,7 +82,7 @@ class Instagram:
         return value
 
 
-def publish_one(store: Store, at: datetime, site_url: str, assets: dict[str, dict], story: bool = False, adapter=None, checkpoint=None, *, target_id: str | None = None, paired_story: bool = False, exclude_event_ids: set[str] | None = None, editorial: bool = False, require_visual_review: bool = False, requested: bool = False, evening_only: bool = False) -> dict:
+def publish_one(store: Store, at: datetime, site_url: str, assets: dict[str, dict], story: bool = False, adapter=None, checkpoint=None, *, target_id: str | None = None, paired_story: bool = False, exclude_event_ids: set[str] | None = None, editorial: bool = False, require_visual_review: bool = False, requested: bool = False, evening_only: bool = False, immediate: bool = False) -> dict:
     api = adapter or Instagram()
     if not api.enabled():
         return {"status": "disabled"}
@@ -142,7 +143,8 @@ def publish_one(store: Store, at: datetime, site_url: str, assets: dict[str, dic
     # A power-cut story waits for news, but like the weather it never delays news.
     if not (post and story_only(post)):
         recent_posts = [p for p in recent_posts if not (p.get('publish_format') and story_only(p))]
-    if any(at - parse_date(p['published_at']) < timedelta(minutes=45) and p['id'] != allowed_parent for p in recent_posts):
+    # Current news found this run (and its own story) never waits out the gap.
+    if not immediate and any(at - parse_date(p['published_at']) < timedelta(minutes=45) and p['id'] != allowed_parent for p in recent_posts):
         return {"status": "rate_limited"}
     if not prepared:
         return {"status": "empty"}
@@ -160,6 +162,8 @@ def publish_one(store: Store, at: datetime, site_url: str, assets: dict[str, dic
         if response.status_code != 200 or not response.headers.get("Content-Type", "").startswith("image/jpeg"):
             return {"status": "media_not_deployed"}
     post["published_at"] = at.isoformat()
+    if immediate:
+        post["immediate"] = True
     with store.db:
         changed = store.db.execute("UPDATE posts SET status='publishing',payload=? WHERE id=? AND status='prepared'", (json.dumps(post, ensure_ascii=False), post["id"]))
     if changed.rowcount != 1:
@@ -302,24 +306,90 @@ def publish_requested(store: Store, at: datetime, site_url: str, assets: dict[st
             'feed': feed['status'], 'story': story['status']}
 
 
-def publish_automatic(store: Store, at: datetime, site_url: str, assets: dict[str, dict], adapter=None, checkpoint=None, *, require_visual_review: bool = False) -> dict:
-    """Three regular feeds, with one bounded fresh-evening-news pair exception.
+def immediate_parents(store: Store, at: datetime, skip=()) -> list[dict]:
+    """Prepared feed posts of current news this factory has just found, oldest first."""
+    items = {i['id']: i for i in store.items('news')}
+    ready = [p for p in store.posts() if p['status'] == 'prepared' and not p.get('publish_format')
+             and p.get('kind') == 'news' and p['id'] not in skip
+             and p.get('item_id') in items and immediate_news_item(items[p['item_id']], at)]
+    return sorted(ready, key=lambda p: (items[p['item_id']]['published_at'], p['id']))
 
-    A completed/uncertain claim consumes its slot and daily budget, including
-    across runner restarts. Delays beyond one hour never dump the old queue.
+
+def publish_immediate(store: Store, at: datetime, site_url: str, assets: dict[str, dict], adapter=None, checkpoint=None,
+                      *, require_visual_review: bool = False, clock=None, pause=None) -> dict:
+    """Owner decision, 14 Nov 2026: current news goes out in the run that finds it.
+
+    Each article is published with its own story, one after another, with a
+    short gap between pairs. Every source, visual, repeat and media check of
+    a normal publication still applies; a post that fails one stays waiting.
+    An uncertain delivery stops the run, as it does for any publication.
     """
     from .domain import TZ
-    from .schedule import SLOTS, prepare
+    api = adapter or Instagram()
+    if not api.enabled():
+        return {'status': 'disabled', 'published': 0}
+    clock = clock or (lambda: datetime.now(TZ))
+    pause = pause or time.sleep
+    current, tried, published, status, gap = at.astimezone(TZ), set(), 0, 'empty', False
+    while published < IMMEDIATE_PER_RUN:
+        waiting = immediate_parents(store, current, tried)
+        if not waiting:
+            break
+        if gap:
+            pause(IMMEDIATE_GAP_SECONDS)
+            current, gap = clock().astimezone(TZ), False
+            continue
+        post = waiting[0]
+        tried.add(post['id'])
+        feed = publish_one(store, current, site_url, assets, adapter=api, checkpoint=checkpoint, target_id=post['id'],
+                           requested=True, immediate=True, require_visual_review=require_visual_review)
+        if feed['status'] in ('uncertain', 'already_claimed'):
+            return {'status': feed['status'], 'published': published}
+        if feed['status'] != 'published':
+            status = status if published else feed['status']
+            continue
+        published, status, gap = published + 1, 'published', True
+        story = publish_one(store, current, site_url, assets, story=True, adapter=api, checkpoint=checkpoint,
+                            target_id=digest(post['id'] + ':story:0'), paired_story=True, requested=True,
+                            immediate=True, require_visual_review=require_visual_review)
+        if story['status'] == 'uncertain':
+            return {'status': 'uncertain', 'published': published}
+    return {'status': status, 'published': published}
+
+
+def publish_automatic(store: Store, at: datetime, site_url: str, assets: dict[str, dict], adapter=None, checkpoint=None, *, require_visual_review: bool = False, clock=None, pause=None) -> dict:
+    """Current news at once (from 15 Nov 2026), then the timetabled pair.
+
+    A completed/uncertain claim consumes its slot, including across runner
+    restarts. Delays beyond one hour never dump the old queue.
+    """
+    from .domain import TZ
     api = adapter or Instagram()
     if not api.enabled():
         return {'status':'disabled'}
     at = at.astimezone(TZ)
+    immediate = None
+    if caps_lifted(at):
+        immediate = publish_immediate(store, at, site_url, assets, adapter=api, checkpoint=checkpoint,
+                                      require_visual_review=require_visual_review, clock=clock, pause=pause)
+    result = publish_timetabled(store, at, site_url, assets, api, checkpoint, require_visual_review)
+    if immediate is not None:
+        result['immediate'] = immediate['status']
+    return result
+
+
+def publish_timetabled(store: Store, at: datetime, site_url: str, assets: dict[str, dict], api, checkpoint, require_visual_review) -> dict:
+    """Events, digests and older news in the owner's timetable windows."""
+    from .domain import TZ
+    from .schedule import SLOTS, prepare
     window = dispatch_window(at, SLOTS)
     if window is None:
         return {'status':'outside_window'}
     slot, end, evening_only = window
     prepare(store, at, refresh_digests=False)
-    claims = [p for p in store.posts() if not p.get('publish_format') and p['status'] in ('published','publishing','uncertain') and p.get('published_at')]
+    # Posts published at once never occupy a timetable window.
+    claims = [p for p in store.posts() if not p.get('publish_format') and not p.get('immediate')
+              and p['status'] in ('published','publishing','uncertain') and p.get('published_at')]
     today = [p for p in claims if parse_date(p['published_at']).astimezone(TZ).date() == at.date()]
     in_slot = [p for p in claims if slot <= parse_date(p['published_at']).astimezone(TZ) < end]
     parent = None
