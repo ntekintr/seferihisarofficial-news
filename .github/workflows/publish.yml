@@ -33,7 +33,9 @@ jobs:
       group: seferihisar-production
       cancel-in-progress: false
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    # Up to four current-news pairs, 90 seconds apart, each mirrored to
+    # Facebook in the same run (owner decision, 14 Nov 2026).
+    timeout-minutes: 20
     environment: instagram-production
     permissions:
       contents: write # Required for durable claims before each explicit Meta request.
