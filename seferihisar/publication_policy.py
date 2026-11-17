@@ -4,6 +4,7 @@ Independent weather/pharmacy tables are deliberately outside the news budget.
 Claimed rows are observations, never reset or rewritten to recover a slot.
 """
 import json
+import re
 from datetime import date, datetime, time, timedelta
 
 from .domain import TZ, normalized, parse_date
@@ -159,11 +160,28 @@ def evening_summary(at):
             'extra_story': 'first_matching_story_of_fourth_feed'}
 
 
+# Owner decision, 17 Nov 2026: the weekly Bademler Sanat Köyü tile ("çini")
+# workshops are not to be shared again in any format. The whole word only:
+# "Çini", "ÇİNİ" and ASCII "cini" match; "Çinili", "çinici" do not.
+CINI = re.compile(r'\b[çc]ini\b')
+
+
 def owner_exclusion(value):
-    """The specifically declined recurring class, not all sport/yoga content."""
-    title = normalized(value.get('title', ''))
-    return ('owner_excluded' if 'canan tutal' in title and 'hatha yoga' in title
-            else None)
+    """The specifically declined classes, not all sport/yoga/art content.
+
+    A post is checked by its own title and its slide titles, so a queued digest
+    that still lists a declined event is stopped at publication time too.
+    """
+    title = normalized(value.get('title') or '')
+    if 'canan tutal' in title and 'hatha yoga' in title:
+        return 'owner_excluded'
+    if value.get('kind') != 'news':
+        slides = value.get('slides') if isinstance(value.get('slides'), list) else []
+        titles = [title] + [normalized(s.get('title') or '') for s in slides
+                            if isinstance(s, dict) and isinstance(s.get('title'), str)]
+        if any(CINI.search(t) for t in titles):
+            return 'owner_excluded'
+    return None
 
 
 def daily_limit_reason(store, at, post=None, *, story=False):
