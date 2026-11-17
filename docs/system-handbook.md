@@ -234,7 +234,9 @@ Yeni bir içerik kimliği veya revizyon tek başına yeni haber sayılmaz. Gerç
 mekân ve iptal değişikliği görünür kartta farklıysa uygundur. Her parent'ın yalnız
 ilk story'si, aynı gün ve son bir saat içinde tamamlanır; geçmiş parent yenilenmez.
 Canan Tutal ile Hatha Yoga yeni gönderi/story/seçkilerden kullanıcı kararıyla
-çıkarılır. [Güncel yayın kuralları](automatic-publication.md). Geçmiş iddialar
+çıkarılır. 17 Kasım 2026 kararıyla başlığında tam kelime olarak "çini" geçen
+etkinlikler de hiçbir yayın türünde ve seçkide yer almaz.
+[Güncel yayın kuralları](automatic-publication.md). Geçmiş iddialar
 değişmez; bu kod notu dağıtım veya doğal yeni teslim kanıtı değildir.
 
 ### 22 Ekim: günlük nöbetçi eczane listesi

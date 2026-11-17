@@ -32,6 +32,8 @@ Kaynak revizyonu veya kimlik değişmesi aynı kartı yeni haber yapmaz. Donduru
 
 Kullanıcının ayrıca istemediği **Canan Tutal ile Hatha Yoga** etkinliği, sonraki seansları dahil, yeni gönderi/story ve etkinlik seçkilerinden çıkarılır. Bu karar bütün spor veya başka eğitmenlerin yoga içeriğini genel olarak kapatmaz. Yayımlanmış eski kayıt ve medya bağları korunur.
 
+Kullanıcının 17 Kasım 2026 kararıyla başlığında **çini** kelimesi geçen etkinlikler (Bademler Sanat Köyü'ndeki haftalık çini atölyeleri gibi) hiçbir biçimde paylaşılmaz: duyuru, 3 gün/aynı gün hatırlatması, güncelleme, story, haftalık ve aylık seçki satırı dahil. Yalnız tam kelime eşleşir ("Çini", "ÇİNİ", "cini"); "Çinili", "çinici" gibi kelimeler ve haber türündeki içerik bu kurala girmez. Kuyrukta bekleyen kart ve story yayın anında yeniden denetlenir; çini satırı içeren hazır seçki durdurulur ve sonraki araştırmada satırsız yeniden kurulur.
+
 Yayın öncesinde kaynak bir saat içinde tekrar görülmüş olmalı; hatalı kaynak, eski haber, doğrulanmamış/hassas içerik ve yayımlanmamış görsel dışarıda kalır. Gönderi ve story için kalıcı yayın iddiası Meta çağrısından önce kaydedilir. Runner yeniden başlarsa tamamlanmış gönderi tekrarlanmaz. Belirsiz gönderi/story kendiliğinden yeniden gönderilmez; insan kontrolü gerekir. Eksik story görseli sonradan doğrulanırsa, aynı pencerede yalnız eksik story tamamlanabilir.
 
 Haberin kaynak yayın tarihi 48 saati geçtiğinde yeni paylaşım yapılmaz; kaynağın
