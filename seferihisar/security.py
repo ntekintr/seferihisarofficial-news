@@ -72,6 +72,7 @@ def valid_visual_review(value):
 def validate_state(path: Path):
     """Refuse to upload/commit a state file containing unapproved payload fields."""
     db = sqlite3.connect(f"file:{path.resolve()}?mode=ro", uri=True)
+    table = "schema"
     try:
         tables = {r[0] for r in db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
         if not tables <= {"items", "posts", "withheld", "runs", "candidates", "annotations", "illustrations", "illustration_days", "source_photos", "source_photo_retries", "source_health", "facebook_deliveries", "publication_checks", "weather_stories", "learning_profile", "source_checks", "delivery_audits", "learning_samples", "pharmacy_stories", "city_features"}:
@@ -289,8 +290,25 @@ def validate_state(path: Path):
                     if table=='posts' and 'brand_version' in payload:
                         from .brand import logo_path
                         logo_path(payload['brand_version'])
+    except (ValueError, sqlite3.Error, OSError) as exc:
+        # Lets the command line name the table that failed, never a row value.
+        exc.state_table = table
+        raise
     finally:
         db.close()
+
+
+# A rule is one of the fixed messages above. Library messages that quote a
+# value (timestamps, JSON positions, paths) do not match and are not printed.
+RULE_NAME = re.compile(r"[A-Za-z][A-Za-z -]{2,80}")
+
+
+def failure_location(exc) -> str:
+    """Table and fixed rule name of a failed check; no row content."""
+    table = getattr(exc, "state_table", None)
+    table = table if isinstance(table, str) and re.fullmatch(r"[a-z_]{1,40}", table) else "unknown"
+    rule = str(exc) if RULE_NAME.fullmatch(str(exc)) else type(exc).__name__
+    return f"table={table} rule={rule}"
 
 
 def validate_public(path: Path):
@@ -320,5 +338,6 @@ if __name__ == "__main__":
     args = parser.parse_args()
     try:
         (validate_state if args.kind == "state" else validate_public)(args.path)
-    except (ValueError, sqlite3.Error, OSError):
-        raise SystemExit("Public-data safety check failed; upload blocked.") from None
+    except (ValueError, sqlite3.Error, OSError) as exc:
+        detail = " (" + failure_location(exc) + ")" if args.kind == "state" else ""
+        raise SystemExit("Public-data safety check failed; upload blocked." + detail) from None
