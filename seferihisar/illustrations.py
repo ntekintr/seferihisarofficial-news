@@ -336,7 +336,8 @@ class Illustrator:
             return None
         key = image_key(item)
         from .owner_curated import matches, image_bytes
-        if matches(item) and not self.store.rows('SELECT id FROM illustrations WHERE id=?', (key,)):
+        if (matches(item) and not self.store.rows('SELECT id FROM illustrations WHERE id=?', (key,))
+                and not self._frozen_key(key)):
             try:
                 data = image_bytes()
                 self.check_image(key, data)  # Normal lettering/OCR gate remains mandatory.
@@ -379,6 +380,15 @@ class Illustrator:
             return path
         if old and old['status'] == 'ready':
             return None  # Rejected cached pixels do not authorize a new API attempt.
+        if self._frozen_key(key):
+            # 18 Nov 2026: a story went out bound to a scene the end-of-run
+            # prune had already dropped (the cache held 80 frozen images). Its
+            # prepared feed parent regenerated that key; prune never evicts a
+            # frozen row, so the cache stood at 81 and every research run then
+            # failed the state check. New pixels would not be the published
+            # ones either: a claimed key without stored bytes stays without.
+            self.stats['deferred'] += 1
+            return None
         # v5 changes only a few custom scenes. Reuse an already-checked v4
         # photo for an unchanged fixed brief, without spending another request.
         unchanged = (scene_version(item) == 'editorial-photo-v5' and
