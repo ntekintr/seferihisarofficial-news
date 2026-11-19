@@ -13,7 +13,7 @@ import requests
 from PIL import Image
 
 from .domain import digest, normalized, parse_date
-from .image_safety import (MAX_CACHE_BYTES, MAX_CACHED_IMAGES, IllustrationCheckUnavailable,
+from .image_safety import (MAX_CACHE_BYTES, MAX_CACHED_IMAGES, MAX_IMAGE_BYTES, IllustrationCheckUnavailable,
                            IllustrationTextRejected, ocr_available, validate_jpeg,
                            validate_text_free_illustration)
 from .security import contains_secret
@@ -222,7 +222,8 @@ class Illustrator:
         self.match_checks = {}
         self.match_ready = True
         self.stats.update({'subject_rejected': 0, 'subject_unavailable': 0, 'text_only': 0, 'stock_reused': 0, 'scene_reused': 0,
-                           'article_scene': 0, 'scene_rejected': 0, 'scene_rejections': {}, 'scene_scores': []})
+                           'article_scene': 0, 'scene_rejected': 0, 'scene_rejections': {}, 'scene_scores': [],
+                           'cache_full': 0, 'released': 0})
 
     def check_subject(self, key: str, data: bytes, expected: str):
         from .editorial_stock import reviewed_calendar
@@ -285,8 +286,19 @@ class Illustrator:
         self.paths.pop(key, None)
 
     def prune(self, allowed_ids: set[str]):
-        rows = self.store.rows('SELECT id,item_id,length(image) AS bytes,status FROM illustrations ORDER BY updated_at DESC,id')
         frozen = self._frozen_keys()
+        if frozen is not None:
+            # A published scene leaves 24 h after its last delivery. Its key
+            # stays claimed, so image() never generates it again.
+            from .illustration_retention import released_keys
+            released = released_keys(self.store.db, self.at)
+            cached = {row['id'] for row in self.store.rows('SELECT id FROM illustrations')}
+            with self.store.db:
+                for key in sorted(released & cached):
+                    self.store.db.execute('DELETE FROM illustrations WHERE id=?', (key,))
+            self.stats['released'] += len(released & cached)
+            frozen -= released
+        rows = self.store.rows('SELECT id,item_id,length(image) AS bytes,status FROM illustrations ORDER BY updated_at DESC,id')
         retained = [row for row in rows if frozen is None or row['id'] in frozen]
         # Reserve historical claims before recent draft rows, irrespective of
         # timestamp order. Deleted rows must not consume the remaining budget.
@@ -408,6 +420,8 @@ class Illustrator:
                 or old and (old['attempts'] >= 2 or self.at < parse_date(old['retry_at']))):
             self.stats['deferred'] += 1
             return None
+        if not self._cache_has_room():
+            return None
         # Claim before network I/O. Handled timeouts are persisted with the
         # normal state job; a retained pending claim waits for the next UTC day.
         with self.store.db:
@@ -448,6 +462,20 @@ class Illustrator:
             self.stats['failed'] += 1
             self.stopped = True
             return None
+
+    def _cache_has_room(self) -> bool:
+        """No provider call, and no daily attempt, for a scene with no room.
+
+        A full cache would only drop another stored scene for this one at
+        the end-of-run prune. The draft waits without a scene this run.
+        """
+        row = self.store.rows("SELECT COUNT(*) AS count, COALESCE(SUM(length(image)),0) AS bytes "
+                              "FROM illustrations WHERE status='ready'")[0]
+        if row['count'] < MAX_CACHED_IMAGES and row['bytes'] + MAX_IMAGE_BYTES <= MAX_CACHE_BYTES:
+            return True
+        self.stats['deferred'] += 1
+        self.stats['cache_full'] += 1
+        return False
 
     def _frozen_keys(self):
         keys = set()
@@ -583,6 +611,8 @@ class Illustrator:
         if (not self.configured or self.stopped or self.stats['attempted'] >= RUN_ATTEMPTS or attempts >= DAILY_ATTEMPTS
                 or old and (old['attempts'] >= 2 or self.at < parse_date(old['retry_at']))):
             self.stats['deferred'] += 1
+            return None
+        if not self._cache_has_room():
             return None
         with self.store.db:
             self.store.db.execute('INSERT INTO illustration_days VALUES (?,1) ON CONFLICT(day) DO UPDATE SET attempts=attempts+1', (self.day,))
