@@ -81,9 +81,15 @@ def repair(db, archive_bytes, manifest=MANIFEST):
         archive.close()
 
 
-def recover(path: Path, git, manifest=MANIFEST):
+def recover(path: Path, git, manifest=MANIFEST, at=None):
     db = sqlite3.connect(path)
     try:
+        # A scene past its 24 h retention is not brought back from the archive:
+        # the next prune would only drop it again.
+        from .domain import now
+        from .illustration_retention import released_keys
+        released = released_keys(db, at or now())
+        manifest = {**manifest, 'rows': [spec for spec in manifest['rows'] if spec['key'] not in released]}
         if not any(eligible(db, spec) for spec in manifest['rows']): return 0
         revision = manifest['state_commit']
         try:
