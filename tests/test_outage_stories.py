@@ -16,7 +16,7 @@ AT = parse_date('2026-11-02T08:40:00+03:00')
 SITE = 'https://example.org/'
 
 
-def outage(store, at, name='Urla', hours=1, start=None, end=None, location=None, note=''):
+def outage(store, at, name='Seferihisar', hours=1, start=None, end=None, location=None, note=''):
     begin = start or at + timedelta(hours=hours)
     item = {'kind':'event','identity':'https://example.org/gdz/'+name,'title':f'{name}’da planlı elektrik kesintisi',
             'description':'Planlı elektrik kesintisi resmî dağıtım şirketi tarafından duyuruldu.'+note,
@@ -108,7 +108,7 @@ def test_duplicate_card_cannot_starve_the_next_cut(store):
     assert publish_outage_story(store,AT,SITE,assets,adapter)['status']=='published'
     later=AT+timedelta(minutes=50)
     assets.update(outage(store,later,start=start,note=' Kaynak metni güncellendi.'))
-    assets.update(outage(store,later,'Karaburun',hours=2))
+    assets.update(outage(store,later,'Sigacik',hours=2))
     assert publish_outage_story(store,later,SITE,assets,adapter)['status']=='published'
     assert adapter.container.call_count==2
 
@@ -117,18 +117,20 @@ def test_real_change_to_a_cut_gets_its_own_story(store):
     start=AT+timedelta(hours=1);assets=outage(store,AT,start=start);adapter=api()
     assert publish_outage_story(store,AT,SITE,assets,adapter)['status']=='published'
     later=AT+timedelta(minutes=50)
-    assets.update(outage(store,later,start=start,location='Urla · Yalnız İçmeler'))
+    assets.update(outage(store,later,start=start,location='Seferihisar · Yalnız Sığacık'))
     assert publish_outage_story(store,later,SITE,assets,adapter)['status']=='published'
     assert adapter.container.call_count==2
 
 
-def test_daily_limit_prefers_the_nearest_area(store):
+def test_daily_limit_counts_only_seferihisar_cuts(store):
+    # Owner rule, 22 Nov 2026: other districts' cuts are never published.
     assets=outage(store,AT,'Urla');assets.update(outage(store,AT,'Güzelbahçe'))
-    assets.update(outage(store,AT,'Seferihisar'));assets.update(outage(store,AT,'Karaburun'))
+    assets.update(outage(store,AT,'Seferihisar'));assets.update(outage(store,AT,'Sigacik'))
+    assets.update(outage(store,AT,'Urkmez'))
     adapter=api()
     assert publish_outage_story(store,AT,SITE,assets,adapter)['status']=='published'
     first=next(p for p in store.posts() if p.get('publish_format')=='story' and p['status']=='published')
-    assert first['title'].startswith('Seferihisar')
+    assert not first['title'].startswith(('Urla','Güzelbahçe'))
     stamp=AT
     for _ in range(OUTAGE_STORY_LIMIT-1):
         stamp+=timedelta(minutes=46)
@@ -138,6 +140,8 @@ def test_daily_limit_prefers_the_nearest_area(store):
         store.db.execute('UPDATE items SET last_seen=?',(stamp.isoformat(),))
     assert publish_outage_story(store,stamp,SITE,assets,adapter)['status']=='daily_limit'
     assert adapter.container.call_count==OUTAGE_STORY_LIMIT
+    published=[p['title'] for p in store.posts() if p['status']=='published']
+    assert published and not any(t.startswith(('Urla','Güzelbahçe')) for t in published)
 
 
 @pytest.mark.parametrize('hours,expected',[(1,'published'),(30,'published'),(60,'empty')])

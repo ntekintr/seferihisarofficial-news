@@ -40,6 +40,9 @@ def verify(item: dict, source: dict, at: datetime) -> str | None:
         return "unverified_origin"
     if not local(item["title"] + " " + item.get("description", "") + " " + (item.get("location") or "")):
         return "not_local"
+    from .district import reason as district_reason
+    if reason := district_reason(item):
+        return reason
     if SENSITIVE.search(item["title"] + " " + item.get("description", "")):
         return "human_review_required"
     if item["kind"] == "news":

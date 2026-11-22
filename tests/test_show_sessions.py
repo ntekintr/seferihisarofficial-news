@@ -88,7 +88,7 @@ def test_card_already_queued_for_later_session_is_superseded(store):
 def test_other_days_and_other_venues_stay_separate(store):
     at = parse_date('2026-11-05T08:35:00+03:00')
     seed(store, at, '2026-11-12T15:30:00+03:00', '2026-11-19T15:30:00+03:00')
-    seed(store, at, '2026-11-12T19:00:00+03:00', venue='Bademler Sanat Köyü')
+    seed(store, at, '2026-11-12T19:00:00+03:00', venue='Sığacık Kalesi Açık Hava Sahnesi')
     cards = live(store, 'announcement')
     assert len(cards) == 3 and not any(c.get('session_ids') for c in cards)
 
