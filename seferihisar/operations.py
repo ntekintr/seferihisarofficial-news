@@ -124,6 +124,24 @@ def never_sent(post):
         not post.get('container_id') or post.get('delivery_error') in (UNSAVED, EXPIRED))
 
 
+def facebook_never_sent(row):
+    """An uncertain Facebook claim known never to have reached a publish call.
+
+    `facebook.deliver` records each uploaded photo id as soon as Meta returns
+    it and calls the feed or story endpoint only after every upload, with
+    those ids. An uncertain row without a single photo id or a media id
+    therefore failed on its first, unpublished (`published=false`) upload.
+    16 Nov 2026: the weekly edition's feed mirror stopped there and kept the
+    panel and the operations watch on "unresolved" for days. The claim still
+    holds its key and is never resent.
+    """
+    try:
+        photos = json.loads(row['photo_ids'] or '[]')
+    except (TypeError, ValueError):
+        return False
+    return row['status'] == 'uncertain' and not row['media_id'] and photos == []
+
+
 def summary(store, at):
     from .schedule import SLOTS
     at = at.astimezone(TZ)
@@ -132,7 +150,7 @@ def summary(store, at):
     def today(stamp):
         return bool(stamp) and parse_date(stamp).astimezone(TZ).date() == at.date()
     claims = [p for p in posts if p['status'] in ('published', 'publishing', 'uncertain')]
-    deliveries = store.rows('SELECT format,status,claimed_at FROM facebook_deliveries')
+    deliveries = store.rows('SELECT format,status,claimed_at,photo_ids,media_id FROM facebook_deliveries')
     today_claims = [p for p in claims if today(p.get('published_at'))]
     checks = [{**r, 'result': json.loads(r['result'])} for r in store.rows('SELECT checked_at,mode,result FROM publication_checks ORDER BY id DESC LIMIT 10')]
     windows = [window for day in (0, 1) for window in news_windows(at.date() + timedelta(days=day), SLOTS)]
@@ -168,8 +186,9 @@ def summary(store, at):
                   'facebook_feed': sum(r['format'] == 'feed' and today(r['claimed_at']) for r in deliveries),
                   'facebook_story': sum(r['format'] == 'story' and today(r['claimed_at']) for r in deliveries)},
         'unresolved': {'instagram': sum(p['status'] != 'published' and not never_sent(p) for p in claims),
-                       'facebook': sum(r['status'] != 'published' for r in deliveries)},
-        'not_sent': {'instagram': sum(never_sent(p) for p in claims)},
+                       'facebook': sum(r['status'] != 'published' and not facebook_never_sent(r) for r in deliveries)},
+        'not_sent': {'instagram': sum(never_sent(p) for p in claims),
+                     'facebook': sum(facebook_never_sent(r) for r in deliveries)},
         'delivery_errors': dict(Counter(p['delivery_error'] for p in claims if p.get('delivery_error'))),
         'daily_feed_limit': NEWS_DAILY_LIMIT,
         'daily_story_limit': NEWS_DAILY_LIMIT, 'service_stories_extra': True,
