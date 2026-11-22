@@ -58,14 +58,18 @@ def test_gdz_healthy_read_does_not_pause(monkeypatch):
     found,_,errors,fetcher,naps=gdz_collect(monkeypatch,[response(d) for d in DISTRICTS])
     assert errors==[] and fetcher.get.call_count==4 and naps==[]
 
+def seferihisar_row(**changes):
+    return row(Ilce='SEFERİHİSAR',Mahalle=['Sığacık','Akarca'],
+               MahalleSokak=[{'Mahalle':'Sığacık','Sokak':['1000. Sk.']}],**changes)
+
 def test_future_planned_interval_has_no_invented_article_date_or_fees():
-    item=read([row()])[0]
+    item=read([seferihisar_row()],'SEFERİHİSAR')[0]
     assert item['kind']=='event' and item['category']=='outage'
     assert 'published_at' not in item
     assert item['start']=='2026-10-15T09:30:00.139000+03:00'
     assert item['valid_until']==item['end'] and verify(item,SOURCES['gdz'],AT) is None
     text=caption(item,item['title'])
-    assert '09:30 – 17:30' in text and 'Altıntaş' in text
+    assert '09:30 – 17:30' in text and 'Sığacık' in text
     assert 'Ücret' not in text and 'Etkinlik' not in text and '#elektrikkesintisi' in text
 
 @pytest.mark.parametrize('changes',[
@@ -128,7 +132,7 @@ def test_fetches_only_four_approved_districts_and_surfaces_failure(monkeypatch):
     assert errors==[{'source_id':'gdz','code':'detail_timeout'}]
 
 def test_service_is_one_notice_not_party_digest_or_recurring_event_reminder(tmp_path):
-    item=read([row()])[0]
+    item=read([seferihisar_row()],'SEFERİHİSAR')[0]
     db=Store(tmp_path/'state.sqlite');db.upsert(item,AT.isoformat());prepare(db,AT)
     posts=db.posts()
     assert len(posts)==1 and posts[0]['kind']=='announcement'

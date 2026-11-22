@@ -65,7 +65,7 @@ def seed(store, at, cases):
     ([{'title': 'Seferihisar güncel haber', 'age': .5, 'waiting': 20},
       {'title': 'Seferihisar su kesintisi', 'kind': 'event', 'category': 'outage', 'starts': 3}], 1),
     ([{'title': 'Urla konseri uzaktaki tarih', 'kind': 'event', 'category': 'concert', 'starts': 360, 'waiting': 20},
-      {'title': 'Urla yarınki tiyatro', 'kind': 'event', 'category': 'theatre', 'starts': 24}], 1),
+      {'title': 'Urla yarınki konser', 'kind': 'event', 'category': 'concert', 'starts': 24}], 1),
     ([{'title': 'Urla güncel festival haberi', 'age': .5, 'waiting': 20},
       {'title': 'Seferihisar güncel haber', 'age': 3}], 1),
     ([{'title': 'Seferihisar eski toplantı', 'age': 36, 'waiting': 20},

@@ -94,10 +94,15 @@ def test_unknown_location_event_date_or_private_links_withheld(ig_source,at,chan
 
 
 def test_event_timestamp_is_never_used_as_show_date(ig_source,at):
-    data=account(at);data['media']['data'][0]['caption']='Urla tiyatro gösterisine katılın! Tarih: 14.10.2026\nSaat: 20:00\nYer: Urla Kültür Merkezi'
+    data=account(at);data['media']['data'][0]['caption']='Seferihisar tiyatro gösterisine katılın! Tarih: 14.10.2026\nSaat: 20:00\nYer: Seferihisar Kültür Merkezi'
     item=reader.caption_items(data,ig_source,at)[0]
     assert item['kind']=='event' and item['start']=='2026-10-14T20:00:00+03:00'
-    assert 'published_at' not in item and item['location']=='Urla Kültür Merkezi'
+    assert 'published_at' not in item and item['location']=='Seferihisar Kültür Merkezi'
+
+
+def test_other_district_theatre_from_instagram_is_not_read(ig_source,at):
+    data=account(at);data['media']['data'][0]['caption']='Urla tiyatro gösterisine katılın! Tarih: 14.10.2026\nSaat: 20:00\nYer: Urla Kültür Merkezi'
+    assert reader.caption_items(data,ig_source,at)==[]
 
 
 def public_manifest(source,at):
