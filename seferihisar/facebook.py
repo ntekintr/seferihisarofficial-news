@@ -72,7 +72,11 @@ class Facebook:
 def current_post(store, post, at):
     if owner_exclusion(post):
         return False
-    refs = post_references(post, {i['id']: i for i in store.items()})
+    items = {i['id']: i for i in store.items()}
+    from .district import post_reason as district_reason
+    if district_reason(post, items):
+        return False
+    refs = post_references(post, items)
     failed = blocked_sources(store)
     if not refs or not all(i and source_current(i, at, failed) for i in refs):
         return False

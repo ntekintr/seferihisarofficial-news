@@ -149,6 +149,8 @@ def caption_items(account: dict, source: dict, at: datetime) -> list[dict]:
             if not event:
                 continue
             item = event
+        from .district import scope
+        item = scope(item)
         if verify(item, source, at) is None:
             items.append(item)
     return items

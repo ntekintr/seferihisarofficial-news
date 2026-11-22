@@ -183,6 +183,9 @@ def post_reason(store, post, at):
     """A new delivery must still describe the original current occurrence."""
     if owner_exclusion(post):
         return 'owner_excluded'
+    from .district import post_reason as district_reason
+    if reason := district_reason(post, {i['id']: i for i in store.items()}):
+        return reason
     if post.get('item_id'):
         item = next((i for i in store.items() if i['id'] == post['item_id']), None)
         if not item or item['revision'] != post.get('revision'):

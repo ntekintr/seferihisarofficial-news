@@ -115,8 +115,13 @@ def prepare(store: Store, at: datetime, *, refresh_digests: bool = True):
             if post["status"] not in ("prepared", "blocked_source"):
                 continue
             references = post_references(post, current)
+            from .district import post_reason as district_reason
             from .publication_policy import post_reason
-            valid = (bool(references) and all(item and source_current(item, at, failed) for item in references)
+            if outside := district_reason(post, current):
+                # Owner rule, 22 Nov 2026: queued cards of other districts'
+                # power cuts and theatres stay unpublished, with the reason.
+                store.withhold(post["id"], outside, at.isoformat())
+            valid = (not outside and bool(references) and all(item and source_current(item, at, failed) for item in references)
                      and post_reason(store, post, at) is None)
             store.db.execute("UPDATE posts SET status=? WHERE id=?", ("prepared" if valid else "blocked_source", post["id"]))
     from .publication_policy import CLAIMED
@@ -134,6 +139,9 @@ def prepare(store: Store, at: datetime, *, refresh_digests: bool = True):
             store.withhold(item['id']+':editorial', reason, at.isoformat())
             continue
         if not source_current(item, at, failed):
+            continue
+        from .district import reason as district_reason
+        if district_reason(item):
             continue
         if item["kind"] == "news":
             if at - parse_date(item["published_at"]) > timedelta(days=7):
@@ -333,11 +341,12 @@ def prepare_digest(store: Store, at: datetime, kind: str, days: int):
         period = at.strftime("%Y-%m")
         title = "Seferihisar ve Çevresi Etkinlik Takvimi"
     failed = blocked_sources(store)
+    from .district import reason as district_reason
     # Short festivals can remain in an edition after their first day. A long
     # program/annual series is not evidence of a continuous current occurrence.
     upcoming = [e for e in store.items("event")
                 if e["status"] in ("scheduled", "rescheduled")
-                and e['category']!='outage'
+                and e['category']!='outage' and district_reason(e) is None
                 and parse_date(e["start"]).date() <= at.date() + timedelta(days=days)
                 and parse_date(e["end"]).date() >= at.date()
                 and (not e.get("time_known") or parse_date(e["end"]) > at)

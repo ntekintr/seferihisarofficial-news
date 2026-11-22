@@ -16,7 +16,10 @@ STATUSES = frozenset(('complete', 'published', 'already_published', 'outside_win
     'story_pending', 'blocked_source', 'account_mismatch', 'check_failed',
     'visual_review_missing', 'visual_review_stale', 'visual_review_unavailable',
     'editorial_review_required', 'editorial_copy_stale', 'event_metadata_stale',
-    'duplicate_story', 'stale_parent', 'owner_excluded', 'awaiting_content_visual'))
+    'duplicate_story', 'stale_parent', 'owner_excluded', 'awaiting_content_visual',
+    # Owner district rule (22 Nov 2026); a held card, never a failure.
+    'outage_outside_district', 'outage_mixed_districts',
+    'theatre_outside_district', 'theatre_location_unconfirmed'))
 RESULT_FIELDS = frozenset(('status', 'feed', 'story', 'facebook', 'outage_story', 'outage_facebook', 'immediate'))
 FAILURES = frozenset(('media_missing', 'media_not_deployed', 'awaiting_resolution',
     'uncertain', 'account_mismatch', 'check_failed',

@@ -94,7 +94,8 @@ def run(db_path: Path, public_dir: Path, sources_path: Path, at: datetime | None
         register(store, candidates, sources, at)
         if not fixture:
             refresh_discovery(store, sources, at)
-        incoming = [with_validity(item) for item in incoming]
+        from .district import scope
+        incoming = [scope(with_validity(item)) for item in incoming]
         for item in incoming:
             source = source_map.get(item.get("source_id"), {})
             reason = verify(item, source, at)

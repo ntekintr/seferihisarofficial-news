@@ -51,6 +51,7 @@ def prepare(store, at):
     import json
     from .editor import caption_with_hashtags, digest_hashtags, event_title, event_date_label, excerpt, plain_source_text
     from .schedule import blocked_sources, source_current, slide_body
+    from .district import reason as district_reason
     failed = blocked_sources(store)
     for kind in KINDS:
         period = edition(kind, at)
@@ -62,7 +63,7 @@ def prepare(store, at):
             continue
         candidates = [item for item in store.items('event')
             if item.get('status') in ('scheduled', 'rescheduled') and item.get('category') != 'outage'
-            and period['start'] <= parse_date(item['start']) < period['end']
+            and district_reason(item) is None and period['start'] <= parse_date(item['start']) < period['end']
             and source_current(item, at, failed) and (kind != 'free_week' or item.get('free') is True)]
         from .selection import locality
         selected = sorted(candidates, key=lambda e: (locality(e), e['start'], e['id']))[:4]
