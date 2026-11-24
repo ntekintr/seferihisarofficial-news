@@ -30,7 +30,11 @@ TERMS = {
     "tourism": ("turizm", "gezi"), "municipality": ("belediye",),
     "public": ("kaymakam", "afad"), "event": ("etkinlik", "şenlik"),
 }
-SENSITIVE = re.compile(r"cinayet|ölüm|öldü|vefat|intihar|yaral[ıa]|suç|tutuk|gözaltı|tecavüz|istismar|yolsuz|rüşvet|dolandır|iddia|siyasi|seçim|partisi|mahkeme|şüpheli|itham|skandal|istifa|kaçak|hırsız|ifşa|saldırı|göçmen|yakalan|uyuşturucu", re.I)
+SENSITIVE = re.compile(r"cinayet|ölüm|öldü|vefat|intihar|yaral[ıa]|suç|tutuk|gözaltı|tecavüz|istismar|yolsuz|rüşvet|dolandır|iddia|siyasi|seçim|partisi|mahkeme|şüpheli|itham|skandal|istifa|kaçak|hırsız|ifşa|saldırı|göçmen|yakalan|uyuşturucu"
+                       # 24 Nov 2026, local press feeds: alliance tours, audit
+                       # findings, threats, lawsuits and objections are political
+                       # or legal stories for a human, not automatic local news.
+                       r"|ittifak|sayıştay|tehdi[dt]|\bdava|itiraz|protesto|muhalefet|\b(?:chp|akp|mhp)\b|\b(?:ak|iyi|dem) parti", re.I)
 
 
 def now() -> datetime:
