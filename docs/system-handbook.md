@@ -308,6 +308,10 @@ daha çok erişim garantisi değildir. Donmuş yayınlar ve hava stokları deği
 
 19 Ekim yapılandırmasında **51 okuyucu** vardır: **42 web/özel okuyucu ve 9
 Instagram hesabı**. Bu, 51 kaynağın her turda veri okuduğu anlamına gelmez.
+24 Kasım 2026 yapılandırmasında 49 etkin web/özel okuyucu ve 8 etkin Instagram
+hesabı vardır: Ege'de Son Söz, İz Gazete ve @shisarbel eklendi; @urlabelediyesi
+ile Rotary 2440 yalnız Seferihisar kuralıyla devre dışı (ayrıntı:
+[kaynak kapsamı](source-coverage.md), 24 Kasım bölümü).
 Sayıyı sohbet hafızasındaki eski 37/8 gibi değerlerden taşımak yerine yapılandırma
 ve son sağlık tablosundan yeniden çıkarın. `ok`: veri ayrıştırıldı; `empty`:
 o yanıt penceresinde uygun kayıt yok; `partial`: bazı ayrıntılar okunamadı;
