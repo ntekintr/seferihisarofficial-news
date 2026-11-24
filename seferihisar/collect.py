@@ -302,8 +302,38 @@ def publication_date(soup, source: dict):
     return values[0] if values and len(set(values)) == 1 else None
 
 
+NEWS_TYPES = ("NewsArticle", "Article", "ReportageNewsArticle")
+
+
+def republished_bulletin(soup, source: dict) -> bool:
+    """A newspaper's labelled copy of a municipal bulletin (İz Gazete, 24 Nov 2026).
+
+    The municipality's own pages are read directly, so the copy is not a second
+    story. Only the reviewed byline fields count: page author metadata and the
+    article's schema.org author, never words in the body.
+    """
+    pattern = source.get('republished_bulletin_author')
+    if not pattern:
+        return False
+    names = [node.get('content', '') for node in soup.select('meta[name="author"], meta[name="articleAuthor"]')]
+    for script in soup.select('script[type="application/ld+json"]'):
+        try:
+            data = json.loads(script.string or script.get_text())
+        except (json.JSONDecodeError, TypeError):
+            continue
+        for obj in objects(data):
+            types = obj.get("@type", [])
+            if not any(t in NEWS_TYPES for t in ([types] if isinstance(types, str) else types)):
+                continue
+            authors = obj.get("author")
+            names += [text(a) for a in (authors if isinstance(authors, list) else [authors]) if a]
+    return any(re.search(pattern, normalized(name)) for name in names)
+
+
 def structured(html: str, url: str, source: dict) -> list[dict]:
     soup = BeautifulSoup(html, "html.parser")
+    if republished_bulletin(soup, source):
+        return []
     article = soup.select_one(source.get("article_selector", 'article .entry-content, article .article-content, article, .news-detail, .haber-detay'))
     if (source.get('strict_article_fields') and source.get('detail_url_pattern')
             and re.search(source['detail_url_pattern'], urlsplit(url).path)
@@ -729,7 +759,10 @@ def source_listing(source: dict, fetcher: Fetcher, listing: str):
     if source["kind"] in ("rss", "wp_rest", "izmir_art"):
         reader = {'rss':feed_items, 'wp_rest':wordpress_items, 'izmir_art':izmir_art_items}[source['kind']]
         found = reader(body, base, source)
-        items.extend(found)
+        # A feed entry cannot show a bulletin byline; such a source's stories
+        # come only from detail pages whose byline was actually read.
+        if not source.get('republished_bulletin_author'):
+            items.extend(found)
         if source.get("follow_feed_details", True):
             links.extend(item["url"] for item in found[:8])
     else:

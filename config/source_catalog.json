@@ -74,6 +74,22 @@
     "reader_id": "urla-ada-haber"
   },
   {
+    "id": "egede-son-soz",
+    "name": "Ege'de Son Söz",
+    "url": "https://www.egedesonsoz.com/",
+    "group": "yerel_basın",
+    "status": "connected",
+    "note": "Yalnız Seferihisar kategorisinin RSS akışı (/rss/seferihisar-haberleri) okunur; /rss/seferihisar genel akış döndürdüğü için kullanılmaz. Muhabir imzalı özgün haberlerde siyasi/hukuki içerik insan incelemesine kalır."
+  },
+  {
+    "id": "iz-gazete",
+    "name": "İz Gazete",
+    "url": "https://www.izgazete.net/",
+    "group": "yerel_basın",
+    "status": "connected",
+    "note": "Seferihisar kategorisinin RSS akışı okunur; haberler yalnız künyesi okunan ayrıntı sayfasından alınır. \"Seferihisar Belediyesi Bülten\" künyeli kopyalar alınmaz, belediyenin kendi sayfası doğrudan okunur."
+  },
+  {
     "id": "urla-yasam",
     "name": "Urla’da Yaşam",
     "url": "https://www.urladayasam.com/haberler",
@@ -190,8 +206,8 @@
     "name": "Rotary 2440. Bölge",
     "url": "https://rotary2440.org/",
     "group": "oda_dernek",
-    "status": "connected",
-    "note": "Urla Rotary kulübünün etkinlik adresleri okunur; yayın için gerçek mekân yerel olmalı. Açık Tarih/Saat alanları Türkiye saatiyle alınır; hatalı UTC işaretli şema saati kullanılmaz."
+    "status": "retired",
+    "note": "24 Kasım 2026'da devre dışı bırakıldı: Seferihisar'da Rotary kulübü bulunamadı; tek eşleşme Urla Rotary'nin Güzelbahçe konseriydi ve Sahip yalnız Seferihisar içeriği istiyor. Okuyucu ayarı silinmedi."
   },
   {
     "id": "afad",
@@ -289,8 +305,16 @@
     "name": "Urla Belediyesi Instagram",
     "url": "https://www.instagram.com/urlabelediyesi/",
     "group": "kamu",
+    "status": "retired",
+    "note": "24 Kasım 2026'da devre dışı bırakıldı: Urla Belediyesi hesabı; Sahip yalnız Seferihisar içeriği istiyor. Yerine Seferihisar Belediyesi'nin kendi hesabı @shisarbel bağlandı. Okuyucu ayarı silinmedi."
+  },
+  {
+    "id": "instagram-seferihisar-belediye",
+    "name": "Seferihisar Belediyesi Instagram",
+    "url": "https://www.instagram.com/shisarbel/",
+    "group": "kamu",
     "status": "connected",
-    "note": "Resmî profil kurumun kendi sitesinden doğrulandı. Mevcut Meta izinleriyle açık hesap açıklamaları okunur; gerçek erişim sonucu her turda kaynak sağlığında gösterilir."
+    "note": "Resmî profil belediyenin kendi sitesinden (seferihisar.bel.tr) doğrulandı. Mevcut Meta izinleriyle açık hesap açıklamaları okunur; hesabın erişimi ve son paylaşım tarihi ilk API turunda ölçülür."
   },
   {
     "id": "instagram-guzelbahce",

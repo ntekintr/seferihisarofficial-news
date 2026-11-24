@@ -166,7 +166,7 @@
   {
     "id": "seferihisar-gundem",
     "name": "Seferihisar Gündem",
-    "url": "https://www.seferihisargundem.com/rss_gundem-haberleri_8.xml",
+    "url": "https://www.seferihisargundem.com/rss.xml",
     "kind": "rss",
     "enabled": true,
     "trusted": true,
@@ -185,6 +185,29 @@
     "trusted": true,
     "access": "robots",
     "max_pages": 12
+  },
+  {
+    "id": "egede-son-soz",
+    "name": "Ege'de Son Söz",
+    "url": "https://www.egedesonsoz.com/rss/seferihisar-haberleri",
+    "kind": "rss",
+    "enabled": true,
+    "trusted": true,
+    "access": "robots",
+    "max_pages": 8,
+    "transient_retries": 1
+  },
+  {
+    "id": "iz-gazete",
+    "name": "İz Gazete",
+    "url": "https://www.izgazete.net/rss/seferihisar",
+    "kind": "rss",
+    "enabled": true,
+    "trusted": true,
+    "access": "robots",
+    "max_pages": 8,
+    "transient_retries": 1,
+    "republished_bulletin_author": "\\bseferihisar belediye\\w* b[uü]lten"
   },
   {
     "id": "haberler",
@@ -465,11 +488,22 @@
     "verified_profile_link": "https://seferihisarlife.com/"
   },
   {
+    "id": "instagram-seferihisar-belediye",
+    "name": "Seferihisar Belediyesi Instagram",
+    "url": "https://www.instagram.com/shisarbel/",
+    "kind": "instagram_api",
+    "enabled": true,
+    "trusted": true,
+    "access": "api",
+    "instagram_username": "shisarbel",
+    "verified_profile_link": "https://seferihisar.bel.tr/"
+  },
+  {
     "id": "instagram-urla",
     "name": "Urla Belediyesi Instagram",
     "url": "https://www.instagram.com/urlabelediyesi/",
     "kind": "instagram_api",
-    "enabled": true,
+    "enabled": false,
     "trusted": true,
     "access": "api",
     "instagram_username": "urlabelediyesi",
@@ -563,7 +597,7 @@
     "name": "Rotary 2440 — yerel etkinlikler",
     "url": "https://rotary2440.org/",
     "kind": "rotary",
-    "enabled": true,
+    "enabled": false,
     "trusted": true,
     "access": "robots",
     "max_pages": 4,

@@ -19,7 +19,9 @@ def public_catalog(entries, sources, health, at):
         reader, check = readers.get(reader_id), checks.get(reader_id)
         # An undated event page or an unconnected site is a separate coverage
         # limitation. A working alternative must not erase that limitation.
-        if reader and entry['status'] != 'date_missing':
+        # A reviewed retirement is the owner's scope decision, not a reader
+        # waiting to be connected; its own note says why and since when.
+        if reader and entry['status'] not in ('date_missing', 'retired'):
             stamp = parse_date(check.get('checked_at')) if check else None
             if not reader.get('enabled'):
                 row.update(status='reader_pending', note='Bu kaynağın okuyucusu etkin değil.')

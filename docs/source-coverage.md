@@ -10,7 +10,8 @@ Kurumların kendi web sitelerindeki profil bağlantıları kontrol edildi:
 |---|---|---|
 | Seferihisar Gündem | @shgundem | https://www.seferihisargundem.com/ |
 | SeferihisarLife | @seferihisar.life | https://seferihisarlife.com/ |
-| Urla Belediyesi | @urlabelediyesi | https://www.urla.bel.tr/ |
+| Seferihisar Belediyesi | @shisarbel | https://seferihisar.bel.tr/ (24 Kasım 2026'da eklendi) |
+| Urla Belediyesi | @urlabelediyesi | https://www.urla.bel.tr/ (24 Kasım 2026'da devre dışı; yalnız Seferihisar kuralı) |
 | Güzelbahçe Belediyesi | @guzelbahcebld | https://www.guzelbahce.bel.tr/ |
 | KültürEkoloji | @kultur.ekoloji | https://www.kulturekoloji.org/ |
 | SEHAYDER | @sehayder | https://www.sehayder.com/ |
@@ -38,7 +39,7 @@ Bu okuma işi başarısız olursa web kaynakları çalışmaya devam eder. Insta
 | Bubilet | İzmir listesi; UrlaDAM Octoberfest 16 ve 17 Ekim 2026 saat 19:00, gerçek iki ayrı seans adresi. Liste başlığından yer tahmin edilmez. |
 | Biletix | Güncel resmî etkinlik kartları ve ayrıntı şeması. Kontroldeki Konak/Kültürpark gösterileri bu ilçe kapsamına alınmadı. Bütün İzmir kapsama eklenmez. |
 | Biletino | Resmî İzmir listesi ve ayrıntı şeması. Bir sanatçının biyografisindeki yer adı, konserin yeri sayılmaz. |
-| Rotary 2440 | Yerel mekânı doğrulanan etkinlikler. Güzelbahçe'deki 24 Ekim 2026 20:30 konseri doğrulandı. Sitenin hatalı UTC şeması yerine görünür Tarih/Saat alanları Türkiye saatiyle kullanılır; bitiş saati tahmin edilmez. |
+| Rotary 2440 | Yerel mekânı doğrulanan etkinlikler. Güzelbahçe'deki 24 Ekim 2026 20:30 konseri doğrulandı. Sitenin hatalı UTC şeması yerine görünür Tarih/Saat alanları Türkiye saatiyle kullanılır; bitiş saati tahmin edilmez. 24 Kasım 2026'da devre dışı bırakıldı (aşağıya bakın). |
 | Seferihisar Devlet Hastanesi | Kurumun kendi başlığı, gövdesi ve tam tarihli alanı; eski ve hassas metinler mevcut kurallarla dışarıda tutulur. Yalnızca afişteki bilgiler tahmin edilmez. |
 | İzmir Kültür Sanat | Kurumun kendi uygulamasının açık event/session/venue koleksiyonları birleştirilir. Gerçek mekân adresi, seans kimliği ve tam başlangıç/bitiş zamanları gerekir. Kontrolde kapsamda güncel seans bulunmaması hata değildir. |
 | Urla Ot Bayramı | Tam yıl içeren 26–29 Mart 2026 program günleri okunur; geçtiği için yeni etkinlik gibi paylaşılmaz. |
@@ -97,3 +98,20 @@ Biletinial'ın mekâna bağlı `?cinemaBranchId=` sürümü schema.org seans saa
 Biletix'in robots dosyasında sunduğu etkinlik haritasındaki 156 İzmir etkinliğinin ayrıntı şeması tek seferlik okundu. Yalnız ikisi kapsamdaydı (Urla Hakan Çeken) ve biri Biletinial'da da var. Mekân sayfaları robots'un yasakladığı `bxcached` API'sini kullandığı için her turda 156 sayfa okumak yerine Biletix ayarı değiştirilmedi. Bademler'in kendi sitesinde yine yalnız yılsız 25 Aralık duyurusu var.
 
 Bubilet erişimi geri gelirse aynı Bademler seansı iki sağlayıcıdan gelebilir. Kart mekânı iki kaynakta da "Bademler Sanat Köyü" olarak üretilir; aynı kart içeriği mevcut tekrar denetimine takılır.
+
+## 24 Kasım 2026: yerel basın akışları ve kapsam daraltma
+
+Kaynak araştırmasının yüksek/orta öncelikli önerileri bağlandı. Ölçümler 24 Kasım'da yerel bilgisayardan, projenin kendi okuyucusuyla, robots kurallarına uyan tek salt okunur turdur; bulut erişimi ilk üretim turunda ayrıca ölçülür.
+
+| Değişiklik | Ayar | Ölçüm / sınır |
+|---|---|---|
+| Seferihisar Gündem tüm kategoriler | `seferihisar-gundem` artık `rss.xml` okur (kimlik aynı). | Eski `rss_gundem-haberleri_8.xml` yalnız Gündem kategorisini veriyordu; Kültür-Sanat (Teos Çocuk Festivali, 19 Kasım), Yerel (spor kompleksi, 4 Kasım) ve başka kategorideki "mandalinanın geleceği" (6 Kasım) haberleri kaçıyordu. Genel akış her kategorinin son 20 haberini tek istekte verir (30 Ekim–24 Kasım). 20 kaydın 5'i Seferihisar'a ait; İzmir Büyükşehir bültenleri mevcut yerellik filtresinde elenir. Kategori akışları (50'şer kayıt) seçilmedi: üç ayrı istek gerektirir ve diğer kategorileri yine kaçırır. |
+| Ege'de Son Söz | `egede-son-soz`, `/rss/seferihisar-haberleri` | 20 kayıt, 20'si yerel; 4'ü doğrulamadan geçti, 15'i 7 günden eski, 1'i insan incelemesinde. `/rss/seferihisar` genel akış döndürdüğü için kullanılmaz. |
+| İz Gazete | `iz-gazete`, `/rss/seferihisar` | 20 kayıt, 20'si yerel. Haber yalnız künyesi okunan ayrıntı sayfasından alınır (ilk 8 bağlantı). "Seferihisar Belediyesi Bülten" / "Belediye Bülteni" künyeli kopyalar (`republished_bulletin_author`) alınmaz: belediyenin kendi sayfası zaten okunuyor ve başlığı değiştirilmiş kopya, başlık eşleşmesine dayalı tekrar denetiminden geçebilirdi. |
+| @shisarbel | `instagram-seferihisar-belediye` | Profil bağlantısı belediyenin kendi sitesinde. Instagram sitesine girilmedi; erişim ve son paylaşım ilk API turunda ölçülür. |
+| @urlabelediyesi | `instagram-urla` devre dışı | Urla Belediyesi hesabı; Sahip kuralı yalnız Seferihisar. Ayar silinmedi, katalogda `retired`. |
+| Rotary 2440 | `rotary2440` devre dışı | Seferihisar'da kulüp bulunamadı; tek eşleşme Urla Rotary'nin Güzelbahçe konseriydi. Ayar silinmedi, katalogda `retired`. |
+
+Yeni basın akışlarında hassas içerik denetimi (`domain.SENSITIVE`) "Cumhur İttifakı turu", "Sayıştay'dan Seferihisar'a mercek" ve "İşçiler: Tehdit ediliyoruz" başlıklarını yakalamıyordu. İttifak, Sayıştay, tehdit, dava, itiraz, protesto, muhalefet ve parti adları eklendi; bu haberler insan incelemesinde kalır. Kural daha temkinlidir: adı "Davacı" olan bir kişi gibi masum eşleşmeler de incelemeye düşebilir.
+
+Açık kalan sınır: farklı gazetelerin aynı olayı farklı başlıkla yazması (ör. İz Gazete "HABER MERKEZİ" künyeli Teos haberi ile Gündem'in aynı haberi) bugünkü tekrar denetimine (aynı başlık veya %92 kelime örtüşmesi) takılmayabilir; günlük haber sınırı korunur. Teimg.com görselleri bu iki gazete için onaylı görsel sunucusu değildir; kartlar mevcut görsel kurallarıyla (başka kaynağın fotoğrafı veya sahne) hazırlanır.
