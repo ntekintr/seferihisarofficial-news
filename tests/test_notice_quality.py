@@ -76,7 +76,9 @@ def test_named_active_notice_is_still_eligible(store, at):
 def test_numeric_play_name_and_other_sources_resolved_news_are_not_reclassified(event, at):
     from seferihisar.timeliness import publication_reason
     assert publication_reason({**event, 'title': '1984'}, at) is None
-    assert publication_reason({**notice(at, 'Sahibi bulundu'), 'source_id': 'other-news'}, at) is None
+    assert publication_reason({**notice(at, 'Kayıp köpeğin sahibi bulundu'), 'source_id': 'other-news'}, at) is None
+    # 26 Nov 2026: a two-word heading is held by the length gate, not reclassified.
+    assert publication_reason({**notice(at, 'Sahibi bulundu'), 'source_id': 'other-news'}, at) == 'headline_too_short'
 
 
 def test_shop_sale_is_held_but_a_public_discount_is_not(at):

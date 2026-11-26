@@ -201,7 +201,7 @@ def test_calendar_without_media_does_not_hold_the_slot(store):
 
 def test_stale_calendar_does_not_hold_the_slot(store, monkeypatch):
     with_editions(store, [NEWS, CONCERT])
-    monkeypatch.setattr('seferihisar.visual_policy.image_reason', lambda post: None)
+    monkeypatch.setattr('seferihisar.visual_policy.image_reason', lambda post, items=None: None)
     monkeypatch.setattr('seferihisar.visual_gate.deployed', lambda store, post, *args, **kwargs:
                         'visual_review_stale' if post['kind'] == 'monthly' else None)
     result = publish_automatic(store, NOON, 'https://example.org/', assets(store), adapter(), require_visual_review=True)

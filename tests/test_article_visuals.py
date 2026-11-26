@@ -212,6 +212,9 @@ def test_rejected_draft_gets_one_varied_retry_but_a_refusal_does_not():
 
 
 def illustrator(store, tmp_path, monkeypatch):
+    # The free-form scene path is off in production (26 Nov 2026); these tests
+    # keep the dormant path's limits and checks covered with the flag on.
+    monkeypatch.setattr('seferihisar.illustrations.ARTICLE_SCENES_ENABLED', True)
     monkeypatch.setenv('ILLUSTRATIONS_ENABLED', 'true')
     monkeypatch.setenv('CLOUDFLARE_API_TOKEN', 'test-token')
     monkeypatch.setenv('CLOUDFLARE_ACCOUNT_ID', ACCOUNT)

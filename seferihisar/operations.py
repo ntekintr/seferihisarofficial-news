@@ -19,7 +19,10 @@ STATUSES = frozenset(('complete', 'published', 'already_published', 'outside_win
     'duplicate_story', 'stale_parent', 'owner_excluded', 'awaiting_content_visual',
     # Owner district rule (22 Nov 2026); a held card, never a failure.
     'outage_outside_district', 'outage_mixed_districts',
-    'theatre_outside_district', 'theatre_location_unconfirmed'))
+    'theatre_outside_district', 'theatre_location_unconfirmed',
+    # 26 Nov 2026: a prepared card still showing a retired free AI scene waits
+    # for the next research render; never a failure.
+    'article_scene_retired'))
 RESULT_FIELDS = frozenset(('status', 'feed', 'story', 'facebook', 'outage_story', 'outage_facebook', 'immediate'))
 FAILURES = frozenset(('media_missing', 'media_not_deployed', 'awaiting_resolution',
     'uncertain', 'account_mismatch', 'check_failed',
@@ -161,7 +164,8 @@ def summary(store, at):
     attempts = budget[0]['attempts'] if budget else 0
     from .quality import news_editorial_reason
     from .domain import digest
-    reasons = ('editorial_headline_required','editorial_context_required','editorial_copy_required')
+    reasons = ('editorial_headline_required','editorial_context_required','editorial_copy_required',
+               'personal_mobile_number','headline_caption_fragment','headline_too_short')
     editorial = dict.fromkeys(reasons,0)
     for item in store.items():
         stamp = parse_date(item.get('published_at'))

@@ -4,6 +4,26 @@ Son gözden geçirme: **26 Ekim 2026**. Bu dosya kod haritası ve kalıcı çal�
 notudur. Anlık sağlık/teslim kanıtı zaman damgalı çıktılardan alınır; burada bir
 kez başarılı olması sonraki ay kesintisiz çalışacağı anlamına gelmez.
 
+### 26 Kasım: serbest yapay zekâ sahnesi kapalı, kısa başlık ve cep numaralı çağrı tutulur
+
+Sahip kararı: "Bu tarz içerikler olmasın alakasız anlamsız görsel." SEHAYDER'in
+"Barınakta" gönderisi (tek kelimelik başlık, sahiplendirme çağrısı ve kişisel cep
+numarası) habere özel sahneyle (tekerlekli sandalye, badminton raketi, çaydanlık)
+yayımlanmıştı; alaka puanı 7'yi geçmişti.
+
+- `illustrations.ARTICLE_SCENES_ENABLED = False`: gözden geçirilmiş konu listesinde
+  olmayan haber için sahne üretilmez, önbellekteki hazır sahne de kullanılmaz
+  (panelde `illustrations.article_scene_disabled`). Kart kaynağın kendi fotoğrafını
+  bekler; bilgi kartı yayınlanmadığından fotoğraf gelmezse haber çıkmaz. Kaynak
+  fotoğrafı ve konu listesi sahneleri değişmedi. Kod yolu silinmedi.
+- Kuyrukta eski sahneye bağlı hazır kart `article_scene_retired` ile bekler (hata
+  sayılmaz); sonraki araştırma turu kartı sahnesiz yeniden çizer.
+- `quality.news_editorial_reason` yeni tutma kodları: `personal_mobile_number`
+  (05xx / +90 5xx / 5xx cep numarası; 0232..., 444..., 153, 112 engellemez),
+  `headline_caption_fragment` (üç noktayla biten ya da Instagram/Facebook açıklamasının
+  ilk satırından kesilmiş başlık), `headline_too_short` (3 kelimeden kısa başlık).
+  Sayılar `operations.editorial_holds` altında.
+
 ### 16 Kasım: şehir köşesi (tarih gönderileri ve yanıt isteyen story'ler)
 
 Kullanıcı 14 Kasım'da kaynak haberlerinin yanında etkileşim alacak şehir içerikleri

@@ -115,10 +115,13 @@ def publish_one(store: Store, at: datetime, site_url: str, assets: dict[str, dic
             return {'status': 'daily_limit'}
     if not story and (require_visual_review or isinstance(api, Instagram)):
         from .visual_policy import image_reason
+        current_items = {i['id']: i for i in store.items()}
+        visual_reasons = {p['id']: image_reason(p, current_items) for p in prepared}
         eligible_before_visual = bool(prepared)
-        prepared = [p for p in prepared if image_reason(p) is None]
+        prepared = [p for p in prepared if visual_reasons[p['id']] is None]
         if eligible_before_visual and not prepared:
-            return {'status': 'awaiting_content_visual'}
+            retired = 'article_scene_retired' in visual_reasons.values()
+            return {'status': 'article_scene_retired' if retired else 'awaiting_content_visual'}
     if editorial and not story:
         from .selection import EDITIONS, prioritize
         prepared = prioritize(store, prepared, at)
