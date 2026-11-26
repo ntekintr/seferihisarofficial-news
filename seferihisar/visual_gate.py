@@ -77,7 +77,7 @@ def deployed(store, post, site_url, paths, session=None, *, story=False):
     if not public_url(site_url) or not valid_review(parent):
         return 'visual_review_missing'
     from .visual_policy import image_reason
-    if reason := image_reason(parent):
+    if reason := image_reason(parent, items):
         return reason
     proof = parent['visual_review']
     current = {key:i['revision'] for key,i in items.items()}

@@ -20,9 +20,29 @@ def summary(store):
             'scope':'Source image first, supported generic scene second, otherwise wait without a new social claim'}
 
 
-def image_reason(post):
+def retired_scene(post, items):
+    """A prepared cover still bound to a free-form article scene, now disabled.
+
+    Only an unclassified news story (no reviewed subject) could receive such a
+    scene, so its illustration binding proves it. The next research render
+    drops the binding; until then the card must not go out with that picture.
+    """
+    from .illustrations import ARTICLE_SCENES_ENABLED
+    if ARTICLE_SCENES_ENABLED or post.get('status') in ('published', 'publishing', 'uncertain'):
+        return False
+    item = (items or {}).get(post.get('item_id'))
+    if not item or not post.get('illustration_keys', {}).get('0'):
+        return False
+    from .visual_subject import subject
+    from .visual_topics import unclassified_news
+    return subject(item) is None and unclassified_news(item)
+
+
+def image_reason(post, items=None):
     if post.get('status') in ('published', 'publishing', 'uncertain'):
         return None
+    if items is not None and retired_scene(post, items):
+        return 'article_scene_retired'
     proof = post.get('visual_review', {})
     bound = post.get('source_photo_keys', {}).get('0') or post.get('illustration_keys', {}).get('0')
     if not bound or not proof.get('images', {}).get('0'):
